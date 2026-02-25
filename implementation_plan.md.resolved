@@ -1,0 +1,243 @@
+# Owlyn Electron Desktop Application - Implementation Plan
+
+Production-grade Electron + React + TypeScript desktop app for a live multimodal AI interview system. Integrating 8 existing HTML/Tailwind UI screens into a secure, feature-based architecture.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **This is a greenfield Electron project.** We'll scaffold from scratch using Vite + Electron Forge. The existing HTML screens will be decomposed into React components but their visual design will not change.
+
+> [!WARNING]
+> **Mock backend.** All API/WebSocket endpoints are mocked. The WebSocket service layer is real and production-ready, but connects to a local mock server or uses in-memory simulation.
+
+---
+
+## Proposed Changes
+
+### Phase 1: Project Scaffolding
+
+#### [NEW] Project root initialization
+
+Scaffold with `npm create @electron-forge/electron-forge-vite` into `C:\Users\HP\OneDrive\Documents\projects\Owlyn`. Configure:
+- `electron-forge` with Vite plugin
+- `tailwind.config.ts` with Owlyn design tokens (primary: `#c59f59`, obsidian, charcoal, background-dark, etc.)
+- `postcss.config.js` for Tailwind
+- `tsconfig.json` for strict TypeScript
+- Google Font (Space Grotesk) loaded locally or via CDN
+- Material Symbols Outlined font
+
+---
+
+### Phase 2: Core Infrastructure
+
+#### [NEW] [main.ts](file:///C:/Users/HP/OneDrive/Documents/projects/Owlyn/src/main/main.ts)
+Electron main process entry. Creates `BrowserWindow` with:
+- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`
+- No `remote` module
+- CSP headers
+- Window size 1440×900, dark native frame
+
+#### [NEW] [preload.ts](file:///C:/Users/HP/OneDrive/Documents/projects/Owlyn/src/preload/preload.ts)
+Typed preload bridge using `contextBridge.exposeInMainWorld`. Exposes:
+- `owlyn.platform` (OS info, window controls)
+- `owlyn.hardware` (camera/mic permission requests via IPC)
+- `owlyn.session` (session ID generation, event logging)
+
+All IPC payloads validated with Zod schemas.
+
+#### [NEW] [schemas/](file:///C:/Users/HP/OneDrive/Documents/projects/Owlyn/src/shared/schemas/)
+Shared Zod schemas reused across main, preload, and renderer:
+- `session.schema.ts` - Session ID, session state, interview config
+- `auth.schema.ts` - Login credentials, tokens
+- `hardware.schema.ts` - Device info, check results
+- `interview.schema.ts` - Transcript entries, scores, analysis
+- `ws-messages.schema.ts` - WebSocket message types (audio, image, functionCall, inlineData)
+- `candidate.schema.ts` - Talent pool candidate data
+
+#### [NEW] State Management (`src/renderer/stores/`)
+Slice-based Zustand stores:
+- `auth.store.ts` - Authentication state
+- `session.store.ts` - Active interview session, timer, status
+- `hardware.store.ts` - Camera/mic status, network latency
+- `interview.store.ts` - Transcript, AI responses, integrity signals
+- `talent.store.ts` - Talent pool filters, candidates
+
+#### [NEW] TanStack Query setup (`src/renderer/lib/query-client.ts`)
+QueryClient with default options. Used for:
+- Fetching candidate data
+- Fetching analysis results
+- POST interview completion
+
+#### [NEW] API client (`src/renderer/lib/api-client.ts`)
+Axios instance with base URL from env, interceptors for auth headers, Zod response validation.
+
+#### [NEW] WebSocket service (`src/renderer/services/ws.service.ts`)
+Full-duplex WebSocket lifecycle:
+- `connect(sessionId)` / `disconnect()`
+- `sendAudio(base64, sampleRate)` 
+- `sendVideo(base64, mimeType)`
+- Incoming message router (functionCall, inlineData)
+- Reconnection logic with exponential backoff
+- Event emitter pattern for interruption signals
+
+#### [NEW] Media services (`src/renderer/services/`)
+- `audio.service.ts` - Mic capture via `getUserMedia`, PCM → Base64 encoding, 16kHz
+- `video.service.ts` - Camera capture via `getUserMedia`, canvas 2 FPS JPEG → Base64
+- `playback.service.ts` - Audio playback from incoming Base64 stream via AudioContext
+
+#### [NEW] Structured logger (`src/shared/logger.ts`)
+- JSON structured logs
+- Severity levels
+- No `console.log` in production (only in dev)
+
+---
+
+### Phase 3: UI Screens (React Components)
+
+Each screen is a feature folder under `src/renderer/features/`. Each folder contains the page component plus any local sub-components.
+
+#### [NEW] `src/renderer/features/auth/AuthPage.tsx`
+Converted from `owlyn_-_authentication/code.html`. Contains:
+- Google SSO button, email/password form
+- Obsidian card with gold gradient background
+- Calls auth store on submit
+- Routes to Hardware Check on success
+
+#### [NEW] `src/renderer/features/hardware/HardwarePage.tsx`
+Converted from `owlyn_-_hardware_setup_&_calibration/code.html`. Contains:
+- Live camera preview (`<video>` element from `getUserMedia`)
+- Camera source selector dropdown
+- Microphone level meter (real audio analysis via AnalyserNode)
+- Network latency/stability display
+- System readiness checklist
+- "Enter Interview" button → routes to Lobby
+
+#### [NEW] `src/renderer/features/lobby/LobbyPage.tsx`
+Converted from `owlyn_-_pre-interview_lobby/code.html`. Contains:
+- Full camera preview
+- System readiness checklist (camera, mic, network, power)
+- Network performance card
+- "Enter Interview" button → routes to Live Session
+
+#### [NEW] `src/renderer/features/interview/InterviewPage.tsx`
+Converted from `owlyn_-_live_ai_interview_session/code.html`. Contains:
+- Slim sidebar nav
+- Top bar with session info, timer, "End Session" button
+- Central AI waveform visualization
+- AI question display
+- Floating transcription panel
+- Candidate video feed pod (bottom-right) with integrity overlays
+- Network/AI monitoring status bar
+- Connects WebSocket on mount, streams audio/video
+
+#### [NEW] `src/renderer/features/analysis/AnalysisPage.tsx`
+Converted from `owlyn_-_post-interview_analysis/code.html`. Contains:
+- Candidate profile header with actions (Download, Share, Schedule)
+- Overall score card
+- Competency radar SVG
+- Integrity monitoring status bar
+- AI Agent Analysis section (strengths, growth areas)
+- Interview transcript preview
+
+#### [NEW] `src/renderer/features/talent/TalentPoolPage.tsx`
+Converted from `owlyn_-_talent_pool_dashboard/code.html`. Contains:
+- Electron-style window controls
+- Left sidebar filters + stats
+- Main candidate table with circular AI score indicators
+- Right sidebar activity feed + spotlight
+- Status bar footer
+
+#### [NEW] `src/renderer/features/agent/AgentCustomizationPage.tsx`
+Converted from `owlyn_-_ai_agent_customization/code.html`. Contains:
+- Sidebar navigation
+- AI persona visualization (pulsing rings)
+- Personality sliders (Empathy/Strictness, Analytical/Soft Skills, Direct/Collaborative)
+- Tone of voice selector (Mentor, Architect, Inquisitor)
+- Knowledge base file manager
+- Domain expertise chip selector
+- Vocal engine selector
+
+#### [NEW] `src/renderer/features/landing/LandingPage.tsx`
+Converted from `owlyn_landing_page_-_how_it_works/code.html`. Contains:
+- Fixed header with nav
+- Hero section with CTA
+- Feature grid (Voice & Vision, Real-time Reasoning, Integrity Guard)
+- The Owlyn Protocol (4-step flow)
+- Social proof logos
+- CTA section + footer
+
+---
+
+### Phase 4: Routing & App Shell
+
+#### [NEW] `src/renderer/App.tsx`
+React Router with routes:
+1. `/` → LandingPage
+2. `/auth` → AuthPage
+3. `/hardware` → HardwarePage
+4. `/lobby` → LobbyPage
+5. `/interview` → InterviewPage
+6. `/analysis/:sessionId` → AnalysisPage
+7. `/talent` → TalentPoolPage
+8. `/agent` → AgentCustomizationPage
+
+#### [NEW] `src/renderer/components/`
+Shared components:
+- `OwlynHeader.tsx` - Reusable navigation header
+- `StatusBar.tsx` - Electron-style status bar footer
+- `WindowControls.tsx` - macOS-style traffic light buttons
+
+---
+
+### Phase 5: Mock Backend
+
+#### [NEW] `src/mocks/ws-mock-server.ts`
+In-process mock WebSocket handler:
+- Responds to audio/video frames with mock AI responses
+- Sends periodic `functionCall` messages (integrity checks)
+- Sends `inlineData` audio responses
+- Simulates interruption scenarios
+
+#### [NEW] `src/mocks/api-mock.ts`
+Mock API responses for:
+- Auth (returns mock token)
+- Candidate list
+- Analysis data
+
+---
+
+## Verification Plan
+
+### Automated Tests
+
+1. **TypeScript compilation check**
+```bash
+cd C:\Users\HP\OneDrive\Documents\projects\Owlyn && npx tsc --noEmit
+```
+Expect: zero errors
+
+2. **Build verification**
+```bash
+cd C:\Users\HP\OneDrive\Documents\projects\Owlyn && npm run build
+```
+Expect: successful Vite build
+
+3. **Dev server launch**
+```bash
+cd C:\Users\HP\OneDrive\Documents\projects\Owlyn && npm run dev
+```
+Expect: Electron window opens without crashes
+
+### Manual Verification
+- Launch the app → Landing page renders with gold/obsidian theme
+- Click "Sign In" → Auth page renders with login form
+- Submit login → Navigates to Hardware page
+- Hardware page shows camera preview, mic meter
+- Click "Enter Interview" → Lobby then → Live Interview page
+- Live Interview shows waveform, transcript, candidate video pod
+- Click "End Session" → Analysis page with scores and radar
+- Navigate to Talent Pool → Table with candidates renders
+- Navigate to Agent Customization → Persona editor renders
+
+> [!NOTE]
+> Since this is a greenfield project scaffolded from nothing, I'll build incrementally, verifying compilation at each phase.
