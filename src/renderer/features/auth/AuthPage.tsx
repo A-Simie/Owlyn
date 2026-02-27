@@ -11,18 +11,12 @@ export default function AuthPage() {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
-        setAuth(
-            { id: '1', email, name: 'Alex Rivers', role: 'candidate' },
-            { accessToken: 'mock-token', expiresAt: Date.now() + 3600000 }
-        )
+        setAuth({ id: '1', email, fullName: 'Alex Rivers', role: 'ADMIN' })
         navigate('/hardware')
     }
 
     const handleGoogleLogin = () => {
-        setAuth(
-            { id: '1', email: 'alex@owlyn.com', name: 'Alex Rivers', role: 'candidate' },
-            { accessToken: 'mock-google-token', expiresAt: Date.now() + 3600000 }
-        )
+        setAuth({ id: '1', email: 'alex@owlyn.com', fullName: 'Alex Rivers', role: 'ADMIN' })
         navigate('/hardware')
     }
 

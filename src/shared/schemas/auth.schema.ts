@@ -1,24 +1,43 @@
 import { z } from 'zod'
 
-export const LoginCredentialsSchema = z.object({
-    email: z.string().email(),
-    password: z.string().min(6),
-})
+export const UserRole = {
+    ADMIN: 'ADMIN',
+    RECRUITER: 'RECRUITER',
+    CANDIDATE: 'CANDIDATE',
+} as const
 
-export const AuthTokenSchema = z.object({
-    accessToken: z.string(),
-    refreshToken: z.string().optional(),
-    expiresAt: z.number(),
-})
+export type UserRole = (typeof UserRole)[keyof typeof UserRole]
 
 export const UserSchema = z.object({
     id: z.string(),
     email: z.string().email(),
-    name: z.string(),
-    role: z.enum(['candidate', 'recruiter', 'admin']),
-    avatarUrl: z.string().url().optional(),
+    fullName: z.string(),
+    role: z.enum(['ADMIN', 'RECRUITER', 'CANDIDATE']),
 })
 
-export type LoginCredentials = z.infer<typeof LoginCredentialsSchema>
-export type AuthToken = z.infer<typeof AuthTokenSchema>
+export const AuthResponseSchema = z.object({
+    token: z.string(),
+    user: UserSchema,
+})
+
+export const SignupPayloadSchema = z.object({
+    email: z.string().email('Valid email is required'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+    fullName: z.string().min(1, 'Full name is required'),
+})
+
+export const LoginPayloadSchema = z.object({
+    email: z.string().email('Valid email is required'),
+    password: z.string().min(1, 'Password is required'),
+})
+
+export const OtpVerifyParamsSchema = z.object({
+    otp: z.string().length(6, 'OTP must be exactly 6 digits'),
+    email: z.string().email(),
+})
+
 export type User = z.infer<typeof UserSchema>
+export type AuthResponse = z.infer<typeof AuthResponseSchema>
+export type SignupPayload = z.infer<typeof SignupPayloadSchema>
+export type LoginPayload = z.infer<typeof LoginPayloadSchema>
+export type OtpVerifyParams = z.infer<typeof OtpVerifyParamsSchema>

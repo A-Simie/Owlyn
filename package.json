@@ -23,6 +23,7 @@
   "dependencies": {
     "@tanstack/react-query": "^5.62.0",
     "axios": "^1.7.0",
+    "axios-retry": "^4.5.0",
     "framer-motion": "^12.34.3",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",

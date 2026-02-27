@@ -11,6 +11,7 @@ import SettingsPage from './features/settings/SettingsPage'
 import InterviewsListPage from './features/interviews/InterviewsListPage'
 import LandingPage from './features/landing/LandingPage'
 import AppLayout from './components/AppLayout'
+import AuthGuard from './components/AuthGuard'
 
 export default function App() {
     useEffect(() => {
@@ -20,14 +21,13 @@ export default function App() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Full-screen pages (no sidebar) */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/auth" element={<AuthPage />} />
-                <Route path="/hardware" element={<HardwarePage />} />
-                <Route path="/lobby" element={<LobbyPage />} />
 
-                {/* Pages with sidebar */}
-                <Route element={<AppLayout />}>
+                <Route path="/hardware" element={<AuthGuard><HardwarePage /></AuthGuard>} />
+                <Route path="/lobby" element={<AuthGuard><LobbyPage /></AuthGuard>} />
+
+                <Route element={<AuthGuard><AppLayout /></AuthGuard>}>
                     <Route path="/interview" element={<InterviewPage />} />
                     <Route path="/analysis/:sessionId" element={<AnalysisPage />} />
                     <Route path="/analysis" element={<AnalysisPage />} />

@@ -1,29 +1,50 @@
 import axios from 'axios'
-import type { AxiosInstance } from 'axios'
-import { useAuthStore } from '@/stores/auth.store'
+import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
+import axiosRetry from 'axios-retry'
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
+const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL
 
-export const apiClient: AxiosInstance = axios.create({
-    baseURL: BASE_URL,
-    timeout: 15000,
-    headers: { 'Content-Type': 'application/json' },
-})
+let authStoreClearFn: (() => void) | null = null
 
-apiClient.interceptors.request.use((config) => {
-    const token = useAuthStore.getState().token
-    if (token) {
-        config.headers.Authorization = `Bearer ${token.accessToken}`
-    }
-    return config
-})
+export function registerAuthClear(clearFn: () => void): void {
+    authStoreClearFn = clearFn
+}
 
-apiClient.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        if (error.response?.status === 401) {
-            useAuthStore.getState().clearAuth()
-        }
-        return Promise.reject(error)
-    }
-)
+function createApiClient(): AxiosInstance {
+    const client = axios.create({
+        baseURL: BASE_URL,
+        timeout: 15_000,
+        withCredentials: true,
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+        },
+    })
+
+    axiosRetry(client, {
+        retries: 3,
+        retryDelay: axiosRetry.exponentialDelay,
+        retryCondition: (error) =>
+            axiosRetry.isNetworkOrIdempotentRequestError(error) ||
+            (error.response?.status !== undefined && error.response.status >= 500),
+    })
+
+    client.interceptors.request.use(
+        (config: InternalAxiosRequestConfig) => config,
+        (error) => Promise.reject(error),
+    )
+
+    client.interceptors.response.use(
+        (response) => response,
+        (error) => {
+            if (axios.isAxiosError(error) && error.response?.status === 401) {
+                authStoreClearFn?.()
+            }
+            return Promise.reject(error)
+        },
+    )
+
+    return client
+}
+
+export const apiClient = createApiClient()
