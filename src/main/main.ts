@@ -1,4 +1,5 @@
-import { app, BrowserWindow, ipcMain, session, Menu } from 'electron'
+import { app, BrowserWindow, ipcMain, session, Menu, safeStorage } from 'electron'
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs'
 import { join } from 'path'
 import { createLogger } from '../shared/logger'
 
@@ -98,6 +99,8 @@ app.on('window-all-closed', () => {
     }
 })
 
+const TOKEN_FILE = join(app.getPath('userData'), '.owlyn-token')
+
 function registerIpcHandlers(): void {
     ipcMain.handle('platform:info', () => ({
         platform: process.platform,
@@ -118,6 +121,38 @@ function registerIpcHandlers(): void {
         }
     })
     ipcMain.handle('window:close', () => mainWindow?.close())
+
+    ipcMain.handle('auth:save-token', (_event, token: string) => {
+        if (!safeStorage.isEncryptionAvailable()) {
+            log.warn('safeStorage encryption not available, skipping token save')
+            return false
+        }
+        const encrypted = safeStorage.encryptString(token)
+        writeFileSync(TOKEN_FILE, encrypted)
+        log.info('Token saved to safeStorage')
+        return true
+    })
+
+    ipcMain.handle('auth:get-token', () => {
+        if (!existsSync(TOKEN_FILE)) return null
+        if (!safeStorage.isEncryptionAvailable()) return null
+        try {
+            const encrypted = readFileSync(TOKEN_FILE)
+            return safeStorage.decryptString(encrypted)
+        } catch {
+            log.warn('Failed to decrypt token, clearing')
+            try { unlinkSync(TOKEN_FILE) } catch { /* ignore */ }
+            return null
+        }
+    })
+
+    ipcMain.handle('auth:clear-token', () => {
+        try {
+            if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE)
+            log.info('Token cleared')
+        } catch { /* ignore */ }
+        return true
+    })
 
     log.info('IPC handlers registered')
 }

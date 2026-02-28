@@ -13,6 +13,11 @@ const api = {
         maximize: (): Promise<void> => ipcRenderer.invoke('window:maximize'),
         close: (): Promise<void> => ipcRenderer.invoke('window:close'),
     },
+    auth: {
+        saveToken: (token: string): Promise<boolean> => ipcRenderer.invoke('auth:save-token', token),
+        getToken: (): Promise<string | null> => ipcRenderer.invoke('auth:get-token'),
+        clearToken: (): Promise<boolean> => ipcRenderer.invoke('auth:clear-token'),
+    },
 } as const
 
 export type OwlynAPI = typeof api

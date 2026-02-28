@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 
 const NAV_ITEMS = [
-    { path: '/talent', icon: 'dashboard', label: 'Dashboard' },
+    { path: '/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { path: '/interviews', icon: 'videocam', label: 'Interviews' },
     { path: '/agent', icon: 'smart_toy', label: 'AI Personas' },
     { path: '/analysis', icon: 'library_books', label: 'Library' },

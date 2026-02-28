@@ -60,6 +60,9 @@ export default function LobbyPage() {
         <div className="bg-[#1e1a14] text-slate-100 min-h-screen flex flex-col">
             <header className="flex items-center justify-between border-b border-primary/20 px-6 py-4 lg:px-20 bg-[#12100d]/50 backdrop-blur-md sticky top-0 z-50">
                 <div className="flex items-center gap-3">
+                    <button onClick={() => navigate('/hardware')} className="text-slate-400 hover:text-primary transition-colors mr-1">
+                        <span className="material-symbols-outlined text-xl">arrow_back</span>
+                    </button>
                     <div className="text-primary">
                         <span className="material-symbols-outlined text-3xl">school</span>
                     </div>
