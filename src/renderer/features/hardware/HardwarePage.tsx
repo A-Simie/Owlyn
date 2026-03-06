@@ -9,6 +9,8 @@ type NetworkStatus = {
 }
 
 export default function HardwarePage() {
+    const date = new Date()
+    const currentYear = date.getFullYear()
     const navigate = useNavigate()
     const videoRef = useRef<HTMLVideoElement>(null)
     const { cameraOn, micOn, cameraStream, audioLevel, cameraError, micError, startCamera, stopCamera, startMic, stopMic } = useMediaStore()
@@ -298,7 +300,7 @@ export default function HardwarePage() {
             </main>
 
             <footer className="py-8 border-t border-primary/10 px-6 lg:px-20 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p className="text-slate-500 text-sm">© 2024 Owlyn AI Systems. All rights reserved.</p>
+                <p className="text-slate-500 text-sm">© {currentYear} Owlyn AI Systems. All rights reserved.</p>
                 <div className="flex gap-8 text-xs font-bold uppercase tracking-widest text-slate-600">
                     <a className="hover:text-primary transition-colors" href="#">Privacy</a>
                     <a className="hover:text-primary transition-colors" href="#">Security</a>
