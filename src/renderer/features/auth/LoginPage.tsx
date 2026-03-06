@@ -210,7 +210,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="mt-8 flex justify-center gap-6 text-[10px] text-subtle uppercase tracking-[0.2em] font-medium">
-                        <a className="hover:text-primary transition-colors" href="#">Privacy Charter</a>
+                        <a className="hover:text-primary transition-colors" href="#">Privacy</a>
                         <a className="hover:text-primary transition-colors" href="#">Terms of Protocol</a>
                         <a className="hover:text-primary transition-colors" href="#">Support</a>
                     </div>
