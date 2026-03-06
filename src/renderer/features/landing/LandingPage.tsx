@@ -58,7 +58,7 @@ export default function LandingPage() {
               className="material-symbols-outlined text-primary text-3xl"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
-              school
+              owl
             </span>
             <span className="text-2xl font-bold tracking-tighter text-heading">
               Owlyn
@@ -458,7 +458,7 @@ export default function LandingPage() {
               className="material-symbols-outlined text-primary text-xl opacity-80"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
-              school
+              owl
             </span>
             <span className="text-lg font-bold tracking-tighter text-muted">
               Owlyn
