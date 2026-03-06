@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMediaStore } from '@/stores/media.store'
+import { candidateApi } from '@/api'
+import { extractApiError } from '@/lib/api-error'
 
 export default function LobbyPage() {
     const navigate = useNavigate()
@@ -8,14 +10,16 @@ export default function LobbyPage() {
     const { cameraOn, micOn, cameraStream, audioLevel, startCamera, stopCamera, startMic, stopMic } = useMediaStore()
     const [latency, setLatency] = useState(12)
     const [isChecking, setIsChecking] = useState(false)
+    const [accessCode, setAccessCode] = useState('')
+    const [isValidating, setIsValidating] = useState(false)
+    const [error, setError] = useState<string | null>(null)
+    const [sessionData, setSessionData] = useState<{ token: string; interviewId: string; title: string } | null>(null)
 
-    // Ensure camera/mic are started when we land here
     useEffect(() => {
         if (!cameraOn) startCamera()
         if (!micOn) startMic()
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [])
 
-    // Sync video element with camera stream
     useEffect(() => {
         if (videoRef.current) {
             videoRef.current.srcObject = cameraStream
@@ -33,7 +37,6 @@ export default function LobbyPage() {
         else await startMic()
     }, [micOn, stopMic, startMic])
 
-    // Simulate network latency fluctuation
     useEffect(() => {
         const id = setInterval(() => {
             setLatency(Math.round(8 + Math.random() * 18))
@@ -51,6 +54,23 @@ export default function LobbyPage() {
         setLatency(Math.round(8 + Math.random() * 12))
         setTimeout(() => setIsChecking(false), 600)
     }, [stopCamera, stopMic, startCamera, startMic])
+
+    const handleValidateCode = async () => {
+        if (accessCode.length !== 6) return
+        setIsValidating(true)
+        setError(null)
+        try {
+            const res = await candidateApi.validateCode({ code: accessCode })
+            setSessionData({ token: res.token, interviewId: res.interviewId, title: res.title })
+            localStorage.setItem('owlyn_guest_token', res.token)
+            localStorage.setItem('owlyn_interview_id', res.interviewId)
+            localStorage.setItem('owlyn_access_code', accessCode)
+        } catch (err) {
+            setError(extractApiError(err).message)
+        } finally {
+            setIsValidating(false)
+        }
+    }
 
     const latencyLabel = latency <= 15 ? 'Excellent' : latency <= 25 ? 'Good' : 'Fair'
     const latencyRange = latency <= 15 ? '0-15ms range' : latency <= 25 ? '15-25ms range' : '25-40ms range'
@@ -196,14 +216,37 @@ export default function LobbyPage() {
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => navigate('/interview')}
-                        disabled={!cameraOn || !micOn}
-                        className="w-full bg-primary hover:bg-primary/90 text-black font-bold py-5 rounded uppercase tracking-[0.2em] transition-all transform hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-xl shadow-primary/10 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
-                    >
-                        Enter Interview
-                        <span className="material-symbols-outlined">arrow_forward</span>
-                    </button>
+                    {!sessionData ? (
+                        <div className="bg-[#0d0d0d] border border-primary/20 rounded-lg p-6 flex flex-col gap-4">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-white">Enter Access Code</h3>
+                            <p className="text-xs text-slate-500">Please enter the 6-digit code provided in your invite.</p>
+                            <input
+                                type="text"
+                                maxLength={6}
+                                value={accessCode}
+                                onChange={e => setAccessCode(e.target.value.replace(/\D/g, ''))}
+                                placeholder="000000"
+                                className="bg-black/40 border border-primary/20 rounded py-3 px-4 text-center text-2xl font-mono tracking-[0.5em] text-primary focus:border-primary outline-none"
+                            />
+                            {error && <p className="text-red-400 text-[10px] font-bold uppercase text-center">{error}</p>}
+                            <button
+                                onClick={handleValidateCode}
+                                disabled={accessCode.length !== 6 || isValidating}
+                                className="bg-primary/10 border border-primary/20 text-primary py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-primary/20 disabled:opacity-30"
+                            >
+                                {isValidating ? 'Validating...' : 'Verify Code'}
+                            </button>
+                        </div>
+                    ) : (
+                        <button
+                            onClick={() => navigate('/interview')}
+                            disabled={!cameraOn || !micOn}
+                            className="w-full bg-primary hover:bg-primary/90 text-black font-bold py-5 rounded uppercase tracking-[0.2em] transition-all transform hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-xl shadow-primary/10 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                        >
+                            Enter Interview
+                            <span className="material-symbols-outlined">arrow_forward</span>
+                        </button>
+                    )}
 
                     <div className="flex justify-center gap-4">
                         <p className="text-[10px] uppercase tracking-widest text-slate-600 flex items-center gap-1">

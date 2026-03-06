@@ -1,1 +1,5 @@
-export { authApi } from './auth.api'
+export * from './auth.api'
+export * from './workspace.api'
+export * from './interviews.api'
+export * from './personas.api'
+export * from './candidate.api'

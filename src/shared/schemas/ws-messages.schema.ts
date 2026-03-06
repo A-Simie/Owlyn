@@ -1,27 +1,24 @@
 import { z } from 'zod'
 
-export const WsOutgoingAudioSchema = z.object({
-    type: z.literal('audio'),
-    data: z.string(),
-    sampleRate: z.literal(16000),
+export const WsOutgoingMediaSchema = z.object({
+    event: z.literal('MEDIA'),
+    videoFrame: z.string(),
+    audioChunk: z.string().optional(),
+    codeEditorText: z.string().optional(),
 })
 
-export const WsOutgoingImageSchema = z.object({
-    type: z.literal('image'),
-    data: z.string(),
-    mimeType: z.literal('image/jpeg'),
+export const WsOutgoingRunCodeSchema = z.object({
+    event: z.literal('RUN_CODE'),
 })
 
-export const WsFunctionCallSchema = z.object({
-    type: z.literal('functionCall'),
-    name: z.string(),
-    args: z.record(z.unknown()),
+export const WsToolHighlightSchema = z.object({
+    type: z.literal('TOOL_HIGHLIGHT'),
+    errorLine: z.number(),
 })
 
-export const WsInlineDataSchema = z.object({
-    type: z.literal('inlineData'),
-    mimeType: z.string(),
-    data: z.string(),
+export const WsProctorWarningSchema = z.object({
+    type: z.literal('PROCTOR_WARNING'),
+    message: z.string(),
 })
 
 export const WsTranscriptSchema = z.object({
@@ -32,28 +29,29 @@ export const WsTranscriptSchema = z.object({
     isInterruption: z.boolean().optional(),
 })
 
-export const WsInterruptionSchema = z.object({
-    type: z.literal('interruption'),
-    reason: z.string().optional(),
+export const WsInlineDataSchema = z.object({
+    type: z.literal('inlineData'),
+    mimeType: z.string(),
+    data: z.string(),
 })
 
 export const WsIncomingMessageSchema = z.discriminatedUnion('type', [
-    WsFunctionCallSchema,
-    WsInlineDataSchema,
+    WsToolHighlightSchema,
+    WsProctorWarningSchema,
     WsTranscriptSchema,
-    WsInterruptionSchema,
+    WsInlineDataSchema,
 ])
 
-export const WsOutgoingMessageSchema = z.discriminatedUnion('type', [
-    WsOutgoingAudioSchema,
-    WsOutgoingImageSchema,
+export const WsOutgoingMessageSchema = z.discriminatedUnion('event', [
+    WsOutgoingMediaSchema,
+    WsOutgoingRunCodeSchema,
 ])
 
-export type WsOutgoingAudio = z.infer<typeof WsOutgoingAudioSchema>
-export type WsOutgoingImage = z.infer<typeof WsOutgoingImageSchema>
-export type WsFunctionCall = z.infer<typeof WsFunctionCallSchema>
-export type WsInlineData = z.infer<typeof WsInlineDataSchema>
+export type WsOutgoingMedia = z.infer<typeof WsOutgoingMediaSchema>
+export type WsOutgoingRunCode = z.infer<typeof WsOutgoingRunCodeSchema>
+export type WsToolHighlight = z.infer<typeof WsToolHighlightSchema>
+export type WsProctorWarning = z.infer<typeof WsProctorWarningSchema>
 export type WsTranscript = z.infer<typeof WsTranscriptSchema>
-export type WsInterruption = z.infer<typeof WsInterruptionSchema>
+export type WsInlineData = z.infer<typeof WsInlineDataSchema>
 export type WsIncomingMessage = z.infer<typeof WsIncomingMessageSchema>
 export type WsOutgoingMessage = z.infer<typeof WsOutgoingMessageSchema>

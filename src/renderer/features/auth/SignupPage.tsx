@@ -22,6 +22,8 @@ export default function SignupPage() {
     const [otpError, setOtpError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
     const [showPasswordRules, setShowPasswordRules] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
     const passwordRules = [
         { label: 'At least 6 characters', met: password.length >= 6 },
@@ -151,18 +153,29 @@ export default function SignupPage() {
                                     <label className="block text-xs font-semibold text-primary uppercase tracking-widest mb-2" htmlFor="signup-password">
                                         Password
                                     </label>
-                                    <input
-                                        className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
-                                            }`}
-                                        id="signup-password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        onFocus={() => setShowPasswordRules(true)}
-                                        onBlur={() => setShowPasswordRules(false)}
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 pr-12 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
+                                                }`}
+                                            id="signup-password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            onFocus={() => setShowPasswordRules(true)}
+                                            onBlur={() => setShowPasswordRules(false)}
+                                            disabled={loading}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(prev => !prev)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-xl">
+                                                {showPassword ? 'visibility_off' : 'visibility'}
+                                            </span>
+                                        </button>
+                                    </div>
                                     {fieldErrors.password && <p className="text-red-400 text-xs mt-1.5">{fieldErrors.password}</p>}
 
                                     {showPasswordRules && password.length > 0 && (
@@ -183,16 +196,27 @@ export default function SignupPage() {
                                     <label className="block text-xs font-semibold text-primary uppercase tracking-widest mb-2" htmlFor="signup-confirm">
                                         Confirm Password
                                     </label>
-                                    <input
-                                        className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
-                                            }`}
-                                        id="signup-confirm"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 pr-12 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.confirmPassword ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
+                                                }`}
+                                            id="signup-confirm"
+                                            type={showConfirmPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            value={confirmPassword}
+                                            onChange={(e) => setConfirmPassword(e.target.value)}
+                                            disabled={loading}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword(prev => !prev)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-xl">
+                                                {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                                            </span>
+                                        </button>
+                                    </div>
                                     {fieldErrors.confirmPassword && <p className="text-red-400 text-xs mt-1.5">{fieldErrors.confirmPassword}</p>}
                                 </div>
 

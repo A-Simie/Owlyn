@@ -5,6 +5,8 @@ import { useInterviewStore } from '@/stores/interview.store'
 import { useMediaStore } from '@/stores/media.store'
 import { wsService } from '@/services/ws.service'
 import { audioPlaybackService } from '@/services/playback.service'
+import { candidateApi } from '@/api'
+import { extractApiError } from '@/lib/api-error'
 
 export default function InterviewPage() {
     const navigate = useNavigate()
@@ -41,7 +43,6 @@ export default function InterviewPage() {
         else await startMic()
     }, [micOn, stopMic, startMic])
 
-    // Sync video element with camera stream
     useEffect(() => {
         if (videoRef.current) {
             videoRef.current.srcObject = cameraStream
@@ -275,23 +276,20 @@ export default function InterviewPage() {
     }, [cameraOn])
 
     useEffect(() => {
-        const sessionId = `OWL-${Date.now()}`
-        const timer = setInterval(tick, 1000)
+        const token = localStorage.getItem('owlyn_guest_token')
+        const accessCode = localStorage.getItem('owlyn_access_code')
 
-        setCurrentQuestion(
-            'Tell me about your experience with architectural scalability in distributed systems.'
-        )
-        addTranscript({
-            id: '1', timestamp: '00:00:05', speaker: 'ai',
-            text: 'Thinking specifically about the CAP theorem, how have you handled eventual consistency in your previous high-load projects?',
-        })
-        addTranscript({
-            id: '2', timestamp: '00:01:30', speaker: 'candidate',
-            text: 'In my last role at TechCorp, we implemented a sharded database strategy coupled with a robust message queue to manage...',
-        })
+        if (!token || !accessCode) {
+            navigate('/lobby')
+            return
+        }
+
+        const timer = setInterval(tick, 1000)
 
         async function startSession() {
             try {
+                await candidateApi.initiateLockdown(accessCode!, token!)
+
                 if (!cameraOn) await startCamera()
                 if (!micOn) await startMic()
                 wsService.onConnect(() => setIsConnected(true))
@@ -302,14 +300,41 @@ export default function InterviewPage() {
                         if (msg.speaker === 'ai') setCurrentQuestion(msg.text)
                     }
                     if (msg.type === 'inlineData') audioPlaybackService.playBase64Chunk(msg.data)
+                    if (msg.type === 'TOOL_HIGHLIGHT') {
+                        console.log('Highlight error at line:', msg.errorLine)
+                    }
+                    if (msg.type === 'PROCTOR_WARNING') {
+                        alert(msg.message)
+                    }
                 })
-                wsService.connect(sessionId)
-            } catch { /* media or ws error */ }
+                wsService.connect(token!)
+            } catch (err) {
+                console.error('Session start failed:', extractApiError(err))
+            }
         }
 
         startSession()
         return () => { clearInterval(timer); wsService.disconnect(); audioPlaybackService.stop() }
-    }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [])
+
+    useEffect(() => {
+        if (!cameraOn || !isConnected) return
+
+        const sendFrame = () => {
+            if (!videoRef.current) return
+            const canvas = document.createElement('canvas')
+            canvas.width = 320
+            canvas.height = 240
+            const ctx = canvas.getContext('2d')
+            if (!ctx) return
+            ctx.drawImage(videoRef.current, 0, 0, 320, 240)
+            const base64 = canvas.toDataURL('image/jpeg', 0.4).split(',')[1]
+            wsService.sendMedia(base64)
+        }
+
+        const interval = setInterval(sendFrame, 1000)
+        return () => clearInterval(interval)
+    }, [cameraOn, isConnected])
 
     return (
         <div className="text-slate-100 h-screen overflow-hidden flex flex-col bg-[#0d0d0d]">

@@ -19,6 +19,16 @@ export default function LoginPage() {
     const [apiError, setApiError] = useState<string | null>(null)
     const [otpError, setOtpError] = useState<string | null>(null)
     const [loading, setLoading] = useState(false)
+    const [showPassword, setShowPassword] = useState(false)
+    const [showPasswordRules, setShowPasswordRules] = useState(false)
+
+    const passwordRules = [
+        { label: 'At least 6 characters', met: password.length >= 6 },
+        { label: 'One uppercase letter', met: /[A-Z]/.test(password) },
+        { label: 'One lowercase letter', met: /[a-z]/.test(password) },
+        { label: 'One number', met: /[0-9]/.test(password) },
+        { label: 'One special character', met: /[^A-Za-z0-9]/.test(password) },
+    ]
 
     async function handleCredentialsSubmit(e: React.FormEvent) {
         e.preventDefault()
@@ -117,18 +127,44 @@ export default function LoginPage() {
                                     <label className="block text-xs font-semibold text-primary uppercase tracking-widest mb-2" htmlFor="login-password">
                                         Password
                                     </label>
-                                    <input
-                                        className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
-                                            }`}
-                                        id="login-password"
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        disabled={loading}
-                                    />
+                                    <div className="relative">
+                                        <input
+                                            className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 pr-12 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${fieldErrors.password ? 'border-red-500' : 'border-slate-200 dark:border-slate-800'
+                                                }`}
+                                            id="login-password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            onFocus={() => setShowPasswordRules(true)}
+                                            onBlur={() => setShowPasswordRules(false)}
+                                            disabled={loading}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(prev => !prev)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-xl">
+                                                {showPassword ? 'visibility_off' : 'visibility'}
+                                            </span>
+                                        </button>
+                                    </div>
                                     {fieldErrors.password && (
                                         <p className="text-red-400 text-xs mt-1.5">{fieldErrors.password}</p>
+                                    )}
+
+                                    {showPasswordRules && password.length > 0 && (
+                                        <div className="mt-3 space-y-1.5">
+                                            {passwordRules.map((rule) => (
+                                                <div key={rule.label} className="flex items-center gap-2 text-xs">
+                                                    <span className={`material-symbols-outlined text-sm ${rule.met ? 'text-green-400' : 'text-slate-600'}`}>
+                                                        {rule.met ? 'check_circle' : 'circle'}
+                                                    </span>
+                                                    <span className={rule.met ? 'text-green-400' : 'text-slate-500'}>{rule.label}</span>
+                                                </div>
+                                            ))}
+                                        </div>
                                     )}
                                 </div>
                                 <button

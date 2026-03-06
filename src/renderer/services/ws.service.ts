@@ -4,30 +4,30 @@ import type { WsOutgoingMessage, WsIncomingMessage } from '@shared/schemas/ws-me
 type MessageHandler = (msg: WsIncomingMessage) => void
 type ConnectionHandler = () => void
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3002'
+const WS_URL = import.meta.env.VITE_WS_URL
 const MAX_RECONNECT_ATTEMPTS = 5
 const BASE_RECONNECT_DELAY = 1000
 
 class WebSocketService {
     private ws: WebSocket | null = null
-    private sessionId: string | null = null
+    private token: string | null = null
     private reconnectAttempts = 0
     private handlers: MessageHandler[] = []
     private onConnectHandlers: ConnectionHandler[] = []
     private onDisconnectHandlers: ConnectionHandler[] = []
 
-    connect(sessionId: string): void {
+    connect(token: string): void {
         if (this.ws?.readyState === WebSocket.OPEN) return
 
-        this.sessionId = sessionId
+        this.token = token
         this.reconnectAttempts = 0
         this.createConnection()
     }
 
     private createConnection(): void {
-        if (!this.sessionId) return
+        if (!this.token) return
 
-        this.ws = new WebSocket(`${WS_URL}?sessionId=${this.sessionId}`)
+        this.ws = new WebSocket(`${WS_URL}/stream?token=${this.token}`)
 
         this.ws.onopen = () => {
             this.reconnectAttempts = 0
@@ -42,7 +42,6 @@ class WebSocketService {
                     this.handlers.forEach((h) => h(parsed.data))
                 }
             } catch {
-                // invalid message, drop silently
             }
         }
 
@@ -69,12 +68,12 @@ class WebSocketService {
         }
     }
 
-    sendAudio(base64Data: string): void {
-        this.send({ type: 'audio', data: base64Data, sampleRate: 16000 })
+    sendMedia(videoFrame: string, audioChunk?: string, codeEditorText?: string): void {
+        this.send({ event: 'MEDIA', videoFrame, audioChunk, codeEditorText })
     }
 
-    sendVideo(base64Data: string): void {
-        this.send({ type: 'image', data: base64Data, mimeType: 'image/jpeg' })
+    sendRunCode(): void {
+        this.send({ event: 'RUN_CODE' })
     }
 
     onMessage(handler: MessageHandler): () => void {
@@ -99,7 +98,7 @@ class WebSocketService {
     }
 
     disconnect(): void {
-        this.sessionId = null
+        this.token = null
         this.reconnectAttempts = MAX_RECONNECT_ATTEMPTS
         this.ws?.close()
         this.ws = null

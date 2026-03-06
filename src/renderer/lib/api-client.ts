@@ -2,7 +2,7 @@ import axios from 'axios'
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios'
 import axiosRetry from 'axios-retry'
 
-const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL
+const BASE_URL = import.meta.env.VITE_API_BASE_URL
 
 let authStoreClearFn: (() => void) | null = null
 let authStoreGetTokenFn: (() => string | null) | null = null

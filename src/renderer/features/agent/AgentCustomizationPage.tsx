@@ -1,5 +1,7 @@
-
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { personasApi } from '@/api/personas.api'
+import { extractApiError } from '@/lib/api-error'
+import type { Persona } from '@shared/schemas/persona.schema'
 
 
 const TONES = [
@@ -17,8 +19,77 @@ const DOMAINS = [
 ]
 
 export default function AgentCustomizationPage() {
-    const [selectedTone, setSelectedTone] = useState('mentor')
+    const [personas, setPersonas] = useState<Persona[]>([])
+    const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [isSaving, setIsSaving] = useState(false)
+
+    // Form State
+    const [name, setName] = useState('')
+    const [description, setDescription] = useState('')
+    const [voiceId, setVoiceId] = useState('Aries')
+    const [avatarFile, setAvatarFile] = useState<File | null>(null)
+    const [contextFiles, setContextFiles] = useState<File[]>([])
+
     const [sliders] = useState({ strictness: 75, analytical: 90, collaborative: 60 })
+    const [selectedTone, setSelectedTone] = useState('mentor')
+
+    const fetchPersonas = useCallback(async () => {
+        setLoading(true)
+        try {
+            const data = await personasApi.getPersonas()
+            setPersonas(data)
+        } catch (error) {
+            console.error(extractApiError(error))
+        } finally {
+            setLoading(false)
+        }
+    }, [])
+
+    useEffect(() => {
+        fetchPersonas()
+    }, [fetchPersonas])
+
+    const handleSave = async () => {
+        if (!name) return
+        setIsSaving(true)
+        try {
+            const personaData = {
+                name,
+                roleTitle: description,
+                empathyScore: 100 - sliders.strictness,
+                analyticalDepth: sliders.analytical,
+                directnessScore: 100 - sliders.collaborative,
+                tone: selectedTone.toUpperCase(),
+                domainExpertise: DOMAINS.filter(d => d.active).map(d => d.label),
+            }
+            const fd = new FormData()
+            fd.append('persona', new Blob([JSON.stringify(personaData)], { type: 'application/json' }))
+            if (contextFiles.length > 0) fd.append('file', contextFiles[0])
+
+            await personasApi.createPersona(fd)
+            alert('Persona saved successfully')
+            fetchPersonas()
+            setName('')
+            setDescription('')
+            setAvatarFile(null)
+            setContextFiles([])
+        } catch (error) {
+            alert(extractApiError(error).message)
+        } finally {
+            setIsSaving(false)
+        }
+    }
+
+    const handleDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this persona?')) return
+        try {
+            await personasApi.deletePersona(id)
+            setPersonas(personas.filter(p => p.id !== id))
+        } catch (error) {
+            alert(extractApiError(error).message)
+        }
+    }
 
     return (
         <div className="text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-hidden">
@@ -50,10 +121,22 @@ export default function AgentCustomizationPage() {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="text-center mt-4 z-10">
-                                    <h3 className="text-heading text-xl font-bold">Atlas-7</h3>
-                                    <p className="text-primary/60 text-xs tracking-widest uppercase mb-6">Senior Technical Evaluator</p>
-                                    <button className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-full transition-all">
+                                <div className="text-center mt-4 z-10 w-full space-y-4">
+                                    <input
+                                        type="text"
+                                        placeholder="Persona Name (e.g. Atlas-7)"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        className="w-full bg-transparent border-none text-heading text-xl font-bold text-center focus:ring-0 p-0"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Eval Title (e.g. Senior Technical Evaluator)"
+                                        value={description}
+                                        onChange={e => setDescription(e.target.value)}
+                                        className="w-full bg-transparent border-none text-primary/60 text-xs tracking-widest uppercase text-center focus:ring-0 p-0"
+                                    />
+                                    <button className="mx-auto flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-full transition-all">
                                         <span className="material-symbols-outlined text-sm text-primary">play_circle</span>
                                         <span className="text-xs font-semibold uppercase tracking-wider text-body">Live Preview Voice</span>
                                     </button>
@@ -127,29 +210,32 @@ export default function AgentCustomizationPage() {
                                     <button className="text-[10px] text-primary hover:underline uppercase tracking-widest font-bold">Add Source</button>
                                 </div>
                                 <div className="flex-1 space-y-3">
-                                    {[
-                                        { name: 'Distributed_Systems_v4.pdf', category: 'Technical Core', size: '2.4MB' },
-                                        { name: 'Senior_Engineering_Rubric.docx', category: 'Assessment Logic', size: '1.1MB' },
-                                    ].map((file) => (
-                                        <div key={file.name} className="flex items-center justify-between surface-elevated p-3 rounded">
+                                    {contextFiles.map((file, idx) => (
+                                        <div key={idx} className="flex items-center justify-between surface-elevated p-3 rounded">
                                             <div className="flex items-center gap-3">
                                                 <span className="material-symbols-outlined text-muted">description</span>
                                                 <div>
                                                     <p className="text-heading text-xs font-medium">{file.name}</p>
-                                                    <p className="text-[10px] text-subtle uppercase">{file.category} · {file.size}</p>
+                                                    <p className="text-[10px] text-subtle uppercase">{(file.size / 1024 / 1024).toFixed(1)}MB</p>
                                                 </div>
                                             </div>
-                                            <button className="text-subtle hover:text-red-400">
+                                            <button onClick={() => setContextFiles(contextFiles.filter((_, i) => i !== idx))} className="text-subtle hover:text-red-400">
                                                 <span className="material-symbols-outlined text-sm">close</span>
                                             </button>
                                         </div>
                                     ))}
-                                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/5 rounded mt-2 group cursor-pointer hover:border-primary/20 transition-colors py-8">
+                                    <label className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 dark:border-white/5 rounded mt-2 group cursor-pointer hover:border-primary/20 transition-colors py-8">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            hidden
+                                            onChange={e => e.target.files && setContextFiles([...contextFiles, ...Array.from(e.target.files)])}
+                                        />
                                         <div className="text-center">
                                             <span className="material-symbols-outlined text-subtle mb-1 group-hover:text-primary transition-colors">upload_file</span>
-                                            <p className="text-subtle text-[10px] uppercase font-bold tracking-widest">Drop new context files here</p>
+                                            <p className="text-subtle text-[10px] uppercase font-bold tracking-widest">Select context files</p>
                                         </div>
-                                    </div>
+                                    </label>
                                 </div>
                             </div>
                         </section>

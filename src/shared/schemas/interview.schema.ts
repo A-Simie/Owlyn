@@ -1,43 +1,47 @@
 import { z } from 'zod'
 
-export const TranscriptEntrySchema = z.object({
-    id: z.string(),
-    timestamp: z.string(),
-    speaker: z.enum(['ai', 'candidate']),
-    text: z.string(),
-    isKeyMoment: z.boolean().optional(),
-    aiNote: z.string().optional(),
+export const GenerateQuestionsPayloadSchema = z.object({
+    jobTitle: z.string().min(2),
+    instructions: z.string().optional(),
+    questionCount: z.number().int().min(1).max(20).optional(),
 })
 
-export const CompetencyScoreSchema = z.object({
-    technical: z.number().min(0).max(100),
-    problemSolving: z.number().min(0).max(100),
-    communication: z.number().min(0).max(100),
-    cultural: z.number().min(0).max(100),
+export const ToolsEnabledSchema = z.object({
+    codeEditor: z.boolean().optional(),
+    whiteboard: z.boolean().optional(),
+    notes: z.boolean().optional(),
 })
 
-export const IntegritySignalSchema = z.object({
-    eyeTracking: z.enum(['locked', 'wandering', 'lost']),
-    focusLevel: z.enum(['high', 'medium', 'low']),
-    ambientNoise: z.enum(['silent', 'low', 'moderate', 'loud']),
-    verified: z.boolean(),
+export const CreateInterviewPayloadSchema = z.object({
+    title: z.string().min(3, 'Title is too short'),
+    durationMinutes: z.number().int().min(5).max(180).default(45),
+    toolsEnabled: ToolsEnabledSchema.optional(),
+    aiInstructions: z.string().optional(),
+    generatedQuestions: z.string().optional(),
+    personaId: z.string().uuid().optional(),
 })
 
-export const AnalysisResultSchema = z.object({
-    sessionId: z.string(),
-    candidateName: z.string(),
-    role: z.string(),
-    interviewDate: z.string(),
-    overallScore: z.number().min(0).max(100),
-    competency: CompetencyScoreSchema,
-    integrity: IntegritySignalSchema,
-    strengths: z.array(z.string()),
-    growthAreas: z.array(z.string()),
-    aiSummary: z.string(),
-    transcript: z.array(TranscriptEntrySchema),
+export const GenerateQuestionsResponseSchema = z.object({
+    draftedQuestions: z.string(),
 })
 
-export type TranscriptEntry = z.infer<typeof TranscriptEntrySchema>
-export type CompetencyScore = z.infer<typeof CompetencyScoreSchema>
-export type IntegritySignal = z.infer<typeof IntegritySignalSchema>
-export type AnalysisResult = z.infer<typeof AnalysisResultSchema>
+export const CreateInterviewResponseSchema = z.object({
+    interviewId: z.string(),
+    title: z.string(),
+    accessCode: z.string(),
+    status: z.string(),
+})
+
+export const InterviewListItemSchema = z.object({
+    interviewId: z.string(),
+    title: z.string(),
+    accessCode: z.string(),
+    status: z.string(),
+})
+
+export type GenerateQuestionsPayload = z.infer<typeof GenerateQuestionsPayloadSchema>
+export type ToolsEnabled = z.infer<typeof ToolsEnabledSchema>
+export type CreateInterviewPayload = z.infer<typeof CreateInterviewPayloadSchema>
+export type GenerateQuestionsResponse = z.infer<typeof GenerateQuestionsResponseSchema>
+export type CreateInterviewResponse = z.infer<typeof CreateInterviewResponseSchema>
+export type InterviewListItem = z.infer<typeof InterviewListItemSchema>
