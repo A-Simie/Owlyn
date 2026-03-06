@@ -87,7 +87,7 @@ export default function LandingPage() {
               whileTap={{ scale: 0.97 }}
               className="bg-primary text-black px-6 py-2.5 text-sm font-bold rounded-sm hover:brightness-110 transition-all uppercase tracking-widest"
             >
-              Request Membership
+              Request Access
             </motion.button>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function LandingPage() {
             >
               <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
               <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary">
-               Owlyn AI
+                Owlyn AI
               </span>
             </motion.div>
 
@@ -152,8 +152,8 @@ export default function LandingPage() {
               custom={2}
               className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-12 font-light leading-relaxed"
             >
-              Meet the AI agent that doesn't just ask questions — it listens,
-              sees, and reasons with scholarly precision.
+              A multimodal AI agent that conducts live interviews, analyzes
+              candidate reasoning, and ensures a fair hiring process.
             </motion.p>
 
             <motion.div
@@ -169,7 +169,7 @@ export default function LandingPage() {
                 whileTap={{ scale: 0.97 }}
                 className="w-full sm:w-auto bg-primary text-black px-10 py-4 text-base font-bold rounded-sm transition-all uppercase tracking-widest aion-glow"
               >
-                Request Membership
+                Request Acess
               </motion.button>
               <motion.button
                 whileHover={{
@@ -236,7 +236,6 @@ export default function LandingPage() {
                 </motion.div>
               </div>
             </div>
-            
           </motion.div>
         </section>
 
@@ -431,11 +430,11 @@ export default function LandingPage() {
             />
             <div className="relative z-10">
               <h2 className="text-4xl md:text-5xl font-bold text-heading mb-8 tracking-tight">
-                The elite waitlist is now open.
+                The waitlist is now open.
               </h2>
               <p className="text-muted mb-12 max-w-xl mx-auto font-light">
-                Join 500+ global enterprises redefining their executive search
-                and technical vetting with multimodal intelligence.
+                Join 500+ global enterprises redefining their hiring process and
+                technical vetting with multimodal intelligence.
               </p>
               <motion.button
                 whileHover={{
