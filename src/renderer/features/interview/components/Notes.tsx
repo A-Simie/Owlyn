@@ -35,9 +35,6 @@ export default function Notes() {
         className="flex-1 bg-transparent border-none outline-none resize-none text-slate-300 text-lg leading-relaxed font-light placeholder:text-slate-700 custom-scrollbar"
         spellCheck={false}
       />
-      <div className="text-[10px] font-bold uppercase tracking-widest text-slate-700 pt-4 border-t border-white/5">
-        Note: This content is automatically synchronized for evaluation.
-      </div>
     </div>
   );
 }

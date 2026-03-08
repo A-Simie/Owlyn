@@ -293,17 +293,42 @@ export default function InterviewsListPage() {
                     </span>
                   </div>
                   <div className="flex items-center gap-4 text-xs text-slate-500">
-                    <span className="flex items-center gap-1 font-mono">
+                    <span className="flex items-center gap-1 font-mono group/code cursor-pointer relative">
                       <span className="material-symbols-outlined text-xs">
                         tag
                       </span>
                       {interview.accessCode}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigator.clipboard.writeText(interview.accessCode);
+                        }}
+                        className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded"
+                        title="Copy Code"
+                      >
+                        <span className="material-symbols-outlined text-xs">
+                          content_copy
+                        </span>
+                      </button>
                     </span>
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-4">
+                {interview.status === "ACTIVE" && (
+                  <button
+                    onClick={() =>
+                      navigate(`/monitor/${interview.interviewId}`)
+                    }
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-500/10 border border-red-500/30 text-red-500 text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-red-500/20 transition-colors animate-pulse"
+                  >
+                    <span className="material-symbols-outlined text-sm">
+                      visibility
+                    </span>
+                    Monitor LIVE
+                  </button>
+                )}
                 {interview.status === "UPCOMING" && (
                   <button
                     onClick={() => handleStartInterview(interview)}
@@ -385,7 +410,7 @@ export default function InterviewsListPage() {
                               durationMinutes: v === "" ? 0 : parseInt(v),
                             });
                           }}
-                          className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary"
+                          className="w-full bg-[#0d0d0d] border border-primary/10 rounded-lg text-white text-sm py-2 px-4 focus:ring-primary focus:border-primary appearance-none"
                         />
                       </div>
                     </div>

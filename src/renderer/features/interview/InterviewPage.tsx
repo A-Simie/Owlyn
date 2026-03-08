@@ -62,25 +62,31 @@ export default function InterviewPage() {
   useEffect(() => {
     const token = localStorage.getItem("owlyn_guest_token");
     const accessCode = localStorage.getItem("owlyn_access_code");
+    const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
 
-    if (!token || !accessCode) {
+    if (!isPractice && (!token || !accessCode)) {
       navigate("/lobby");
       return;
     }
 
     const timer = setInterval(tick, 1000);
 
+    let unsubConnect: (() => void) | undefined;
+    let unsubDisconnect: (() => void) | undefined;
+    let unsubMessage: (() => void) | undefined;
+
     async function startSession() {
       try {
-        // F3.4 — Lockdown Execution
-        await candidateApi.initiateLockdown(accessCode!, token!);
+        if (!isPractice) {
+          await candidateApi.initiateLockdown(accessCode!, token!);
+        }
 
         if (!cameraOn) await startCamera();
         if (!micOn) await startMic();
 
-        wsService.onConnect(() => setIsConnected(true));
-        wsService.onDisconnect(() => setIsConnected(false));
-        wsService.onMessage((msg) => {
+        unsubConnect = wsService.onConnect(() => setIsConnected(true));
+        unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
+        unsubMessage = wsService.onMessage((msg) => {
           if (msg.type === "transcript") {
             addTranscript({
               id: Date.now().toString(),
@@ -109,6 +115,9 @@ export default function InterviewPage() {
     startSession();
     return () => {
       clearInterval(timer);
+      unsubConnect?.();
+      unsubDisconnect?.();
+      unsubMessage?.();
       wsService.disconnect();
       audioPlaybackService.stop();
     };
@@ -171,11 +180,18 @@ export default function InterviewPage() {
           <div className="h-8 w-px bg-white/5 mx-2" />
           <div className="flex flex-col">
             <span className="text-[10px] uppercase font-black text-slate-500 tracking-[0.4em]">
-              Evaluation Session
+              Interview Session
             </span>
-            <span className="text-sm font-bold text-white tracking-widest uppercase italic">
-              Owlyn Core v0.12.4
-            </span>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <div
+                className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-red-500"}`}
+              />
+              <span
+                className={`text-[8px] font-black uppercase tracking-[0.2em] ${isConnected ? "text-green-500/80" : "text-red-500/80"}`}
+              >
+                Agent {isConnected ? "Connected" : "Offline"}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -337,9 +353,6 @@ export default function InterviewPage() {
             <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
                 Live Transcript
-              </span>
-              <span className="text-[8px] font-black uppercase tracking-widest text-slate-700">
-                SHA-256 S-NODE
               </span>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">

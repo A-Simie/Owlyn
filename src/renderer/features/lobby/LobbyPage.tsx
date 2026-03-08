@@ -49,14 +49,12 @@ export default function LobbyPage() {
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-6"
         >
-          <div className="inline-flex py-3 px-6 rounded-full border border-[#c59f59]/30 bg-[#c59f59]/5 text-[10px] uppercase font-bold tracking-[0.4em] text-[#c59f59] mb-4">
-            Authorization Verified
-          </div>
-          <h1 className="text-6xl font-black tracking-tight text-white leading-tight uppercase italic">
+      
+          <h1 className="text-6xl font-black tracking-tight text-white leading-tight uppercase">
             Session <span className="text-[#c59f59]">Ready.</span>
           </h1>
           <p className="text-slate-500 text-lg font-light max-w-lg mx-auto leading-relaxed">
-            All systems synchronized. The evaluation will begin immediately upon
+            The interview session will begin immediately upon
             entry.
           </p>
         </motion.div>
@@ -70,15 +68,15 @@ export default function LobbyPage() {
           <div className="grid grid-cols-2 gap-12">
             <div className="space-y-4">
               <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
-                Session Context
+                Session Title
               </p>
               <p className="text-2xl font-bold text-white tracking-tight leading-tight uppercase">
                 {sessionInfo.title}
               </p>
-            </div>
+            </div> 
             <div className="space-y-4 border-l border-white/5 pl-12">
               <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
-                Expected Tenure
+                Expected Time
               </p>
               <p className="text-2xl font-bold text-[#c59f59] tracking-tight uppercase">
                 {sessionInfo.duration}
@@ -86,28 +84,7 @@ export default function LobbyPage() {
             </div>
           </div>
 
-          <div className="space-y-6 pt-10 border-t border-white/5">
-            <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
-              Security Parameters
-            </h3>
-            <div className="grid grid-cols-1 gap-3">
-              <SecurityTag
-                label="Kiosk Protocol"
-                status="Standby"
-                icon="desktop_windows"
-              />
-              <SecurityTag
-                label="DRM Cloaking"
-                status="Standby"
-                icon="visibility_off"
-              />
-              <SecurityTag
-                label="WSS Upstream"
-                status="Linked"
-                icon="cloud_done"
-              />
-            </div>
-          </div>
+        
 
           <div className="pt-6">
             <AnimatePresence mode="wait">
@@ -118,7 +95,7 @@ export default function LobbyPage() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   onClick={handleStart}
-                  className="group relative w-full py-8 bg-[#c59f59] text-black font-bold uppercase tracking-[0.6em] text-sm rounded-sm overflow-hidden transition-all aion-glow hover:brightness-110 active:scale-[0.98]"
+                  className="group relative w-full py-4 bg-[#c59f59] text-black font-bold uppercase tracking-[0.6em] text-sm rounded-sm overflow-hidden transition-all aion-glow hover:brightness-110 active:scale-[0.98]"
                 >
                   <span className="relative z-10 flex items-center justify-center gap-4">
                     Initiate Session
@@ -154,10 +131,6 @@ export default function LobbyPage() {
           </div>
         </motion.div>
       </main>
-
-      <footer className="mt-12 text-[10px] font-bold uppercase tracking-[0.5em] text-slate-700 opacity-50">
-        Owlyn Core Protocol v0.12.4
-      </footer>
     </div>
   );
 }

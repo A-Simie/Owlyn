@@ -95,6 +95,8 @@ export default function LoginPage() {
       localStorage.setItem("owlyn_guest_token", res.token);
       localStorage.setItem("owlyn_interview_id", res.interviewId);
       localStorage.setItem("owlyn_access_code", code);
+      localStorage.setItem("owlyn_interview_title", res.title);
+      localStorage.removeItem("owlyn_practice_mode");
       setValidationSuccess(true);
       setTimeout(() => navigate("/lobby"), 1000);
     } catch (err) {
@@ -105,6 +107,9 @@ export default function LoginPage() {
   };
 
   const handlePracticeMode = () => {
+    localStorage.removeItem("owlyn_guest_token");
+    localStorage.removeItem("owlyn_access_code");
+    localStorage.removeItem("owlyn_interview_title");
     localStorage.setItem("owlyn_practice_mode", "true");
     navigate("/hardware");
   };
@@ -126,11 +131,11 @@ export default function LoginPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-12"
             >
-              <div className="text-center space-y-">
+              <div className="flex flex-col items-center gap-4 text-center">
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
-                  className="inline-flex mb-4"
+                  className="inline-flex"
                 >
                   <span
                     className="material-symbols-outlined text-[#c59f59] text-6xl"
@@ -139,7 +144,7 @@ export default function LoginPage() {
                     owl
                   </span>
                 </motion.div>
-                <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
+                <h1 className="text-3xl font-black text-white tracking-tighter uppercase">
                   Owlyn
                 </h1>
               </div>
@@ -507,18 +512,18 @@ function RoleCard({
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col p-8 bg-[#161616]/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:border-[#c59f59]/40 hover:bg-[#1A1A1A]/60 transition-all text-left overflow-hidden w-full h-[260px] justify-between"
+      className="group relative flex flex-col p-6 bg-[#161616]/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:border-[#c59f59]/40 hover:bg-[#1A1A1A]/60 transition-all text-left overflow-hidden w-full h-[220px] justify-between"
     >
-      <div className="absolute top-0 right-0 w-40 h-40 bg-[#c59f59]/5 blur-[50px] rounded-full group-hover:bg-[#c59f59]/10 transition-all duration-700 -translate-y-10 translate-x-10" />
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[#c59f59]/5 blur-[40px] rounded-full group-hover:bg-[#c59f59]/10 transition-all duration-700 -translate-y-8 translate-x-8" />
 
       <div>
-        <div className="w-12 h-12 mb-6 flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
-          <span className="material-symbols-outlined text-xl">{icon}</span>
+        <div className="w-10 h-10 mb-5 flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
+          <span className="material-symbols-outlined text-lg">{icon}</span>
         </div>
-        <h3 className="text-lg font-black text-white mb-2 tracking-tight group-hover:text-[#c59f59] transition-colors uppercase leading-tight">
+        <h3 className="text-base font-black text-white mb-1.5 tracking-tight group-hover:text-[#c59f59] transition-colors uppercase leading-tight">
           {title}
         </h3>
-        <p className="text-slate-500 text-xs leading-relaxed max-w-[200px] font-light">
+        <p className="text-slate-500 text-[10px] leading-relaxed max-w-[180px] font-light">
           {description}
         </p>
       </div>
