@@ -81,7 +81,7 @@ export default function HardwarePage() {
               owl
             </span>
           </div>
-          <span className="text-sm font-black uppercase tracking-[0.4em] text-white italic">
+          <span className="text-sm font-black uppercase tracking-[0.4em] text-white">
             Owlyn
           </span>
         </div>
@@ -104,7 +104,7 @@ export default function HardwarePage() {
       <main className="flex-1 flex flex-col lg:flex-row p-12 lg:p-20 gap-16 max-w-7xl mx-auto w-full relative z-10">
         <div className="flex-1 space-y-10">
           <div className="space-y-4">
-            <h1 className="text-5xl font-black tracking-tight text-white leading-tight uppercase italic">
+            <h1 className="text-5xl font-black tracking-tight text-white leading-tight uppercase">
               Hardware <span className="text-[#c59f59]">Check.</span>
             </h1>
             <p className="text-slate-500 text-lg font-light leading-relaxed max-w-xl">
@@ -218,7 +218,7 @@ export default function HardwarePage() {
               <button
                 disabled={!canProceed}
                 onClick={() => navigate("/lobby")}
-                className="w-full py-7 bg-[#c59f59] text-black font-bold uppercase tracking-[0.5em] text-xs rounded-sm transition-all aion-glow hover:brightness-110 active:scale-[0.98] disabled:opacity-20 flex items-center justify-center gap-4"
+                className="w-full py-3 bg-[#c59f59] text-black font-bold uppercase tracking-[0.5em] text-xs rounded-sm transition-all aion-glow hover:brightness-110 active:scale-[0.98] disabled:opacity-20 flex items-center justify-center gap-4"
               >
                 Proceed to Lobby
                 <span className="material-symbols-outlined text-lg">

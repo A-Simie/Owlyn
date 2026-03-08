@@ -122,7 +122,7 @@ export default function AnalysisPage() {
               <div className="mt-6 w-full h-1 bg-slate-100 dark:bg-charcoal rounded-full overflow-hidden">
                 <div className="h-full bg-primary" style={{ width: "88%" }} />
               </div>
-              <p className="mt-4 text-xs text-subtle italic text-center leading-relaxed">
+              <p className="mt-4 text-xs text-subtle text-center leading-relaxed">
                 Top 4% of candidates for this role
               </p>
             </div>
@@ -378,7 +378,7 @@ export default function AnalysisPage() {
                         )}
                       </div>
                       <p
-                        className={`text-sm leading-relaxed ${entry.speaker === "ai" ? "text-muted italic border-l-2 border-primary/20 pl-4 bg-slate-100/50 dark:bg-[#0d0d0d]/40 py-2 pr-4" : "text-heading"}`}
+                        className={`text-sm leading-relaxed ${entry.speaker === "ai" ? "text-muted border-l-2 border-primary/20 pl-4 bg-slate-100/50 dark:bg-[#0d0d0d]/40 py-2 pr-4" : "text-heading"}`}
                       >
                         {entry.text}
                       </p>
@@ -387,7 +387,7 @@ export default function AnalysisPage() {
                           <p className="text-[10px] font-bold text-primary uppercase">
                             AI Note:
                           </p>
-                          <p className="text-[11px] text-muted italic">
+                          <p className="text-[11px] text-muted">
                             {entry.aiNote}
                           </p>
                         </div>

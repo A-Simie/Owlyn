@@ -332,7 +332,7 @@ export default function InterviewPage() {
               </div>
               <div className="surface-card border border-white/5 rounded-lg p-6 relative overflow-hidden group min-h-[100px] flex items-center justify-center">
                 <div className="absolute left-0 top-0 w-1 h-full bg-[#c59f59]/30" />
-                <p className="text-xs text-slate-400 leading-relaxed font-light italic text-center px-4">
+                <p className="text-xs text-slate-400 leading-relaxed font-light text-center px-4">
                   {isAITalking ? (
                     <motion.span
                       animate={{ opacity: [0.5, 1, 0.5] }}

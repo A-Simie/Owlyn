@@ -376,7 +376,7 @@ export default function TalentPoolPage() {
                     <tr>
                       <td
                         colSpan={6}
-                        className="px-6 py-12 text-center text-subtle italic"
+                        className="px-6 py-12 text-center text-subtle"
                       >
                         No candidates found matching the filters.
                       </td>
