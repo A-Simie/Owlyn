@@ -1,445 +1,423 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useSessionStore } from '@/stores/session.store'
-import { useInterviewStore } from '@/stores/interview.store'
-import { useMediaStore } from '@/stores/media.store'
-import { wsService } from '@/services/ws.service'
-import { audioPlaybackService } from '@/services/playback.service'
-import { candidateApi } from '@/api'
-import { extractApiError } from '@/lib/api-error'
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSessionStore } from "@/stores/session.store";
+import { useInterviewStore } from "@/stores/interview.store";
+import { useMediaStore } from "@/stores/media.store";
+import { wsService } from "@/services/ws.service";
+import { audioPlaybackService } from "@/services/playback.service";
+import { candidateApi } from "@/api";
+import { extractApiError } from "@/lib/api-error";
+
+// Components
+import CodeEditor from "./components/CodeEditor";
+import Whiteboard from "./components/Whiteboard";
+import Notes from "./components/Notes";
+
+type Tab = "code" | "whiteboard" | "notes";
 
 export default function InterviewPage() {
-    const navigate = useNavigate()
-    const videoRef = useRef<HTMLVideoElement>(null)
-    const canvasRef = useRef<HTMLCanvasElement>(null)
-    const trackingFrameRef = useRef(0)
-    const { elapsedSeconds, tick } = useSessionStore()
-    const { transcript, currentQuestion, setCurrentQuestion, addTranscript } = useInterviewStore()
-    const { cameraOn, micOn, cameraStream, startCamera, startMic, stopCamera, stopMic, stopAll } = useMediaStore()
-    const [isConnected, setIsConnected] = useState(false)
+  const navigate = useNavigate();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { elapsedSeconds, tick } = useSessionStore();
+  const { transcript, addTranscript, setCurrentQuestion } = useInterviewStore();
+  const { cameraOn, micOn, cameraStream, startCamera, startMic, stopAll } =
+    useMediaStore();
 
-    const formatTime = (s: number) => {
-        const h = Math.floor(s / 3600).toString().padStart(2, '0')
-        const m = Math.floor((s % 3600) / 60).toString().padStart(2, '0')
-        const sec = (s % 60).toString().padStart(2, '0')
-        return `${h}:${m}:${sec}`
+  // State
+  const [activeTab, setActiveTab] = useState<Tab>("code");
+  const [isConnected, setIsConnected] = useState(false);
+  const [code, setCode] = useState(
+    "// Your solution here\nfunction solve() {\n\n}",
+  );
+  const [isAITalking, setIsAITalking] = useState(false);
+  const [proctorWarning, setProctorWarning] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Handlers
+  const handleEndSession = useCallback(() => {
+    wsService.disconnect();
+    audioPlaybackService.stop();
+    stopAll();
+    candidateApi.releaseLockdown();
+    navigate("/analysis");
+  }, [navigate, stopAll]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60)
+      .toString()
+      .padStart(2, "0");
+    const sec = (s % 60).toString().padStart(2, "0");
+    return `${m}:${sec}`;
+  };
+
+  const handleRunReview = async () => {
+    setLoading(true);
+    // Signal the environment to execute based on latest synchronization
+    wsService.sendRunCode();
+
+    setTimeout(() => setLoading(false), 1500);
+  };
+  // Lifecycle
+  useEffect(() => {
+    const token = localStorage.getItem("owlyn_guest_token");
+    const accessCode = localStorage.getItem("owlyn_access_code");
+    const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
+
+    if (!isPractice && (!token || !accessCode)) {
+      navigate("/lobby");
+      return;
     }
 
-    const handleEndSession = useCallback(() => {
-        wsService.disconnect()
-        audioPlaybackService.stop()
-        cancelAnimationFrame(trackingFrameRef.current)
-        stopAll()
-        navigate('/analysis')
-    }, [navigate, stopAll])
+    const timer = setInterval(tick, 1000);
 
-    const toggleCamera = useCallback(async () => {
-        if (cameraOn) stopCamera()
-        else await startCamera()
-    }, [cameraOn, stopCamera, startCamera])
+    let unsubConnect: (() => void) | undefined;
+    let unsubDisconnect: (() => void) | undefined;
+    let unsubMessage: (() => void) | undefined;
 
-    const toggleMic = useCallback(async () => {
-        if (micOn) stopMic()
-        else await startMic()
-    }, [micOn, stopMic, startMic])
-
-    useEffect(() => {
-        if (videoRef.current) {
-            videoRef.current.srcObject = cameraStream
-            if (cameraStream) videoRef.current.play().catch(() => { })
+    async function startSession() {
+      // Setup listeners first
+      unsubConnect = wsService.onConnect(() => setIsConnected(true));
+      unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
+      unsubMessage = wsService.onMessage((msg) => {
+        if (msg.type === "transcript") {
+          addTranscript({
+            id: Date.now().toString(),
+            timestamp: msg.timestamp,
+            speaker: msg.speaker,
+            text: msg.text,
+          });
+          if (msg.speaker === "ai") setCurrentQuestion(msg.text);
         }
-    }, [cameraStream])
-
-    // Face tracking overlay
-    useEffect(() => {
-        const video = videoRef.current
-        const canvas = canvasRef.current
-        if (!video || !canvas || !cameraOn) return
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-
-        // Smoothed state in video-pixel coordinates
-        let rawFx = 0, rawFy = 0, rawFw = 0, rawFh = 0
-        let rawElx = 0, rawEly = 0, rawErx = 0, rawEry = 0
-        let rawNx = 0, rawNy = 0
-        let hasFace = false
-        let initialized = false
-        const spd = 0.3
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const FD = (window as any).FaceDetector
-        const detector = FD ? new FD({ fastMode: true, maxDetectedFaces: 1 }) : null
-        let detectId: ReturnType<typeof setInterval> | null = null
-
-        const detect = async () => {
-            if (!video || video.readyState < 2 || !detector) return
-            try {
-                const faces = await detector.detect(video)
-                if (faces.length > 0) {
-                    const f = faces[0]
-                    const bb = f.boundingBox
-                    const cfx = bb.x + bb.width / 2
-                    const cfy = bb.y + bb.height / 2
-                    // Use bounding box dimensions directly — the ellipse will
-                    // naturally match the face shape (wide for chubby, narrow for slim)
-                    const cfw = bb.width * 1.3
-                    const cfh = bb.height * 1.4
-
-                    if (!initialized) {
-                        rawFx = cfx; rawFy = cfy; rawFw = cfw; rawFh = cfh
-                        initialized = true
-                    } else {
-                        rawFx += (cfx - rawFx) * spd
-                        rawFy += (cfy - rawFy) * spd
-                        rawFw += (cfw - rawFw) * spd
-                        rawFh += (cfh - rawFh) * spd
-                    }
-                    hasFace = true
-
-                    // Collect eye + nose landmarks
-                    // FaceDetector returns SEPARATE 'eye' entries (one per eye)
-                    // each with a single location, NOT one entry with 2 locations
-                    const eyes: { x: number; y: number }[] = []
-                    let noseFound = false
-                    if (f.landmarks) {
-                        for (const lm of f.landmarks) {
-                            if (lm.type === 'eye') {
-                                for (const loc of lm.locations) {
-                                    eyes.push({ x: loc.x, y: loc.y })
-                                }
-                            }
-                            if (lm.type === 'nose' && lm.locations.length >= 1) {
-                                rawNx += (lm.locations[0].x - rawNx) * spd
-                                rawNy += (lm.locations[0].y - rawNy) * spd
-                                noseFound = true
-                            }
-                        }
-                    }
-
-                    if (eyes.length >= 2) {
-                        // Sort by x to determine left vs right
-                        eyes.sort((a, b) => a.x - b.x)
-                        rawElx += (eyes[0].x - rawElx) * spd
-                        rawEly += (eyes[0].y - rawEly) * spd
-                        rawErx += (eyes[1].x - rawErx) * spd
-                        rawEry += (eyes[1].y - rawEry) * spd
-                    } else {
-                        // Fallback: estimate from bounding box
-                        rawElx += ((bb.x + bb.width * 0.3) - rawElx) * spd
-                        rawEly += ((bb.y + bb.height * 0.35) - rawEly) * spd
-                        rawErx += ((bb.x + bb.width * 0.7) - rawErx) * spd
-                        rawEry += ((bb.y + bb.height * 0.35) - rawEry) * spd
-                    }
-                    if (!noseFound) {
-                        rawNx += ((bb.x + bb.width * 0.5) - rawNx) * spd
-                        rawNy += ((bb.y + bb.height * 0.6) - rawNy) * spd
-                    }
-                } else {
-                    hasFace = false
-                }
-            } catch { /* skip */ }
+        if (msg.type === "inlineData") {
+          setIsAITalking(true);
+          audioPlaybackService.playBase64Chunk(msg.data);
+          setTimeout(() => setIsAITalking(false), 2000);
         }
-
-        if (detector) detectId = setInterval(detect, 80)
-
-        // object-cover transform: video coords → canvas coords
-        const mapToCanvas = (vx: number, vy: number, cw: number, ch: number) => {
-            const vw = video.videoWidth || 640
-            const vh = video.videoHeight || 480
-            const videoAspect = vw / vh
-            const canvasAspect = cw / ch
-            let scale: number, offsetX: number, offsetY: number
-            if (canvasAspect < videoAspect) {
-                scale = ch / vh
-                offsetX = (cw - vw * scale) / 2
-                offsetY = 0
-            } else {
-                scale = cw / vw
-                offsetX = 0
-                offsetY = (ch - vh * scale) / 2
-            }
-            return { x: vx * scale + offsetX, y: vy * scale + offsetY, scale }
+        if (msg.type === "PROCTOR_WARNING") {
+          setProctorWarning(msg.message);
+          setTimeout(() => setProctorWarning(null), 5000);
         }
+      });
 
-        const draw = () => {
-            canvas.width = canvas.offsetWidth
-            canvas.height = canvas.offsetHeight
-            const w = canvas.width
-            const h = canvas.height
-            ctx.clearRect(0, 0, w, h)
-
-            if (!hasFace && !detector) {
-                const vw = video.videoWidth || 640
-                const vh = video.videoHeight || 480
-                rawFx = vw * 0.5 + Math.sin(Date.now() / 5000) * vw * 0.02
-                rawFy = vh * 0.4; rawFw = vw * 0.25; rawFh = vh * 0.35
-                rawElx = vw * 0.44; rawEly = vh * 0.35
-                rawErx = vw * 0.56; rawEry = vh * 0.35
-                rawNx = vw * 0.5; rawNy = vh * 0.45
-                hasFace = true
-            }
-
-            if (!hasFace) {
-                ctx.fillStyle = 'rgba(197, 159, 89, 0.5)'
-                ctx.font = 'bold 11px monospace'
-                ctx.textAlign = 'center'
-                ctx.fillText('SCANNING FOR FACE...', w / 2, h / 2)
-                trackingFrameRef.current = requestAnimationFrame(draw)
-                return
-            }
-
-            const fc = mapToCanvas(rawFx, rawFy, w, h)
-            const { scale } = fc
-            const rw = rawFw * scale / 2
-            const rh = rawFh * scale / 2
-            const cx = fc.x
-            const cy = fc.y
-            const el = mapToCanvas(rawElx, rawEly, w, h)
-            const er = mapToCanvas(rawErx, rawEry, w, h)
-            const ns = mapToCanvas(rawNx, rawNy, w, h)
-
-            // Face oval
-            ctx.strokeStyle = '#c59f59'
-            ctx.lineWidth = 1.5
-            ctx.setLineDash([5, 4])
-            ctx.beginPath()
-            ctx.ellipse(cx, cy, rw, rh, 0, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.setLineDash([])
-
-            // Corner brackets at 45° on the oval
-            ctx.strokeStyle = '#c59f59'
-            ctx.lineWidth = 2.5
-            const bl = 16
-            for (const a of [-Math.PI / 4, Math.PI / 4, 3 * Math.PI / 4, 5 * Math.PI / 4]) {
-                const px = cx + Math.cos(a) * rw
-                const py = cy + Math.sin(a) * rh
-                const tx = Math.cos(a)
-                const ty = Math.sin(a)
-                const tanX = -Math.sin(a) * (rw / rh)
-                const tanY = Math.cos(a) * (rh / rw)
-                const tanLen = Math.sqrt(tanX * tanX + tanY * tanY)
-                const ntx = tanX / tanLen
-                const nty = tanY / tanLen
-                ctx.beginPath()
-                ctx.moveTo(px - ntx * bl, py - nty * bl)
-                ctx.lineTo(px, py)
-                ctx.lineTo(px + tx * bl * 0.5, py + ty * bl * 0.5)
-                ctx.stroke()
-            }
-
-            // Eye dots
-            ctx.fillStyle = '#c59f59'
-            ctx.shadowColor = '#c59f59'
-            ctx.shadowBlur = 14
-            ctx.beginPath(); ctx.arc(el.x, el.y, 5, 0, Math.PI * 2); ctx.fill()
-            ctx.beginPath(); ctx.arc(er.x, er.y, 5, 0, Math.PI * 2); ctx.fill()
-            ctx.shadowBlur = 0
-
-            // Eye rings
-            ctx.strokeStyle = '#c59f59'
-            ctx.lineWidth = 1
-            ctx.beginPath(); ctx.arc(el.x, el.y, 10, 0, Math.PI * 2); ctx.stroke()
-            ctx.beginPath(); ctx.arc(er.x, er.y, 10, 0, Math.PI * 2); ctx.stroke()
-
-            // Eye connecting line
-            ctx.strokeStyle = 'rgba(197, 159, 89, 0.3)'
-            ctx.setLineDash([3, 3])
-            ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(er.x, er.y); ctx.stroke()
-            ctx.setLineDash([])
-
-            // Gaze triangle
-            ctx.strokeStyle = 'rgba(197, 159, 89, 0.15)'
-            ctx.lineWidth = 1
-            ctx.beginPath(); ctx.moveTo(el.x, el.y); ctx.lineTo(ns.x, ns.y); ctx.lineTo(er.x, er.y); ctx.stroke()
-
-            // Nose dot
-            ctx.fillStyle = 'rgba(197,159,89,0.4)'
-            ctx.beginPath(); ctx.arc(ns.x, ns.y, 3, 0, Math.PI * 2); ctx.fill()
-
-            // Labels
-            ctx.fillStyle = '#c59f59'
-            ctx.font = 'bold 9px monospace'
-            ctx.textAlign = 'left'
-            ctx.fillText('FACE DETECTED', cx - rw, cy - rh - 10)
-            ctx.fillText('EYE TRACKING: LOCKED', er.x + 16, (el.y + er.y) / 2)
-
-            trackingFrameRef.current = requestAnimationFrame(draw)
+      try {
+        if (!isPractice) {
+          await candidateApi.initiateLockdown(accessCode!, token!);
         }
+      } catch (err) {
+        console.warn(
+          "Lockdown/Status sync failed, proceeding to stream:",
+          extractApiError(err),
+        );
+      }
 
-        draw()
-        return () => {
-            cancelAnimationFrame(trackingFrameRef.current)
-            if (detectId) clearInterval(detectId)
-        }
-    }, [cameraOn])
+      try {
+        if (!cameraOn) await startCamera();
+        if (!micOn) await startMic();
 
-    useEffect(() => {
-        const token = localStorage.getItem('owlyn_guest_token')
-        const accessCode = localStorage.getItem('owlyn_access_code')
+        // Use 'PRACTICE' as token if none provided to allow WSS handshake
+        wsService.connect(token || "PRACTICE");
+      } catch (err) {
+        console.error("Media/WSS start failed:", extractApiError(err));
+      }
+    }
 
-        if (!token || !accessCode) {
-            navigate('/lobby')
-            return
-        }
+    startSession();
+    return () => {
+      clearInterval(timer);
+      unsubConnect?.();
+      unsubDisconnect?.();
+      unsubMessage?.();
+      wsService.disconnect();
+      audioPlaybackService.stop();
+    };
+  }, []);
 
-        const timer = setInterval(tick, 1000)
+  // Media streaming (1fps webcam)
+  useEffect(() => {
+    if (!cameraOn || !isConnected) return;
+    const sendFrame = () => {
+      if (!videoRef.current) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = 320;
+      canvas.height = 240;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(videoRef.current, 0, 0, 320, 240);
+      const base64 = canvas.toDataURL("image/jpeg", 0.4).split(",")[1];
+      wsService.sendMedia(base64);
+    };
+    const interval = setInterval(sendFrame, 1000);
+    return () => clearInterval(interval);
+  }, [cameraOn, isConnected]);
 
-        async function startSession() {
-            try {
-                await candidateApi.initiateLockdown(accessCode!, token!)
+  // Sync video stream
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+      if (cameraStream) videoRef.current.play().catch(() => {});
+    }
+  }, [cameraStream]);
 
-                if (!cameraOn) await startCamera()
-                if (!micOn) await startMic()
-                wsService.onConnect(() => setIsConnected(true))
-                wsService.onDisconnect(() => setIsConnected(false))
-                wsService.onMessage((msg) => {
-                    if (msg.type === 'transcript') {
-                        addTranscript({ id: Date.now().toString(), timestamp: msg.timestamp, speaker: msg.speaker, text: msg.text })
-                        if (msg.speaker === 'ai') setCurrentQuestion(msg.text)
-                    }
-                    if (msg.type === 'inlineData') audioPlaybackService.playBase64Chunk(msg.data)
-                    if (msg.type === 'TOOL_HIGHLIGHT') {
-                        console.log('Highlight error at line:', msg.errorLine)
-                    }
-                    if (msg.type === 'PROCTOR_WARNING') {
-                        alert(msg.message)
-                    }
-                })
-                wsService.connect(token!)
-            } catch (err) {
-                console.error('Session start failed:', extractApiError(err))
-            }
-        }
+  return (
+    <div className="h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden">
+      {/* Proctor Alert Banner */}
+      <AnimatePresence>
+        {proctorWarning && (
+          <motion.div
+            initial={{ y: -60 }}
+            animate={{ y: 0 }}
+            exit={{ y: -60 }}
+            className="absolute top-0 left-0 w-full h-12 bg-red-600 text-white z-[100] flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-[0.3em] shadow-2xl"
+          >
+            <span className="material-symbols-outlined">warning</span>
+            {proctorWarning}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        startSession()
-        return () => { clearInterval(timer); wsService.disconnect(); audioPlaybackService.stop() }
-    }, [])
-
-    useEffect(() => {
-        if (!cameraOn || !isConnected) return
-
-        const sendFrame = () => {
-            if (!videoRef.current) return
-            const canvas = document.createElement('canvas')
-            canvas.width = 320
-            canvas.height = 240
-            const ctx = canvas.getContext('2d')
-            if (!ctx) return
-            ctx.drawImage(videoRef.current, 0, 0, 320, 240)
-            const base64 = canvas.toDataURL('image/jpeg', 0.4).split(',')[1]
-            wsService.sendMedia(base64)
-        }
-
-        const interval = setInterval(sendFrame, 1000)
-        return () => clearInterval(interval)
-    }, [cameraOn, isConnected])
-
-    return (
-        <div className="text-slate-100 h-screen overflow-hidden flex flex-col bg-[#0d0d0d]">
-            {/* Top bar */}
-            <header className="h-14 px-6 flex items-center justify-between border-b border-primary/20 bg-[#12100d] z-40 shrink-0">
-                <div className="flex items-center gap-4">
-                    <span className="text-[10px] uppercase tracking-widest text-primary font-bold">Session in Progress</span>
-                    <div className="h-4 w-px bg-primary/20" />
-                    <h2 className="text-sm font-semibold tracking-tight text-white">
-                        Senior Product Architect <span className="text-slate-500 font-light mx-1">|</span> Alexander Pierce
-                    </h2>
-                </div>
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-widest text-primary/60 font-medium">Elapsed</span>
-                        <span className="text-sm font-mono tracking-widest tabular-nums text-white">{formatTime(elapsedSeconds)}</span>
-                    </div>
-                    <button onClick={handleEndSession} className="h-8 px-4 border border-red-500/40 text-red-400 hover:bg-red-500/10 transition-all text-xs font-bold uppercase tracking-widest flex items-center gap-2 rounded">
-                        <span className="material-symbols-outlined text-sm">call_end</span> End
-                    </button>
-                </div>
-            </header>
-
-            {/* Video preview — top half */}
-            <div className="relative h-[50%] bg-black shrink-0 overflow-hidden">
-                <video ref={videoRef} className={`w-full h-full object-cover ${cameraOn ? '' : 'hidden'}`} muted playsInline />
-                {cameraOn && <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />}
-                {!cameraOn && (
-                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-slate-600">
-                        <span className="material-symbols-outlined text-6xl">videocam_off</span>
-                        <p className="text-sm font-medium uppercase tracking-wider">Camera is off</p>
-                        <button onClick={toggleCamera} className="px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest rounded hover:bg-primary/20 transition-colors">Enable Camera</button>
-                    </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-[#0d0d0d] pointer-events-none" />
-                {cameraOn && (
-                    <div className="absolute top-4 left-4 flex flex-col gap-1.5">
-                        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full border border-primary/30">
-                            <div className="size-1.5 bg-green-500 rounded-full animate-pulse" />
-                            <span className="text-[9px] uppercase font-bold tracking-tighter text-primary">Face Tracking: Active</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full border border-primary/30">
-                            <div className="size-1.5 bg-primary rounded-full" />
-                            <span className="text-[9px] uppercase font-bold tracking-tighter text-primary">Eye Contact: Locked</span>
-                        </div>
-                    </div>
-                )}
-                <div className="absolute bottom-6 right-6 flex items-center gap-2 z-10">
-                    <button onClick={toggleCamera} className={`backdrop-blur-md p-2.5 rounded-full transition-colors border ${cameraOn ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
-                        <span className="material-symbols-outlined text-lg">{cameraOn ? 'videocam' : 'videocam_off'}</span>
-                    </button>
-                    <button onClick={toggleMic} className={`backdrop-blur-md p-2.5 rounded-full transition-colors border ${micOn ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
-                        <span className="material-symbols-outlined text-lg">{micOn ? 'mic' : 'mic_off'}</span>
-                    </button>
-                </div>
-                <div className="absolute bottom-6 left-6 z-10">
-                    <div className="bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded border border-white/10 flex items-center gap-2">
-                        <span className="size-2 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-xs font-bold uppercase tracking-widest text-white">Alexander P.</span>
-                    </div>
-                </div>
+      {/* Header Bar */}
+      <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 bg-[#0D0D0D] z-50">
+        <div className="flex items-center gap-6">
+          <div className="size-10 rounded-sm bg-[#c59f59]/10 border border-[#c59f59]/20 flex items-center justify-center">
+            <span
+              className="material-symbols-outlined text-[#c59f59] text-2xl"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+            >
+              owl
+            </span>
+          </div>
+          <div className="h-8 w-px bg-white/5 mx-2" />
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase font-black text-slate-500 tracking-[0.4em]">
+              Interview Session
+            </span>
+            <div className="flex items-center gap-1.5 mt-1.5">
+              <div
+                className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-red-500"}`}
+              />
+              <span
+                className={`text-[8px] font-black uppercase tracking-[0.2em] ${isConnected ? "text-green-500/80" : "text-red-500/80"}`}
+              >
+                Agent {isConnected ? "Connected" : "Offline"}
+              </span>
             </div>
-
-            {/* Bottom half */}
-            <div className="flex-1 flex flex-col min-h-0">
-                <div className="flex-1 flex flex-col items-center justify-center relative px-8">
-                    <div className="relative w-full max-w-3xl flex items-center justify-center">
-                        <div className="absolute inset-0 flex items-center justify-around opacity-30">
-                            {[12, 24, 32, 48, 64, 40, 56, 32, 48, 24, 16].map((ht, i) => (
-                                <div key={i} className="w-0.5 bg-primary rounded-full transition-all duration-300" style={{ height: `${ht * (0.3 + Math.random() * 0.4)}px`, opacity: 0.2 + (ht / 64) * 0.8 }} />
-                            ))}
-                        </div>
-                        <div className="z-10 text-center py-6">
-                            <div className="text-[10px] uppercase tracking-[0.3em] text-primary font-bold mb-3 opacity-80">Owlyn AI Core</div>
-                            <div className="text-xl font-light italic text-slate-300 max-w-xl mx-auto leading-relaxed">"{currentQuestion}"</div>
-                        </div>
-                    </div>
-                </div>
-                <div className="border-t border-primary/10 bg-[#12100d] px-6 py-4 max-h-32 overflow-y-auto custom-scrollbar">
-                    <div className="flex flex-col gap-3 max-w-4xl mx-auto">
-                        {transcript.map((entry) => (
-                            <div key={entry.id} className="flex gap-3">
-                                <span className={`font-bold text-[10px] uppercase mt-0.5 w-8 shrink-0 ${entry.speaker === 'ai' ? 'text-primary' : 'text-slate-500'}`}>
-                                    {entry.speaker === 'ai' ? 'AI' : 'YOU'}
-                                </span>
-                                <p className={`text-sm leading-relaxed ${entry.speaker === 'ai' ? 'text-slate-300' : 'text-slate-500 italic'}`}>{entry.text}</p>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-                <div className="h-8 border-t border-primary/10 bg-[#0a0a08] px-6 flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-1.5">
-                            <div className={`size-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500 animate-pulse'}`} />
-                            <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">{isConnected ? 'Connected' : 'Connecting...'}</span>
-                        </div>
-                        <div className="h-3 w-px bg-primary/10" />
-                        <div className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-primary/40 text-xs">verified_user</span>
-                            <span className="text-[9px] uppercase tracking-widest text-slate-500 font-bold">Integrity 98%</span>
-                        </div>
-                    </div>
-                    <span className="text-[9px] uppercase tracking-widest text-slate-600">Owlyn Genesis v4.0</span>
-                </div>
-            </div>
+          </div>
         </div>
-    )
+
+        <div className="flex items-center gap-10">
+          <div className="flex flex-col items-center">
+            <span className="text-[9px] uppercase font-black text-[#c59f59] tracking-[0.4em] mb-1">
+              Time Elapsed
+            </span>
+            <span className="text-xl font-mono text-white tracking-widest">
+              {formatTime(elapsedSeconds)}
+            </span>
+          </div>
+          <button
+            onClick={handleEndSession}
+            className="px-8 py-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.4em] rounded-sm hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/5 active:scale-[0.98]"
+          >
+            End Session
+          </button>
+        </div>
+      </header>
+
+      {/* Workspace Area */}
+      <div className="flex-1 flex min-h-0 bg-[#0B0B0B]">
+        {/* Main Content Area (Tabs) */}
+        <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+          {/* Tab Navigation */}
+          <div className="flex items-center px-6 gap-2 border-b border-white/5 h-14 bg-[#0D0DB]">
+            <TabButton
+              active={activeTab === "code"}
+              onClick={() => setActiveTab("code")}
+              label="Interactive Code"
+              icon="code"
+            />
+            <TabButton
+              active={activeTab === "whiteboard"}
+              onClick={() => setActiveTab("whiteboard")}
+              label="Multimodal Canvas"
+              icon="draw"
+            />
+            <TabButton
+              active={activeTab === "notes"}
+              onClick={() => setActiveTab("notes")}
+              label="Session Notes"
+              icon="description"
+            />
+
+            <div className="ml-auto">
+              <button
+                onClick={handleRunReview}
+                disabled={loading}
+                className="flex items-center gap-3 px-6 py-2.5 bg-[#c59f59] text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-sm transition-all aion-glow hover:brightness-110 disabled:opacity-50"
+              >
+                {loading ? (
+                  <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-sm">
+                      play_arrow
+                    </span>
+                    Run & Review
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 relative">
+            <AnimatePresence mode="wait">
+              {activeTab === "code" && (
+                <motion.div
+                  key="code"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0"
+                >
+                  <CodeEditor value={code} onChange={setCode} />
+                </motion.div>
+              )}
+              {activeTab === "whiteboard" && (
+                <motion.div
+                  key="whiteboard"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0"
+                >
+                  <Whiteboard />
+                </motion.div>
+              )}
+              {activeTab === "notes" && (
+                <motion.div
+                  key="notes"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0"
+                >
+                  <Notes />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+
+        {/* Sidebar (Proctoring & Transcript) */}
+        <div className="w-[420px] bg-[#0D0D0D] flex flex-col shrink-0 min-h-0">
+          <div className="p-8 space-y-8">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                <span>Optical Feed</span>
+                <span className="text-green-500">Live</span>
+              </div>
+              <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover scale-x-[-1]"
+                  muted
+                  playsInline
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                <span>Interviewer Status</span>
+                {isAITalking && (
+                  <span className="text-[#c59f59] animate-pulse">Speaking</span>
+                )}
+              </div>
+              <div className="surface-card border border-white/5 rounded-lg p-6 relative overflow-hidden group min-h-[100px] flex items-center justify-center">
+                <div className="absolute left-0 top-0 w-1 h-full bg-[#c59f59]/30" />
+                <p className="text-xs text-slate-400 leading-relaxed font-light text-center px-4">
+                  {isAITalking ? (
+                    <motion.span
+                      animate={{ opacity: [0.5, 1, 0.5] }}
+                      transition={{ repeat: Infinity, duration: 2 }}
+                    >
+                      Evaluating response and processing multimodal input...
+                    </motion.span>
+                  ) : (
+                    "Waiting for candidate interaction..."
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Transcript Area */}
+          <div className="flex-1 flex flex-col min-h-0 border-t border-white/5">
+            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
+                Live Transcript
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+              {transcript.length === 0 && (
+                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-20">
+                  <span className="material-symbols-outlined text-4xl">
+                    chat_bubble
+                  </span>
+                  <p className="text-[9px] uppercase tracking-widest font-black">
+                    No signals captured
+                  </p>
+                </div>
+              )}
+              {transcript.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: msg.speaker === "ai" ? -10 : 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex flex-col ${msg.speaker === "ai" ? "items-start" : "items-end"} space-y-2`}
+                >
+                  <div
+                    className={`flex items-center gap-2 ${msg.speaker === "ai" ? "flex-row" : "flex-row-reverse"}`}
+                  >
+                    <div
+                      className={`size-1.5 rounded-full ${msg.speaker === "ai" ? "bg-[#c59f59]" : "bg-white/20"}`}
+                    />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                      {msg.speaker === "ai" ? "Owlyn" : "Candidate"}
+                    </span>
+                  </div>
+                  <div
+                    className={`max-w-[85%] p-4 rounded-lg text-xs font-light leading-relaxed shadow-lg ${msg.speaker === "ai" ? "bg-white/[0.03] border border-white/5 text-slate-300" : "bg-[#c59f59]/10 border border-[#c59f59]/20 text-white"}`}
+                  >
+                    {msg.text}
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  label,
+  icon,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  icon: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`h-10 px-6 flex items-center gap-3 transition-all rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${active ? "bg-[#c59f59]/10 border-[#c59f59]/40 text-[#c59f59]" : "bg-transparent border-transparent text-slate-600 hover:text-slate-400"}`}
+    >
+      <span className="material-symbols-outlined text-lg">{icon}</span>
+      {label}
+    </button>
+  );
 }

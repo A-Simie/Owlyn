@@ -1,158 +1,224 @@
-import { app, BrowserWindow, ipcMain, session, Menu, safeStorage } from 'electron'
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from 'fs'
-import { join } from 'path'
-import { createLogger } from '../shared/logger'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  session,
+  Menu,
+  safeStorage,
+} from "electron";
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
+import { join } from "path";
+import { createLogger } from "../shared/logger";
 
-const log = createLogger('main')
-const IS_DEV = !app.isPackaged
+const log = createLogger("main");
+const IS_DEV = !app.isPackaged;
 
 // Enable Chromium's Shape Detection API (FaceDetector)
-app.commandLine.appendSwitch('enable-experimental-web-platform-features')
+app.commandLine.appendSwitch("enable-experimental-web-platform-features");
 
 if (IS_DEV) {
-    process.env['ELECTRON_DISABLE_SECURITY_WARNINGS'] = 'true'
+  process.env["ELECTRON_DISABLE_SECURITY_WARNINGS"] = "true";
 }
 
-let mainWindow: BrowserWindow | null = null
+let mainWindow: BrowserWindow | null = null;
 
 function createWindow(): void {
-    mainWindow = new BrowserWindow({
-        width: 1440,
-        height: 900,
-        minWidth: 1024,
-        minHeight: 700,
-        backgroundColor: '#0a0a0a',
-        show: false,
-        webPreferences: {
-            preload: join(__dirname, '../preload/preload.js'),
-            contextIsolation: true,
-            nodeIntegration: false,
-            sandbox: !IS_DEV,
-            webSecurity: !IS_DEV,
-        },
-    })
+  mainWindow = new BrowserWindow({
+    width: 1440,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 700,
+    backgroundColor: "#0a0a0a",
+    show: false,
+    webPreferences: {
+      preload: join(__dirname, "../preload/preload.js"),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: !IS_DEV,
+      webSecurity: !IS_DEV,
+    },
+  });
 
-    mainWindow.on('ready-to-show', () => {
-        mainWindow?.show()
-        if (IS_DEV) {
-            mainWindow?.webContents.openDevTools({ mode: 'detach' })
-        }
-        log.info('Main window ready')
-    })
-
-    mainWindow.on('closed', () => {
-        mainWindow = null
-    })
-
-    if (process.env.ELECTRON_RENDERER_URL) {
-        mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL)
-    } else {
-        mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+  mainWindow.on("ready-to-show", () => {
+    mainWindow?.show();
+    if (IS_DEV) {
+      mainWindow?.webContents.openDevTools({ mode: "detach" });
     }
+    log.info("Main window ready");
+  });
+
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+
+  if (process.env.ELECTRON_RENDERER_URL) {
+    mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
+  } else {
+    mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
+  }
 }
 
 app.whenReady().then(() => {
-    Menu.setApplicationMenu(null)
+  Menu.setApplicationMenu(null);
 
-    session.defaultSession.setPermissionCheckHandler((_webContents, permission) => {
-        const allowed = ['media', 'mediaKeySystem', 'display-capture', 'camera', 'microphone']
-        return allowed.includes(permission)
-    })
+  session.defaultSession.setPermissionCheckHandler(
+    (_webContents, permission) => {
+      const allowed = [
+        "media",
+        "mediaKeySystem",
+        "display-capture",
+        "camera",
+        "microphone",
+      ];
+      return allowed.includes(permission);
+    },
+  );
 
-    session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
-        const allowed = ['media', 'mediaKeySystem', 'display-capture', 'camera', 'microphone']
-        callback(allowed.includes(permission))
-    })
+  session.defaultSession.setPermissionRequestHandler(
+    (_webContents, permission, callback) => {
+      const allowed = [
+        "media",
+        "mediaKeySystem",
+        "display-capture",
+        "camera",
+        "microphone",
+      ];
+      callback(allowed.includes(permission));
+    },
+  );
 
-    if (!IS_DEV) {
-        session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-            callback({
-                responseHeaders: {
-                    ...details.responseHeaders,
-                    'Content-Security-Policy': [
-                        "default-src 'self'; " +
-                        "script-src 'self'; " +
-                        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-                        "font-src 'self' https://fonts.gstatic.com; " +
-                        "img-src 'self' data: https: blob:; " +
-                        "media-src 'self' blob:; " +
-                        "connect-src 'self' ws://localhost:* http://localhost:*;"
-                    ],
-                },
-            })
-        })
+  if (!IS_DEV) {
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          "Content-Security-Policy": [
+            "default-src 'self'; " +
+              "script-src 'self'; " +
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+              "font-src 'self' https://fonts.gstatic.com; " +
+              "img-src 'self' data: https: blob:; " +
+              "media-src 'self' blob:; " +
+              "connect-src 'self' ws://localhost:* http://localhost:*;",
+          ],
+        },
+      });
+    });
+  }
+
+  registerIpcHandlers();
+  createWindow();
+
+  app.on("activate", () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
     }
+  });
+});
 
-    registerIpcHandlers()
-    createWindow()
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
+    app.quit();
+  }
+});
 
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow()
-        }
-    })
-})
-
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {
-        app.quit()
-    }
-})
-
-const TOKEN_FILE = join(app.getPath('userData'), '.owlyn-token')
+const TOKEN_FILE = join(app.getPath("userData"), ".owlyn-token");
 
 function registerIpcHandlers(): void {
-    ipcMain.handle('platform:info', () => ({
-        platform: process.platform,
-        arch: process.arch,
-        version: app.getVersion(),
-    }))
+  ipcMain.handle("platform:info", () => ({
+    platform: process.platform,
+    arch: process.arch,
+    version: app.getVersion(),
+  }));
 
-    ipcMain.handle('session:generate-id', () => {
-        return `OWL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    })
+  ipcMain.handle("session:generate-id", () => {
+    return `OWL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+  });
 
-    ipcMain.handle('window:minimize', () => mainWindow?.minimize())
-    ipcMain.handle('window:maximize', () => {
-        if (mainWindow?.isMaximized()) {
-            mainWindow.unmaximize()
-        } else {
-            mainWindow?.maximize()
-        }
-    })
-    ipcMain.handle('window:close', () => mainWindow?.close())
+  ipcMain.handle("window:minimize", () => mainWindow?.minimize());
+  ipcMain.handle("window:maximize", () => {
+    if (mainWindow?.isMaximized()) {
+      mainWindow.unmaximize();
+    } else {
+      mainWindow?.maximize();
+    }
+  });
+  ipcMain.handle("window:close", () => mainWindow?.close());
 
-    ipcMain.handle('auth:save-token', (_event, token: string) => {
-        if (!safeStorage.isEncryptionAvailable()) {
-            log.warn('safeStorage encryption not available, skipping token save')
-            return false
-        }
-        const encrypted = safeStorage.encryptString(token)
-        writeFileSync(TOKEN_FILE, encrypted)
-        log.info('Token saved to safeStorage')
-        return true
-    })
+  ipcMain.handle("auth:save-token", (_event, token: string) => {
+    if (!safeStorage.isEncryptionAvailable()) {
+      log.warn("safeStorage encryption not available, skipping token save");
+      return false;
+    }
+    const encrypted = safeStorage.encryptString(token);
+    writeFileSync(TOKEN_FILE, encrypted);
+    log.info("Token saved to safeStorage");
+    return true;
+  });
 
-    ipcMain.handle('auth:get-token', () => {
-        if (!existsSync(TOKEN_FILE)) return null
-        if (!safeStorage.isEncryptionAvailable()) return null
-        try {
-            const encrypted = readFileSync(TOKEN_FILE)
-            return safeStorage.decryptString(encrypted)
-        } catch {
-            log.warn('Failed to decrypt token, clearing')
-            try { unlinkSync(TOKEN_FILE) } catch { /* ignore */ }
-            return null
-        }
-    })
+  ipcMain.handle("auth:get-token", () => {
+    if (!existsSync(TOKEN_FILE)) return null;
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    try {
+      const encrypted = readFileSync(TOKEN_FILE);
+      return safeStorage.decryptString(encrypted);
+    } catch {
+      log.warn("Failed to decrypt token, clearing");
+      try {
+        unlinkSync(TOKEN_FILE);
+      } catch {
+        /* ignore */
+      }
+      return null;
+    }
+  });
 
-    ipcMain.handle('auth:clear-token', () => {
-        try {
-            if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE)
-            log.info('Token cleared')
-        } catch { /* ignore */ }
-        return true
-    })
+  ipcMain.handle("auth:clear-token", () => {
+    try {
+      if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
+      log.info("Token cleared");
+    } catch {
+      /* ignore */
+    }
+    return true;
+  });
 
-    log.info('IPC handlers registered')
+  ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
+    if (!mainWindow) return false;
+
+    log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
+
+    if (enabled) {
+      mainWindow.setFullScreen(true);
+      mainWindow.setAlwaysOnTop(true, "screen-saver");
+      mainWindow.setResizable(false);
+      mainWindow.setMovable(false);
+      mainWindow.setMinimumSize(
+        mainWindow.getSize()[0],
+        mainWindow.getSize()[1],
+      );
+      mainWindow.setMaximizable(false);
+      mainWindow.setMinimizable(false);
+
+      // Prevent screen capture/sharing on macOS and Windows
+      if (process.platform === "darwin" || process.platform === "win32") {
+        mainWindow.setContentProtection(true);
+      }
+    } else {
+      mainWindow.setFullScreen(false);
+      mainWindow.setAlwaysOnTop(false);
+      mainWindow.setResizable(true);
+      mainWindow.setMovable(true);
+      mainWindow.setMinimumSize(1024, 700);
+      mainWindow.setMaximizable(true);
+      mainWindow.setMinimizable(true);
+
+      if (process.platform === "darwin" || process.platform === "win32") {
+        mainWindow.setContentProtection(false);
+      }
+    }
+    return true;
+  });
+
+  log.info("IPC handlers registered");
 }

@@ -134,7 +134,7 @@ export default function LandingPage() {
             >
               The Future of Career <br />
               <motion.span
-                className="text-primary italic font-light inline-block"
+                className="text-primary font-light inline-block"
                 animate={{ opacity: [0.7, 1, 0.7] }}
                 transition={{
                   duration: 3,

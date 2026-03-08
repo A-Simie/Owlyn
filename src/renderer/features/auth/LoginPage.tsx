@@ -1,281 +1,607 @@
-import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/stores/auth.store";
-import { authApi } from "@/api";
-import { LoginPayloadSchema } from "@shared/schemas/auth.schema";
-import { extractApiError, isApiError } from "@/lib/api-error";
+import { authApi, candidateApi } from "@/api";
+import { extractApiError } from "@/lib/api-error";
 import OtpInput from "./OtpInput";
 
-type Step = "credentials" | "otp";
+type LoginStep =
+  | "selection"
+  | "candidate-options"
+  | "interview-code"
+  | "credentials"
+  | "otp";
+type Role = "ADMIN" | "RECRUITER" | "CANDIDATE";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const setAuth = useAuthStore((s) => s.setAuth);
+  const location = useLocation();
+  const { setAuth } = useAuthStore();
 
-  const [step, setStep] = useState<Step>("credentials");
+  // State
+  const [step, setStep] = useState<LoginStep>("selection");
+  const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [apiError, setApiError] = useState<string | null>(null);
-  const [otpError, setOtpError] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [showPasswordRules, setShowPasswordRules] = useState(false);
+  const [validationSuccess, setValidationSuccess] = useState(false);
 
-  const passwordRules = [
-    { label: "At least 6 characters", met: password.length >= 6 },
-    { label: "One uppercase letter", met: /[A-Z]/.test(password) },
-    { label: "One lowercase letter", met: /[a-z]/.test(password) },
-    { label: "One number", met: /[0-9]/.test(password) },
-    { label: "One special character", met: /[^A-Za-z0-9]/.test(password) },
-  ];
+  // Deep Link Handling
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const stepParam = params.get("step") as LoginStep;
+    const roleParam = params.get("role") as Role;
 
-  async function handleCredentialsSubmit(e: React.FormEvent) {
+    if (stepParam) setStep(stepParam);
+    if (roleParam) setSelectedRole(roleParam);
+  }, [location.search]);
+
+  // Handlers
+  const handleRoleSelect = (role: Role) => {
+    setSelectedRole(role);
+    if (role === "CANDIDATE") {
+      setStep("candidate-options");
+    } else {
+      setStep("credentials");
+    }
+  };
+
+  const handleBack = () => {
+    if (step === "otp") setStep("credentials");
+    else if (step === "credentials") setStep("selection");
+    else if (step === "candidate-options") setStep("selection");
+    else if (step === "interview-code") setStep("candidate-options");
+    setError(null);
+  };
+
+  const handleInitiateLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFieldErrors({});
-    setApiError(null);
-
-    const result = LoginPayloadSchema.safeParse({ email, password });
-    if (!result.success) {
-      const errs: Record<string, string> = {};
-      result.error.errors.forEach((err) => {
-        const field = err.path[0] as string;
-        if (!errs[field]) errs[field] = err.message;
-      });
-      setFieldErrors(errs);
-      return;
-    }
-
     setLoading(true);
+    setError(null);
     try {
-      await authApi.initiateLogin(result.data);
+      await authApi.initiateLogin({ email, password });
       setStep("otp");
-    } catch (error) {
-      const err = extractApiError(error);
-      setApiError(err.message);
+    } catch (err) {
+      setError(extractApiError(err).message);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  async function handleOtpComplete(otp: string) {
-    setOtpError(null);
+  const handleVerifyOtp = async (code: string) => {
     setLoading(true);
+    setError(null);
     try {
-      const { user, token } = await authApi.verifyLogin({ otp, email });
+      const { token, user } = await authApi.verifyLogin({ email, otp: code });
       setAuth(user, token);
-      navigate("/dashboard", { replace: true });
-    } catch (error) {
-      const err = extractApiError(error);
-      setOtpError(err.message);
+      if (user.role === "CANDIDATE") navigate("/hardware");
+      else navigate("/interviews");
+    } catch (err) {
+      setError(extractApiError(err).message);
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const handleValidateCode = async (code: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await candidateApi.validateCode({ code });
+      localStorage.setItem("owlyn_guest_token", res.token);
+      localStorage.setItem("owlyn_interview_id", res.interviewId);
+      localStorage.setItem("owlyn_access_code", code);
+      localStorage.setItem("owlyn_interview_title", res.title);
+      localStorage.removeItem("owlyn_practice_mode");
+      setValidationSuccess(true);
+      setTimeout(() => navigate("/lobby"), 1000);
+    } catch (err) {
+      setError(extractApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePracticeMode = () => {
+    localStorage.removeItem("owlyn_guest_token");
+    localStorage.removeItem("owlyn_access_code");
+    localStorage.removeItem("owlyn_interview_title");
+    localStorage.setItem("owlyn_practice_mode", "true");
+    navigate("/hardware");
+  };
 
   return (
-    <div className="bg-white dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display">
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <div className="absolute inset-0 gold-gradient-bg" />
-      </div>
+    <div className="min-h-screen bg-[#0B0B0B] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-100">
+      {/* Background elements */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,159,89,0.05),transparent_70%)] pointer-events-none" />
 
-      <main className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-[480px]">
-          <button
-            onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 text-subtle hover:text-primary transition-colors mb-6 text-sm font-medium group"
-            aria-label="Back to home"
-          >
-            <span className="material-symbols-outlined text-lg group-hover:-translate-x-0.5 transition-transform">
-              arrow_back
-            </span>
-            Back to Home
-          </button>
-          <div className="obsidian-card p-8 md:p-12 rounded-lg shadow-2xl">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6 border border-primary/20">
-                <span
-                  className="material-symbols-outlined text-primary text-3xl"
-                  style={{ fontVariationSettings: "'FILL' 1" }}
+      <main
+        className={`w-full ${step === "selection" || step === "candidate-options" ? "max-w-3xl" : "max-w-md"} z-10 transition-all duration-500`}
+      >
+        <AnimatePresence mode="wait">
+          {step === "selection" && (
+            <motion.div
+              key="selection"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-12"
+            >
+              <div className="flex flex-col items-center gap-4 text-center">
+                <motion.div
+                  initial={{ scale: 0.8 }}
+                  animate={{ scale: 1 }}
+                  className="inline-flex"
                 >
-                  owl
-                </span>
-              </div>
-              <h1 className="text-3xl font-bold text-heading tracking-tight mb-3">
-                {step === "credentials"
-                  ? "Welcome Back"
-                  : "Verify Your Identity"}
-              </h1>
-              <p className="text-muted text-sm font-light leading-relaxed uppercase tracking-widest">
-                {step === "credentials"
-                  ? "Sign in to your Owlyn account"
-                  : `We sent a 6-digit code to ${email}`}
-              </p>
-            </div>
-
-            {apiError && (
-              <div className="mb-6 px-4 py-3 rounded bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
-                {apiError}
-              </div>
-            )}
-
-            {step === "credentials" && (
-              <form onSubmit={handleCredentialsSubmit} className="space-y-6">
-                <div>
-                  <label
-                    className="block text-xs font-semibold text-primary uppercase tracking-widest mb-2"
-                    htmlFor="login-email"
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-6xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
                   >
-                    Email
-                  </label>
-                  <input
-                    className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${
-                      fieldErrors.email
-                        ? "border-red-500"
-                        : "border-slate-200 dark:border-slate-800"
-                    }`}
-                    id="login-email"
-                    type="email"
-                    placeholder="name@organization.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    disabled={loading}
-                    autoFocus
-                  />
-                  {fieldErrors.email && (
-                    <p className="text-red-400 text-xs mt-1.5">
-                      {fieldErrors.email}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <label
-                    className="block text-xs font-semibold text-primary uppercase tracking-widest mb-2"
-                    htmlFor="login-password"
-                  >
-                    Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      className={`w-full bg-slate-50 dark:bg-background-dark border rounded px-4 py-3.5 pr-12 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 input-gold-focus transition-all ${
-                        fieldErrors.password
-                          ? "border-red-500"
-                          : "border-slate-200 dark:border-slate-800"
-                      }`}
-                      id="login-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      onFocus={() => setShowPasswordRules(true)}
-                      onBlur={() => setShowPasswordRules(false)}
-                      disabled={loading}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-xl">
-                        {showPassword ? "visibility_off" : "visibility"}
-                      </span>
-                    </button>
+                    owl
+                  </span>
+                </motion.div>
+                <h1 className="text-3xl font-black text-white tracking-tighter uppercase">
+                  Owlyn
+                </h1>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <RoleCard
+                  title="Sign in as Candidate"
+                  description="Join a scheduled session or practice your skills in a mock environment."
+                  icon="person"
+                  onClick={() => handleRoleSelect("CANDIDATE")}
+                />
+                <RoleCard
+                  title="Workspace Team"
+                  description="Access the recruiter dash, manage team members and organization settings."
+                  icon="business_center"
+                  onClick={() => handleRoleSelect("RECRUITER")}
+                />
+              </div>
+            </motion.div>
+          )}
+
+          {step === "candidate-options" && (
+            <motion.div
+              key="candidate-options"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-12"
+            >
+              <div className="text-center space-y-4">
+                <button
+                  onClick={handleBack}
+                  className="group inline-flex items-center gap-2 text-slate-500 hover:text-[#c59f59] text-[10px] uppercase tracking-widest font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    arrow_back
+                  </span>
+                  Back to selection
+                </button>
+                <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                  Candidate Entry
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-2 gap-8">
+                <div
+                  onClick={() => setStep("interview-code")}
+                  className="group relative p-10 surface-card border border-white/5 rounded-[32px] hover:border-[#c59f59]/40 transition-all cursor-pointer text-center space-y-6"
+                >
+                  <div className="w-16 h-16 mx-auto flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
+                    <span className="material-symbols-outlined text-3xl">
+                      pin
+                    </span>
                   </div>
-                  {fieldErrors.password && (
-                    <p className="text-red-400 text-xs mt-1.5">
-                      {fieldErrors.password}
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-white uppercase tracking-wide">
+                      Enter Code
+                    </h3>
+                    <p className="text-slate-500 text-sm font-light leading-relaxed">
+                      Join a scheduled technical session.
                     </p>
-                  )}
+                  </div>
+                </div>
 
-                  {showPasswordRules && password.length > 0 && (
-                    <div className="mt-3 space-y-1.5">
-                      {passwordRules.map((rule) => (
-                        <div
-                          key={rule.label}
-                          className="flex items-center gap-2 text-xs"
-                        >
-                          <span
-                            className={`material-symbols-outlined text-sm ${rule.met ? "text-green-400" : "text-slate-600"}`}
-                          >
-                            {rule.met ? "check_circle" : "circle"}
-                          </span>
-                          <span
-                            className={
-                              rule.met ? "text-green-400" : "text-slate-500"
-                            }
-                          >
-                            {rule.label}
-                          </span>
-                        </div>
-                      ))}
+                <div
+                  onClick={handlePracticeMode}
+                  className="group relative p-10 surface-card border border-white/5 rounded-[32px] hover:border-green-500/40 transition-all cursor-pointer text-center space-y-6"
+                >
+                  <div className="w-16 h-16 mx-auto flex items-center justify-center text-green-500 border border-green-500/20 rounded-sm bg-green-500/5 group-hover:bg-green-500 group-hover:text-black transition-all">
+                    <span className="material-symbols-outlined text-3xl">
+                      science
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-white uppercase tracking-wide">
+                      Practice
+                    </h3>
+                    <p className="text-slate-500 text-sm font-light leading-relaxed">
+                      Test your skills in a mock session.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === "interview-code" && (
+            <motion.div
+              key="interview-code"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-12"
+            >
+              <div className="flex flex-col items-center space-y-8">
+                <button
+                  onClick={handleBack}
+                  className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    arrow_back
+                  </span>
+                  Change mode
+                </button>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
+                <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                  {validationSuccess ? "Code Verified" : "Access Code"}
+                </h2>
+              </div>
+
+              <div className="space-y-6">
+                {validationSuccess ? (
+                  <div className="flex flex-col items-center py-8 space-y-4">
+                    <div className="size-12 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-green-500 animate-pulse">
+                        check_circle
+                      </span>
                     </div>
+                    <p className="text-sm text-slate-400 animate-pulse">
+                      Redirecting to lobby...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <CodeInput
+                      onComplete={handleValidateCode}
+                      disabled={loading}
+                      error={!!error}
+                    />
+
+                    {loading && (
+                      <div className="flex justify-center mt-4">
+                        <div className="size-5 border-2 border-[#c59f59]/30 border-t-[#c59f59] rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-400 text-[10px] font-bold uppercase tracking-widest text-center flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-xs">
+                          error
+                        </span>
+                        {error}
+                      </motion.p>
+                    )}
+                  </>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {step === "credentials" && (
+            <motion.div
+              key="credentials"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-8"
+            >
+              <div className="flex flex-col items-center space-y-6 text-center">
+                <button
+                  onClick={handleBack}
+                  className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    arrow_back
+                  </span>
+                  Change role
+                </button>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                    Welcome back
+                  </h2>
+                  <p className="text-slate-500 text-sm font-light">
+                    Enter your credentials to continue to your workspace.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleInitiateLogin} className="space-y-6">
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#c59f59] uppercase tracking-widest mb-2">
+                      Email address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="name@organization.com"
+                      className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 px-4 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-[#c59f59] uppercase tracking-widest mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 px-4 pr-12 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#c59f59] transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {showPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                  {error && (
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-red-400 text-[10px] font-bold uppercase tracking-widest text-center"
+                    >
+                      {error}
+                    </motion.p>
                   )}
                 </div>
+
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-14 bg-primary text-black font-bold rounded uppercase tracking-widest hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_20px_rgba(197,159,89,0.2)] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  className="w-full py-5 bg-[#c59f59] text-black font-bold uppercase tracking-[0.3em] text-xs rounded-sm hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 h-[56px] aion-glow"
                 >
-                  {loading && (
-                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  {loading ? (
+                    <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin mx-auto" />
+                  ) : (
+                    "Continue"
                   )}
-                  {loading ? "Sending OTP..." : "Sign In"}
                 </button>
-              </form>
-            )}
 
-            {step === "otp" && (
-              <div className="space-y-8">
-                <OtpInput
-                  onComplete={handleOtpComplete}
-                  disabled={loading}
-                  error={otpError}
-                />
-                {loading && (
-                  <div className="flex items-center justify-center gap-2 text-sm text-muted">
-                    <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    Verifying...
-                  </div>
+                {selectedRole === "RECRUITER" && (
+                  <p className="text-center text-xs text-slate-600 mt-8">
+                    Don't have a workspace?{" "}
+                    <button
+                      type="button"
+                      onClick={() => navigate("/signup")}
+                      className="text-[#c59f59] hover:underline font-bold transition-all"
+                    >
+                      Sign up
+                    </button>
+                  </p>
                 )}
+              </form>
+            </motion.div>
+          )}
+
+          {step === "otp" && (
+            <motion.div
+              key="otp"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-10"
+            >
+              <div className="flex flex-col items-center space-y-8 text-center">
                 <button
-                  type="button"
-                  onClick={() => {
-                    setStep("credentials");
-                    setOtpError(null);
-                  }}
-                  className="w-full text-sm text-subtle hover:text-primary transition-colors"
+                  onClick={handleBack}
+                  className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
                 >
-                  ← Back to login
+                  <span className="material-symbols-outlined text-sm">
+                    arrow_back
+                  </span>
+                  Use different email
                 </button>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                    Security Check
+                  </h2>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">
+                    Verification code sent to
+                    <br />
+                    <span className="text-white font-medium">{email}</span>
+                  </p>
+                </div>
               </div>
-            )}
 
-            <div className="mt-10 text-center">
-              <p className="text-sm text-muted">
-                Don&apos;t have an account?
-                <Link
-                  to="/signup"
-                  className="text-primary font-bold hover:underline underline-offset-4 ml-1"
-                >
-                  Create Account
-                </Link>
-              </p>
-            </div>
-          </div>
+              <div className="space-y-8">
+                <OtpInput onComplete={handleVerifyOtp} disabled={loading} />
 
-          <div className="mt-8 flex justify-center gap-6 text-[10px] text-subtle uppercase tracking-[0.2em] font-medium">
-            <a className="hover:text-primary transition-colors" href="#">
-              Privacy
-            </a>
-            <a className="hover:text-primary transition-colors" href="#">
-              Terms of Protocol
-            </a>
-            <a className="hover:text-primary transition-colors" href="#">
-              Support
-            </a>
-          </div>
-        </div>
+                {error && (
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="text-red-400 text-[10px] font-bold uppercase tracking-widest text-center"
+                  >
+                    {error}
+                  </motion.p>
+                )}
+
+                <div className="text-center">
+                  <button
+                    disabled={loading}
+                    onClick={handleInitiateLogin}
+                    className="text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-[#c59f59] transition-colors disabled:opacity-50 flex items-center gap-2 mx-auto"
+                  >
+                    <span className="material-symbols-outlined text-base">
+                      refresh
+                    </span>
+                    Resend Code
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </main>
+    </div>
+  );
+}
+
+function RoleCard({
+  title,
+  description,
+  icon,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  icon: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="group relative flex flex-col p-6 bg-[#161616]/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:border-[#c59f59]/40 hover:bg-[#1A1A1A]/60 transition-all text-left overflow-hidden w-full h-[220px] justify-between"
+    >
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[#c59f59]/5 blur-[40px] rounded-full group-hover:bg-[#c59f59]/10 transition-all duration-700 -translate-y-8 translate-x-8" />
+
+      <div>
+        <div className="w-10 h-10 mb-5 flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
+          <span className="material-symbols-outlined text-lg">{icon}</span>
+        </div>
+        <h3 className="text-base font-black text-white mb-1.5 tracking-tight group-hover:text-[#c59f59] transition-colors uppercase leading-tight">
+          {title}
+        </h3>
+        <p className="text-slate-500 text-[10px] leading-relaxed max-w-[180px] font-light">
+          {description}
+        </p>
+      </div>
+    </button>
+  );
+}
+
+function CodeInput({
+  onComplete,
+  disabled,
+  error,
+}: {
+  onComplete: (code: string) => void;
+  disabled?: boolean;
+  error?: boolean;
+}) {
+  const [values, setValues] = useState(["", "", "", "", "", ""]);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newValues = [...values];
+    newValues[index] = value.slice(-1);
+    setValues(newValues);
+
+    if (value && index < 5) {
+      inputs.current[index + 1]?.focus();
+    }
+
+    if (newValues.every((v) => v !== "")) {
+      onComplete(newValues.join(""));
+    }
+  };
+
+  const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !values[index] && index > 0) {
+      inputs.current[index - 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const data = e.clipboardData.getData("text").trim();
+    if (!/^\d+$/.test(data)) return;
+
+    const digits = data.slice(0, 6).split("");
+    const newValues = [...values];
+    digits.forEach((digit, i) => {
+      newValues[i] = digit;
+    });
+    setValues(newValues);
+
+    const nextIndex = Math.min(digits.length, 5);
+    inputs.current[nextIndex]?.focus();
+
+    if (digits.length === 6) {
+      onComplete(digits.join(""));
+    }
+  };
+
+  return (
+    <div className="flex gap-3 justify-center">
+      {values.map((v, i) => (
+        <input
+          key={i}
+          ref={(el) => (inputs.current[i] = el)}
+          type="text"
+          maxLength={1}
+          value={v}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={i === 0 ? handlePaste : undefined}
+          disabled={disabled}
+          className={`w-14 h-20 bg-[#161616] border ${error ? "border-red-500/50" : "border-white/5"} rounded-sm text-center text-3xl font-bold text-[#c59f59] focus:border-[#c59f59]/50 outline-none transition-all`}
+          autoFocus={i === 0}
+        />
+      ))}
     </div>
   );
 }
