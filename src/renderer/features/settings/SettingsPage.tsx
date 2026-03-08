@@ -512,7 +512,7 @@ export default function SettingsPage() {
             <div>
               <p className="text-sm font-semibold text-white">Owlyn Desktop</p>
               <p className="text-xs text-slate-500">
-                v1.0.0 · Aion AI Core v4.0
+                v1.0.0
               </p>
             </div>
             <div className="flex gap-4 text-xs text-slate-500">

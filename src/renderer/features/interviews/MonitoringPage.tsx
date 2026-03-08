@@ -54,7 +54,10 @@ export default function MonitoringPage() {
               {interview?.candidateName || "Awaiting Data..."}
             </span>
           </div>
-          <button className="px-6 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-red-700 transition-all shadow-lg shadow-red-600/20">
+          <button
+            onClick={() => navigate("/interviews")}
+            className="px-6 py-2 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-red-700 transition-all shadow-lg shadow-red-600/20"
+          >
             Terminate Session
           </button>
         </div>

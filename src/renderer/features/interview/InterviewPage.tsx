@@ -76,39 +76,49 @@ export default function InterviewPage() {
     let unsubMessage: (() => void) | undefined;
 
     async function startSession() {
+      // Setup listeners first
+      unsubConnect = wsService.onConnect(() => setIsConnected(true));
+      unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
+      unsubMessage = wsService.onMessage((msg) => {
+        if (msg.type === "transcript") {
+          addTranscript({
+            id: Date.now().toString(),
+            timestamp: msg.timestamp,
+            speaker: msg.speaker,
+            text: msg.text,
+          });
+          if (msg.speaker === "ai") setCurrentQuestion(msg.text);
+        }
+        if (msg.type === "inlineData") {
+          setIsAITalking(true);
+          audioPlaybackService.playBase64Chunk(msg.data);
+          setTimeout(() => setIsAITalking(false), 2000);
+        }
+        if (msg.type === "PROCTOR_WARNING") {
+          setProctorWarning(msg.message);
+          setTimeout(() => setProctorWarning(null), 5000);
+        }
+      });
+
       try {
         if (!isPractice) {
           await candidateApi.initiateLockdown(accessCode!, token!);
         }
+      } catch (err) {
+        console.warn(
+          "Lockdown/Status sync failed, proceeding to stream:",
+          extractApiError(err),
+        );
+      }
 
+      try {
         if (!cameraOn) await startCamera();
         if (!micOn) await startMic();
 
-        unsubConnect = wsService.onConnect(() => setIsConnected(true));
-        unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
-        unsubMessage = wsService.onMessage((msg) => {
-          if (msg.type === "transcript") {
-            addTranscript({
-              id: Date.now().toString(),
-              timestamp: msg.timestamp,
-              speaker: msg.speaker,
-              text: msg.text,
-            });
-            if (msg.speaker === "ai") setCurrentQuestion(msg.text);
-          }
-          if (msg.type === "inlineData") {
-            setIsAITalking(true);
-            audioPlaybackService.playBase64Chunk(msg.data);
-            setTimeout(() => setIsAITalking(false), 2000);
-          }
-          if (msg.type === "PROCTOR_WARNING") {
-            setProctorWarning(msg.message);
-            setTimeout(() => setProctorWarning(null), 5000);
-          }
-        });
-        wsService.connect(token!);
+        // Use 'PRACTICE' as token if none provided to allow WSS handshake
+        wsService.connect(token || "PRACTICE");
       } catch (err) {
-        console.error("Session start failed:", extractApiError(err));
+        console.error("Media/WSS start failed:", extractApiError(err));
       }
     }
 
@@ -312,14 +322,6 @@ export default function InterviewPage() {
                   muted
                   playsInline
                 />
-                <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-3 py-1 rounded-sm border border-white/10 flex items-center gap-2">
-                  <div
-                    className={`size-2 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"} animate-pulse`}
-                  />
-                  <span className="text-[8px] uppercase font-black text-white tracking-widest">
-                    WSS Linked
-                  </span>
-                </div>
               </div>
             </div>
 

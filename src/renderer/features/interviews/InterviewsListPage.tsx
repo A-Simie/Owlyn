@@ -163,6 +163,29 @@ export default function InterviewsListPage() {
       setIsCreating(false);
     }
   };
+  const copyToClipboard = async (text: string) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+      } else {
+        // Fallback for non-secure contexts or older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "-9999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        document.execCommand("copy");
+        textArea.remove();
+      }
+      return true;
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+      return false;
+    }
+  };
 
   const tabs: { key: TabFilter; label: string; count: number }[] = [
     { key: "all", label: "All", count: interviews.length },
@@ -299,9 +322,18 @@ export default function InterviewsListPage() {
                       </span>
                       {interview.accessCode}
                       <button
-                        onClick={(e) => {
+                        onClick={async (e) => {
                           e.stopPropagation();
-                          navigator.clipboard.writeText(interview.accessCode);
+                          const ok = await copyToClipboard(
+                            interview.accessCode,
+                          );
+                          if (ok) {
+                            const btn = e.currentTarget;
+                            const original = btn.innerHTML;
+                            btn.innerHTML =
+                              '<span class="material-symbols-outlined text-xs text-green-500">check</span>';
+                            setTimeout(() => (btn.innerHTML = original), 2000);
+                          }
                         }}
                         className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded"
                         title="Copy Code"
@@ -634,9 +666,9 @@ export default function InterviewsListPage() {
                 {createdAccessCode}
               </p>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(createdAccessCode);
-                  alert("Access code copied to clipboard!");
+                onClick={async () => {
+                  const ok = await copyToClipboard(createdAccessCode);
+                  if (ok) alert("Access code copied to clipboard!");
                 }}
                 className="absolute top-2 right-2 p-2 text-primary/40 hover:text-primary transition-colors"
                 title="Copy to clipboard"

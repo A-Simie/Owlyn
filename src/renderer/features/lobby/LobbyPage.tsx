@@ -113,9 +113,6 @@ export default function LobbyPage() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="size-2 bg-[#c59f59] rounded-full animate-ping" />
-                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-[#c59f59]">
-                      Synchronizing Cloud Node
-                    </span>
                   </div>
                   <div className="w-[200px] h-[2px] bg-white/5 rounded-full overflow-hidden">
                     <motion.div

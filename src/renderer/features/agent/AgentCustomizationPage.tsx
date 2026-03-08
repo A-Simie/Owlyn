@@ -104,7 +104,10 @@ export default function AgentCustomizationPage() {
   };
 
   const handleSave = async () => {
-    if (!name) return;
+    if (!name.trim()) {
+      showStatus("Persona name is required.", "error");
+      return;
+    }
     setIsSaving(true);
     setStatus(null);
     try {
@@ -197,7 +200,7 @@ export default function AgentCustomizationPage() {
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving || !name}
+              disabled={isSaving}
               className="bg-primary text-black px-6 py-2 rounded font-bold text-sm uppercase tracking-wider shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSaving && (
@@ -444,23 +447,25 @@ export default function AgentCustomizationPage() {
                 </h3>
               </div>
               <div className="flex flex-wrap gap-3">
-                {DOMAINS_LIST.map((label) => {
-                  const isActive = selectedDomains.includes(label);
-                  return (
-                    <span
-                      key={label}
-                      onClick={() => toggleDomain(label)}
-                      className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full flex items-center gap-2 cursor-pointer transition-all ${isActive ? "bg-primary/20 border border-primary/40 text-primary" : "surface-elevated text-body hover:border-primary/40"}`}
-                    >
-                      {label}{" "}
-                      {isActive && (
-                        <span className="material-symbols-outlined text-[14px]">
-                          check_circle
-                        </span>
-                      )}
-                    </span>
-                  );
-                })}
+                {Array.from(new Set([...DOMAINS_LIST, ...selectedDomains])).map(
+                  (label) => {
+                    const isActive = selectedDomains.includes(label);
+                    return (
+                      <span
+                        key={label}
+                        onClick={() => toggleDomain(label)}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full flex items-center gap-2 cursor-pointer transition-all ${isActive ? "bg-primary/20 border border-primary/40 text-primary" : "surface-elevated text-body hover:border-primary/40"}`}
+                      >
+                        {label}{" "}
+                        {isActive && (
+                          <span className="material-symbols-outlined text-[14px]">
+                            check_circle
+                          </span>
+                        )}
+                      </span>
+                    );
+                  },
+                )}
                 {isAddingDomain ? (
                   <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
                     <input
