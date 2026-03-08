@@ -331,7 +331,7 @@ export default function SignupPage() {
               <p className="text-sm text-muted">
                 Already have an account?
                 <Link
-                  to="/auth"
+                  to="/auth?step=credentials&role=RECRUITER"
                   className="text-primary font-bold hover:underline underline-offset-4 ml-1"
                 >
                   Sign In

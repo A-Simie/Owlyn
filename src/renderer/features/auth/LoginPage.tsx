@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/stores/auth.store";
 import { authApi, candidateApi } from "@/api";
@@ -16,6 +16,7 @@ type Role = "ADMIN" | "RECRUITER" | "CANDIDATE";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setAuth } = useAuthStore();
 
   // State
@@ -26,6 +27,18 @@ export default function LoginPage() {
   const [accessCode, setAccessCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [validationSuccess, setValidationSuccess] = useState(false);
+
+  // Deep Link Handling
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const stepParam = params.get("step") as LoginStep;
+    const roleParam = params.get("role") as Role;
+
+    if (stepParam) setStep(stepParam);
+    if (roleParam) setSelectedRole(roleParam);
+  }, [location.search]);
 
   // Handlers
   const handleRoleSelect = (role: Role) => {
@@ -82,7 +95,8 @@ export default function LoginPage() {
       localStorage.setItem("owlyn_guest_token", res.token);
       localStorage.setItem("owlyn_interview_id", res.interviewId);
       localStorage.setItem("owlyn_access_code", code);
-      navigate("/lobby");
+      setValidationSuccess(true);
+      setTimeout(() => navigate("/lobby"), 1000);
     } catch (err) {
       setError(extractApiError(err).message);
     } finally {
@@ -218,9 +232,9 @@ export default function LoginPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-12"
             >
-              <div className="text-center space-y-4">
+              <div className="flex flex-col items-center space-y-8">
                 <button
                   onClick={handleBack}
                   className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
@@ -230,29 +244,60 @@ export default function LoginPage() {
                   </span>
                   Change mode
                 </button>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
                 <h2 className="text-3xl font-black text-white tracking-tight uppercase">
-                  Access Code
+                  {validationSuccess ? "Code Verified" : "Access Code"}
                 </h2>
               </div>
 
               <div className="space-y-6">
-                <CodeInput
-                  onComplete={handleValidateCode}
-                  disabled={loading}
-                  error={!!error}
-                />
+                {validationSuccess ? (
+                  <div className="flex flex-col items-center py-8 space-y-4">
+                    <div className="size-12 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center">
+                      <span className="material-symbols-outlined text-green-500 animate-pulse">
+                        check_circle
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-400 animate-pulse">
+                      Redirecting to lobby...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <CodeInput
+                      onComplete={handleValidateCode}
+                      disabled={loading}
+                      error={!!error}
+                    />
 
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-red-400 text-[10px] font-bold uppercase tracking-widest text-center flex items-center justify-center gap-1.5"
-                  >
-                    <span className="material-symbols-outlined text-xs">
-                      error
-                    </span>
-                    {error}
-                  </motion.p>
+                    {loading && (
+                      <div className="flex justify-center mt-4">
+                        <div className="size-5 border-2 border-[#c59f59]/30 border-t-[#c59f59] rounded-full animate-spin" />
+                      </div>
+                    )}
+
+                    {error && (
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-red-400 text-[10px] font-bold uppercase tracking-widest text-center flex items-center justify-center gap-1.5"
+                      >
+                        <span className="material-symbols-outlined text-xs">
+                          error
+                        </span>
+                        {error}
+                      </motion.p>
+                    )}
+                  </>
                 )}
               </div>
             </motion.div>
@@ -264,9 +309,9 @@ export default function LoginPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-8"
             >
-              <div className="text-center space-y-4">
+              <div className="flex flex-col items-center space-y-6 text-center">
                 <button
                   onClick={handleBack}
                   className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
@@ -276,41 +321,64 @@ export default function LoginPage() {
                   </span>
                   Change role
                 </button>
-                <h2 className="text-3xl font-black text-white tracking-tight uppercase italic">
-                  Welcome back
-                </h2>
-                <p className="text-slate-500 text-sm font-light">
-                  Enter your credentials to continue to your workspace.
-                </p>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                    Welcome back
+                  </h2>
+                  <p className="text-slate-500 text-sm font-light">
+                    Enter your credentials to continue to your workspace.
+                  </p>
+                </div>
               </div>
 
-              <form onSubmit={handleInitiateLogin} className="space-y-5">
-                <div className="space-y-4">
-                  <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-600 group-focus-within:text-[#c59f59] transition-colors">
-                      mail
-                    </span>
+              <form onSubmit={handleInitiateLogin} className="space-y-6">
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-xs font-semibold text-[#c59f59] uppercase tracking-widest mb-2">
+                      Email address
+                    </label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email address"
-                      className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 pl-12 pr-4 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
+                      placeholder="name@organization.com"
+                      className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 px-4 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
                     />
                   </div>
-                  <div className="relative group">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-600 group-focus-within:text-[#c59f59] transition-colors">
-                      lock
-                    </span>
-                    <input
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Password"
-                      className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 pl-12 pr-4 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
-                    />
+                  <div>
+                    <label className="block text-xs font-semibold text-[#c59f59] uppercase tracking-widest mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full bg-[#161616] border border-white/5 rounded-sm py-4 px-4 pr-12 text-white text-sm focus:border-[#c59f59]/50 outline-none transition-all placeholder:text-slate-700"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-[#c59f59] transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-xl">
+                          {showPassword ? "visibility_off" : "visibility"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
                   {error && (
                     <motion.p
@@ -357,9 +425,9 @@ export default function LoginPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-10"
             >
-              <div className="text-center space-y-4">
+              <div className="flex flex-col items-center space-y-8 text-center">
                 <button
                   onClick={handleBack}
                   className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
@@ -369,14 +437,26 @@ export default function LoginPage() {
                   </span>
                   Use different email
                 </button>
-                <h2 className="text-3xl font-black text-white tracking-tight uppercase">
-                  Security Check
-                </h2>
-                <p className="text-slate-500 text-sm font-light leading-relaxed">
-                  Verification code sent to
-                  <br />
-                  <span className="text-white font-medium">{email}</span>
-                </p>
+
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#c59f59]/10 mb-2 border border-[#c59f59]/20">
+                  <span
+                    className="material-symbols-outlined text-[#c59f59] text-3xl"
+                    style={{ fontVariationSettings: "'FILL' 1" }}
+                  >
+                    owl
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                    Security Check
+                  </h2>
+                  <p className="text-slate-500 text-sm font-light leading-relaxed">
+                    Verification code sent to
+                    <br />
+                    <span className="text-white font-medium">{email}</span>
+                  </p>
+                </div>
               </div>
 
               <div className="space-y-8">
@@ -480,6 +560,26 @@ function CodeInput({
     }
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const data = e.clipboardData.getData("text").trim();
+    if (!/^\d+$/.test(data)) return;
+
+    const digits = data.slice(0, 6).split("");
+    const newValues = [...values];
+    digits.forEach((digit, i) => {
+      newValues[i] = digit;
+    });
+    setValues(newValues);
+
+    const nextIndex = Math.min(digits.length, 5);
+    inputs.current[nextIndex]?.focus();
+
+    if (digits.length === 6) {
+      onComplete(digits.join(""));
+    }
+  };
+
   return (
     <div className="flex gap-3 justify-center">
       {values.map((v, i) => (
@@ -491,6 +591,7 @@ function CodeInput({
           value={v}
           onChange={(e) => handleChange(i, e.target.value)}
           onKeyDown={(e) => handleKeyDown(i, e)}
+          onPaste={i === 0 ? handlePaste : undefined}
           disabled={disabled}
           className={`w-14 h-20 bg-[#161616] border ${error ? "border-red-500/50" : "border-white/5"} rounded-sm text-center text-3xl font-bold text-[#c59f59] focus:border-[#c59f59]/50 outline-none transition-all`}
           autoFocus={i === 0}

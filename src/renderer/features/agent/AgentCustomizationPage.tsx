@@ -58,6 +58,12 @@ export default function AgentCustomizationPage() {
     "Kubernetes",
     "Go Lang",
   ]);
+  const [isAddingDomain, setIsAddingDomain] = useState(false);
+  const [customDomain, setCustomDomain] = useState("");
+  const [status, setStatus] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const fetchPersonas = useCallback(async () => {
     setLoading(true);
@@ -75,9 +81,32 @@ export default function AgentCustomizationPage() {
     fetchPersonas();
   }, [fetchPersonas]);
 
+  const handleAddCustomDomain = () => {
+    const trimmed = customDomain.trim();
+    if (trimmed && !selectedDomains.includes(trimmed)) {
+      setSelectedDomains([...selectedDomains, trimmed]);
+      setCustomDomain("");
+      setIsAddingDomain(false);
+    }
+  };
+
+  const toggleDomain = (label: string) => {
+    if (selectedDomains.includes(label)) {
+      setSelectedDomains(selectedDomains.filter((d) => d !== label));
+    } else {
+      setSelectedDomains([...selectedDomains, label]);
+    }
+  };
+
+  const showStatus = (text: string, type: "success" | "error" = "success") => {
+    setStatus({ text, type });
+    setTimeout(() => setStatus(null), 3000);
+  };
+
   const handleSave = async () => {
     if (!name) return;
     setIsSaving(true);
+    setStatus(null);
     try {
       const personaData = {
         name,
@@ -96,27 +125,48 @@ export default function AgentCustomizationPage() {
       if (contextFiles.length > 0) fd.append("file", contextFiles[0]);
 
       await personasApi.createPersona(fd);
-      alert("Persona saved successfully");
+      showStatus("Neural core synchronized successfully.");
       fetchPersonas();
       setName("");
       setDescription("");
       setAvatarFile(null);
       setContextFiles([]);
     } catch (error) {
-      alert(extractApiError(error).message);
+      showStatus(extractApiError(error).message, "error");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this persona?")) return;
+    // If there's no custom modal system, we use confirm for high-stakes actions but defined in handler
+    if (
+      !window.confirm(
+        "Commencing recursive deletion. This cannot be undone. Proceed?",
+      )
+    )
+      return;
     try {
       await personasApi.deletePersona(id);
       setPersonas(personas.filter((p) => p.id !== id));
+      showStatus("Persona erased from memory.");
     } catch (error) {
-      alert(extractApiError(error).message);
+      showStatus(extractApiError(error).message, "error");
     }
+  };
+
+  const handleSliderChange = (key: keyof typeof sliders, value: number) => {
+    setSliders((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleContextFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setContextFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeContextFile = (idx: number) => {
+    setContextFiles((prev) => prev.filter((_, i) => i !== idx));
   };
 
   return (
@@ -124,13 +174,22 @@ export default function AgentCustomizationPage() {
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="h-16 border-b divider flex items-center justify-between px-8 bg-white/80 dark:bg-background-dark/50 backdrop-blur-md sticky top-0 z-10">
-          <div>
-            <h2 className="text-heading text-lg font-bold tracking-tight">
-              Agent Configuration
-            </h2>
-            <p className="text-subtle text-xs uppercase tracking-widest">
-              Persona Editor · Neural Core v2.4
-            </p>
+          <div className="flex items-center gap-6">
+            <div>
+              <h2 className="text-heading text-lg font-bold tracking-tight">
+                Agent Configuration
+              </h2>
+              <p className="text-subtle text-xs uppercase tracking-widest">
+                Persona Editor · Neural Core v2.4
+              </p>
+            </div>
+            {status && (
+              <div
+                className={`px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest animate-in fade-in slide-in-from-left-2 duration-300 ${status.type === "success" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}
+              >
+                {status.text}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-4">
             <button className="px-4 py-2 text-muted hover:text-heading text-sm font-medium">
@@ -168,7 +227,7 @@ export default function AgentCustomizationPage() {
                 <div className="text-center mt-4 z-10 w-full space-y-4">
                   <input
                     type="text"
-                    placeholder="Persona Name (e.g. Atlas-7)"
+                    placeholder="Persona Name (e.g. Owlyn-4)"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full bg-transparent border-none text-heading text-xl font-bold text-center focus:ring-0 p-0"
@@ -261,10 +320,10 @@ export default function AgentCustomizationPage() {
                           max="100"
                           value={slider.value}
                           onChange={(e) =>
-                            setSliders({
-                              ...sliders,
-                              [slider.key]: parseInt(e.target.value),
-                            })
+                            handleSliderChange(
+                              slider.key,
+                              parseInt(e.target.value),
+                            )
                           }
                           className="w-full h-1 bg-slate-100 dark:bg-charcoal rounded-full appearance-none cursor-pointer accent-primary"
                         />
@@ -345,11 +404,7 @@ export default function AgentCustomizationPage() {
                         </div>
                       </div>
                       <button
-                        onClick={() =>
-                          setContextFiles(
-                            contextFiles.filter((_, i) => i !== idx),
-                          )
-                        }
+                        onClick={() => removeContextFile(idx)}
                         className="text-subtle hover:text-red-400"
                       >
                         <span className="material-symbols-outlined text-sm">
@@ -363,13 +418,7 @@ export default function AgentCustomizationPage() {
                       type="file"
                       multiple
                       hidden
-                      onChange={(e) =>
-                        e.target.files &&
-                        setContextFiles([
-                          ...contextFiles,
-                          ...Array.from(e.target.files),
-                        ])
-                      }
+                      onChange={handleContextFileChange}
                     />
                     <div className="text-center">
                       <span className="material-symbols-outlined text-subtle mb-1 group-hover:text-primary transition-colors">
@@ -400,13 +449,7 @@ export default function AgentCustomizationPage() {
                   return (
                     <span
                       key={label}
-                      onClick={() => {
-                        if (isActive)
-                          setSelectedDomains(
-                            selectedDomains.filter((d) => d !== label),
-                          );
-                        else setSelectedDomains([...selectedDomains, label]);
-                      }}
+                      onClick={() => toggleDomain(label)}
                       className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-full flex items-center gap-2 cursor-pointer transition-all ${isActive ? "bg-primary/20 border border-primary/40 text-primary" : "surface-elevated text-body hover:border-primary/40"}`}
                     >
                       {label}{" "}
@@ -418,9 +461,45 @@ export default function AgentCustomizationPage() {
                     </span>
                   );
                 })}
-                <button className="px-4 py-2 surface-elevated text-subtle text-xs font-bold uppercase tracking-wider rounded-full hover:border-primary/20 transition-colors">
-                  + Add Custom
-                </button>
+                {isAddingDomain ? (
+                  <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="Enter skill..."
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleAddCustomDomain();
+                        if (e.key === "Escape") setIsAddingDomain(false);
+                      }}
+                      className="bg-[#1e1a14]/30 border border-primary/20 rounded-full text-xs font-bold uppercase tracking-wider px-4 py-2 text-white placeholder:text-slate-600 outline-none focus:border-primary/50 w-32 transition-all"
+                    />
+                    <button
+                      onClick={handleAddCustomDomain}
+                      className="p-1.5 hover:text-primary transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        check
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setIsAddingDomain(false)}
+                      className="p-1.5 hover:text-red-400 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-lg">
+                        close
+                      </span>
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsAddingDomain(true)}
+                    className="px-4 py-2 surface-elevated text-subtle text-xs font-bold uppercase tracking-wider rounded-full hover:border-primary/20 transition-colors"
+                  >
+                    + Add Custom
+                  </button>
+                )}
               </div>
             </section>
 
