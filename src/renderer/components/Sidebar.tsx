@@ -3,6 +3,12 @@ import { useAuthStore } from "@/stores/auth.store";
 
 const NAV_ITEMS = [
   {
+    path: "/dashboard",
+    icon: "dashboard",
+    label: "Dashboard",
+    role: ["ADMIN", "RECRUITER"],
+  },
+  {
     path: "/interviews",
     icon: "videocam",
     label: "Interviews",
@@ -20,7 +26,7 @@ const NAV_ITEMS = [
 
 export default function Sidebar() {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, clearAuth } = useAuthStore();
 
   // Filter items based on role
   const filteredItems = NAV_ITEMS.filter(
@@ -83,14 +89,24 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* CTA */}
-      <div className="p-4">
+      {/* CTA & Logout */}
+      <div className="p-4 space-y-2">
         <button
           onClick={() => navigate("/interviews?create=true")}
           className="w-full flex items-center justify-center gap-2 bg-primary text-black py-3 rounded-lg font-bold text-sm uppercase tracking-wider shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           New Interview
+        </button>
+        <button
+          onClick={() => {
+            clearAuth();
+            navigate("/auth");
+          }}
+          className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-red-400 py-3 rounded-lg font-bold text-xs uppercase tracking-widest transition-all"
+        >
+          <span className="material-symbols-outlined text-lg">logout</span>
+          Sign Out
         </button>
       </div>
     </aside>

@@ -62,6 +62,7 @@ export default function InterviewsListPage() {
   const [createdAccessCode, setCreatedAccessCode] = useState<string | null>(
     null,
   );
+  const [justCopied, setJustCopied] = useState(false);
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -168,7 +169,6 @@ export default function InterviewsListPage() {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
       } else {
-        // Fallback for non-secure contexts or older browsers
         const textArea = document.createElement("textarea");
         textArea.value = text;
         textArea.style.position = "fixed";
@@ -185,6 +185,14 @@ export default function InterviewsListPage() {
       console.error("Clipboard copy failed:", err);
       return false;
     }
+  };
+
+  const notifyCopy = (btn: HTMLElement | null) => {
+    if (!btn) return;
+    const original = btn.innerHTML;
+    btn.innerHTML =
+      '<span class="material-symbols-outlined text-[14px] text-green-500 animate-in fade-in zoom-in duration-200">check_circle</span>';
+    setTimeout(() => (btn.innerHTML = original), 2000);
   };
 
   const tabs: { key: TabFilter; label: string; count: number }[] = [
@@ -327,13 +335,7 @@ export default function InterviewsListPage() {
                           const ok = await copyToClipboard(
                             interview.accessCode,
                           );
-                          if (ok) {
-                            const btn = e.currentTarget;
-                            const original = btn.innerHTML;
-                            btn.innerHTML =
-                              '<span class="material-symbols-outlined text-xs text-green-500">check</span>';
-                            setTimeout(() => (btn.innerHTML = original), 2000);
-                          }
+                          if (ok) notifyCopy(e.currentTarget);
                         }}
                         className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded"
                         title="Copy Code"
@@ -541,13 +543,14 @@ export default function InterviewsListPage() {
                             type="number"
                             min={1}
                             max={20}
-                            value={newInterview.questionCount}
-                            onChange={(e) =>
+                            value={newInterview.questionCount || ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
                               setNewInterview({
                                 ...newInterview,
-                                questionCount: parseInt(e.target.value) || 5,
-                              })
-                            }
+                                questionCount: v === "" ? 0 : parseInt(v),
+                              });
+                            }}
                             className="w-full bg-[#0d0d0d] border border-primary/10 rounded-lg text-white text-sm py-2 px-4"
                           />
                         </div>
@@ -661,20 +664,28 @@ export default function InterviewsListPage() {
             <p className="text-xs text-slate-500 mb-6 uppercase tracking-widest">
               Copy the access code and send it to the candidate
             </p>
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6 relative group/code">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6 relative group/code overflow-hidden">
               <p className="text-4xl font-bold text-primary font-mono tracking-[0.5em] select-all">
                 {createdAccessCode}
               </p>
               <button
                 onClick={async () => {
                   const ok = await copyToClipboard(createdAccessCode);
-                  if (ok) alert("Access code copied to clipboard!");
+                  if (ok) {
+                    setJustCopied(true);
+                    setTimeout(() => setJustCopied(false), 2000);
+                  }
                 }}
-                className="absolute top-2 right-2 p-2 text-primary/40 hover:text-primary transition-colors"
+                className="absolute top-2 right-2 p-2 text-primary/40 hover:text-primary transition-colors flex items-center gap-2"
                 title="Copy to clipboard"
               >
+                {justCopied && (
+                  <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest animate-in fade-in slide-in-from-right-2">
+                    Copied!
+                  </span>
+                )}
                 <span className="material-symbols-outlined text-sm">
-                  content_copy
+                  {justCopied ? "check_circle" : "content_copy"}
                 </span>
               </button>
             </div>
