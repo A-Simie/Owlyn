@@ -1,423 +1,191 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useMediaStore } from "@/stores/media.store";
-import { candidateApi } from "@/api";
-import { extractApiError } from "@/lib/api-error";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function LobbyPage() {
-  const date = new Date();
-  const currentYear = date.getFullYear();
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const {
-    cameraOn,
-    micOn,
-    cameraStream,
-    audioLevel,
-    startCamera,
-    stopCamera,
-    startMic,
-    stopMic,
-  } = useMediaStore();
-  const [latency, setLatency] = useState(12);
-  const [isChecking, setIsChecking] = useState(false);
-  const [accessCode, setAccessCode] = useState("");
-  const [isValidating, setIsValidating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sessionData, setSessionData] = useState<{
-    token: string;
-    interviewId: string;
-    title: string;
-  } | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const [sessionInfo, setSessionInfo] = useState({
+    title: "Senior Software Engineer Interview",
+    duration: "45 Minutes",
+    id: "#UXD-2024-0812",
+    isPractice: false,
+  });
 
   useEffect(() => {
-    if (!cameraOn) startCamera();
-    if (!micOn) startMic();
+    const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
+    const title =
+      localStorage.getItem("owlyn_interview_title") ||
+      (isPractice
+        ? "Mock Technical Evaluation"
+        : "Scheduled Technical Interview");
+    const id = localStorage.getItem("owlyn_access_code")
+      ? `#${localStorage.getItem("owlyn_access_code")}`
+      : "#GUEST-STAGING";
+
+    setSessionInfo({
+      title,
+      duration: isPractice ? "No Limit" : "45 Minutes",
+      id,
+      isPractice,
+    });
   }, []);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-      if (cameraStream) videoRef.current.play().catch(() => {});
-    }
-  }, [cameraStream]);
-
-  const toggleCamera = useCallback(async () => {
-    if (cameraOn) stopCamera();
-    else await startCamera();
-  }, [cameraOn, stopCamera, startCamera]);
-
-  const toggleMic = useCallback(async () => {
-    if (micOn) stopMic();
-    else await startMic();
-  }, [micOn, stopMic, startMic]);
-
-  useEffect(() => {
-    const id = setInterval(() => {
-      setLatency(Math.round(8 + Math.random() * 18));
-    }, 3000);
-    return () => clearInterval(id);
-  }, []);
-
-  const handleRerun = useCallback(async () => {
-    setIsChecking(true);
-    stopCamera();
-    stopMic();
-    await new Promise((r) => setTimeout(r, 800));
-    await startCamera();
-    await startMic();
-    setLatency(Math.round(8 + Math.random() * 12));
-    setTimeout(() => setIsChecking(false), 600);
-  }, [stopCamera, stopMic, startCamera, startMic]);
-
-  const handleValidateCode = async () => {
-    if (accessCode.length !== 6) return;
-    setIsValidating(true);
-    setError(null);
-    try {
-      const res = await candidateApi.validateCode({ code: accessCode });
-      setSessionData({
-        token: res.token,
-        interviewId: res.interviewId,
-        title: res.title,
-      });
-      localStorage.setItem("owlyn_guest_token", res.token);
-      localStorage.setItem("owlyn_interview_id", res.interviewId);
-      localStorage.setItem("owlyn_access_code", accessCode);
-    } catch (err) {
-      setError(extractApiError(err).message);
-    } finally {
-      setIsValidating(false);
-    }
+  const handleStart = async () => {
+    setIsStarting(true);
+    // Simulating protocol activation delay
+    await new Promise((r) => setTimeout(r, 2000));
+    navigate("/interview");
   };
 
-  const latencyLabel =
-    latency <= 15 ? "Excellent" : latency <= 25 ? "Good" : "Fair";
-  const latencyRange =
-    latency <= 15
-      ? "0-15ms range"
-      : latency <= 25
-        ? "15-25ms range"
-        : "25-40ms range";
-  const latencyBar = Math.max(0, 100 - latency * 2);
-
   return (
-    <div className="bg-[#1e1a14] text-slate-100 min-h-screen flex flex-col">
-      <header className="flex items-center justify-between border-b border-primary/20 px-6 py-4 lg:px-20 bg-[#12100d]/50 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/hardware")}
-            className="text-slate-400 hover:text-primary transition-colors mr-1"
-          >
-            <span className="material-symbols-outlined text-xl">
-              arrow_back
-            </span>
-          </button>
-          <div className="text-primary">
-            <span className="material-symbols-outlined text-3xl">school</span>
-          </div>
-          <h2 className="text-xl font-bold tracking-tight uppercase text-white">
-            Owlyn
-          </h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex flex-col items-end mr-2">
-            <span className="text-xs uppercase tracking-widest text-primary/60 font-semibold">
-              Interview ID
-            </span>
-            <span className="text-sm font-mono text-white">#UXD-2024-0812</span>
-          </div>
-          <div className="size-10 rounded-full border-2 border-primary/30 bg-primary/10 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary text-xl">
-              person
-            </span>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#0B0B0B] text-slate-100 flex flex-col items-center justify-center p-8 font-sans overflow-hidden">
+      {/* Background elements */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,159,89,0.05),transparent_70%)] pointer-events-none" />
 
-      <main className="flex-1 flex flex-col lg:flex-row max-w-[1440px] mx-auto w-full p-6 lg:p-12 gap-12">
-        <div className="flex-1 flex flex-col gap-6">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-4xl lg:text-5xl font-bold tracking-tighter text-white">
-              Everything looks great, Alex.
-            </h1>
-            <p className="text-slate-400 text-lg">
-              Your system is optimized for a professional interview experience.
-            </p>
+      <main className="w-full max-w-2xl z-10 space-y-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center space-y-6"
+        >
+          <div className="inline-flex py-3 px-6 rounded-full border border-[#c59f59]/30 bg-[#c59f59]/5 text-[10px] uppercase font-bold tracking-[0.4em] text-[#c59f59] mb-4">
+            Authorization Verified
           </div>
+          <h1 className="text-6xl font-black tracking-tight text-white leading-tight uppercase italic">
+            Session <span className="text-[#c59f59]">Ready.</span>
+          </h1>
+          <p className="text-slate-500 text-lg font-light max-w-lg mx-auto leading-relaxed">
+            All systems synchronized. The evaluation will begin immediately upon
+            entry.
+          </p>
+        </motion.div>
 
-          <div className="relative aspect-video bg-black rounded-lg overflow-hidden border-2 border-primary/40 group">
-            <video
-              ref={videoRef}
-              className={`w-full h-full object-cover ${cameraOn ? "opacity-80" : "hidden"}`}
-              muted
-              playsInline
-            />
-            {!cameraOn && (
-              <div className="w-full h-full flex flex-col items-center justify-center gap-4 text-slate-600">
-                <span className="material-symbols-outlined text-6xl">
-                  videocam_off
-                </span>
-                <p className="text-sm font-medium uppercase tracking-wider">
-                  Camera is off
-                </p>
-              </div>
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent pointer-events-none" />
-            <div className="absolute bottom-4 left-4 flex items-center gap-2 px-3 py-1.5 bg-black/40 backdrop-blur-md rounded border border-white/10">
-              <div
-                className={`size-2 rounded-full ${cameraOn ? "bg-primary animate-pulse" : "bg-red-500"}`}
-              />
-              <span className="text-xs font-bold uppercase tracking-widest text-white">
-                {cameraOn ? "Live Preview" : "Camera Off"}
-              </span>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.2 }}
+          className="surface-card border border-white/5 rounded-lg p-10 space-y-10 relative overflow-hidden"
+        >
+          <div className="grid grid-cols-2 gap-12">
+            <div className="space-y-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                Session Context
+              </p>
+              <p className="text-2xl font-bold text-white tracking-tight leading-tight uppercase">
+                {sessionInfo.title}
+              </p>
             </div>
-            <div className="absolute bottom-4 right-4 flex gap-2">
-              <button
-                onClick={toggleCamera}
-                className={`backdrop-blur-md p-2 rounded transition-colors border border-white/10 ${cameraOn ? "bg-white/10 hover:bg-white/20 text-white" : "bg-red-500/20 hover:bg-red-500/30 text-red-400"}`}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {cameraOn ? "videocam" : "videocam_off"}
-                </span>
-              </button>
-              <button
-                onClick={toggleMic}
-                className={`backdrop-blur-md p-2 rounded transition-colors border border-white/10 ${micOn ? "bg-white/10 hover:bg-white/20 text-white" : "bg-red-500/20 hover:bg-red-500/30 text-red-400"}`}
-              >
-                <span className="material-symbols-outlined text-lg">
-                  {micOn ? "mic" : "mic_off"}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* Mic level bar */}
-          {micOn && (
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-sm">
-                graphic_eq
-              </span>
-              <div className="flex-1 h-2 bg-[#0d0d0d] rounded-full overflow-hidden border border-white/5">
-                <div
-                  className="h-full bg-primary transition-all duration-150 rounded-full"
-                  style={{
-                    width: `${Math.max(2, Math.round(audioLevel * 100))}%`,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] text-primary/60 uppercase font-bold w-8 text-right">
-                {Math.round(audioLevel * 100)}%
-              </span>
-            </div>
-          )}
-
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-5 flex gap-4 items-start">
-            <div className="bg-primary/20 p-2 rounded">
-              <span className="material-symbols-outlined text-primary">
-                lightbulb
-              </span>
-            </div>
-            <div>
-              <h4 className="font-bold text-primary text-sm uppercase tracking-wider mb-1">
-                Scholar Tip
-              </h4>
-              <p className="text-sm text-slate-400 italic">
-                "Remember to look directly at the camera lens, not the screen,
-                to maintain strong eye contact with your interviewer."
+            <div className="space-y-4 border-l border-white/5 pl-12">
+              <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                Expected Tenure
+              </p>
+              <p className="text-2xl font-bold text-[#c59f59] tracking-tight uppercase">
+                {sessionInfo.duration}
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="w-full lg:w-[420px] flex flex-col gap-6">
-          <div className="bg-primary p-6 rounded-lg text-black flex flex-col gap-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest opacity-80">
-                  Network Performance
-                </p>
-                <h3 className="text-4xl font-bold tracking-tight mt-1">
-                  {latency}ms
-                </h3>
-              </div>
-              <div className="bg-black/10 px-3 py-1 rounded text-xs font-bold uppercase">
-                Stable
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-sm">
-                network_check
-              </span>
-              <span className="text-sm font-medium">
-                {latencyLabel} Connection ({latencyRange})
-              </span>
-            </div>
-            <div className="w-full bg-black/20 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div
-                className="bg-black h-full transition-all duration-500"
-                style={{ width: `${latencyBar}%` }}
+          <div className="space-y-6 pt-10 border-t border-white/5">
+            <h3 className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-600">
+              Security Parameters
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              <SecurityTag
+                label="Kiosk Protocol"
+                status="Standby"
+                icon="desktop_windows"
+              />
+              <SecurityTag
+                label="DRM Cloaking"
+                status="Standby"
+                icon="visibility_off"
+              />
+              <SecurityTag
+                label="WSS Upstream"
+                status="Linked"
+                icon="cloud_done"
               />
             </div>
           </div>
 
-          <div className="bg-[#0d0d0d] border border-primary/20 rounded-lg flex flex-col overflow-hidden">
-            <div className="px-6 py-4 border-b border-primary/10">
-              <h2 className="text-lg font-bold uppercase tracking-wider text-white">
-                System Readiness Check
-              </h2>
-            </div>
-            <div className="flex flex-col divide-y divide-primary/10">
-              {[
-                {
-                  icon: "videocam",
-                  label: "Integrated HD Webcam",
-                  sub: cameraOn ? "Video feed verified" : "Camera is off",
-                  ok: cameraOn,
-                },
-                {
-                  icon: "mic",
-                  label: "Pro Audio Input",
-                  sub: micOn
-                    ? "Audio levels peaking correctly"
-                    : "Microphone is off",
-                  ok: micOn,
-                },
-                {
-                  icon: "router",
-                  label: "Fiber Optic Connection",
-                  sub: "Secured & Encrypted",
-                  ok: true,
-                },
-                {
-                  icon: "battery_full",
-                  label: "System Power",
-                  sub: "Connected to AC Power",
-                  ok: true,
-                },
-              ].map((item) => (
-                <div
-                  key={item.icon}
-                  className="px-6 py-4 flex items-center justify-between"
+          <div className="pt-6">
+            <AnimatePresence mode="wait">
+              {!isStarting ? (
+                <motion.button
+                  key="btn-start"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  onClick={handleStart}
+                  className="group relative w-full py-8 bg-[#c59f59] text-black font-bold uppercase tracking-[0.6em] text-sm rounded-sm overflow-hidden transition-all aion-glow hover:brightness-110 active:scale-[0.98]"
                 >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className={`p-2 rounded ${item.ok ? "bg-primary/10 text-primary" : "bg-red-500/10 text-red-400"}`}
-                    >
-                      <span className="material-symbols-outlined">
-                        {item.icon}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-white">
-                        {item.label}
-                      </p>
-                      <p
-                        className={`text-xs ${item.ok ? "text-slate-500" : "text-red-400"}`}
-                      >
-                        {item.sub}
-                      </p>
-                    </div>
-                  </div>
-                  <span
-                    className={`material-symbols-outlined font-bold ${item.ok ? "text-primary" : "text-red-400"}`}
-                  >
-                    {item.ok ? "check_circle" : "error"}
+                  <span className="relative z-10 flex items-center justify-center gap-4">
+                    Initiate Session
+                    <span className="material-symbols-outlined text-lg">
+                      bolt
+                    </span>
                   </span>
-                </div>
-              ))}
-            </div>
-            <div className="p-6 bg-primary/5">
-              <button
-                onClick={handleRerun}
-                disabled={isChecking}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-slate-800 hover:bg-slate-700 transition-colors text-xs font-bold uppercase tracking-widest rounded border border-primary/10 text-slate-300 disabled:opacity-50"
-              >
-                <span
-                  className={`material-symbols-outlined text-sm ${isChecking ? "animate-spin" : ""}`}
+                </motion.button>
+              ) : (
+                <motion.div
+                  key="starting-protocol"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="w-full h-[88px] border border-[#c59f59]/30 bg-[#c59f59]/5 rounded-sm flex flex-col items-center justify-center gap-4 overflow-hidden"
                 >
-                  refresh
-                </span>
-                {isChecking ? "Checking..." : "Re-run Tests"}
-              </button>
-            </div>
-          </div>
-
-          {!sessionData ? (
-            <div className="bg-[#0d0d0d] border border-primary/20 rounded-lg p-6 flex flex-col gap-4">
-              <h3 className="text-sm font-bold uppercase tracking-widest text-white">
-                Enter Access Code
-              </h3>
-              <p className="text-xs text-slate-500">
-                Please enter the 6-digit code provided in your invite.
-              </p>
-              <input
-                type="text"
-                maxLength={6}
-                value={accessCode}
-                onChange={(e) =>
-                  setAccessCode(e.target.value.replace(/\D/g, ""))
-                }
-                placeholder="000000"
-                className="bg-black/40 border border-primary/20 rounded py-3 px-4 text-center text-2xl font-mono tracking-[0.5em] text-primary focus:border-primary outline-none"
-              />
-              {error && (
-                <p className="text-red-400 text-[10px] font-bold uppercase text-center">
-                  {error}
-                </p>
+                  <div className="flex items-center gap-3">
+                    <div className="size-2 bg-[#c59f59] rounded-full animate-ping" />
+                    <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-[#c59f59]">
+                      Synchronizing Cloud Node
+                    </span>
+                  </div>
+                  <div className="w-[200px] h-[2px] bg-white/5 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-[#c59f59]"
+                      initial={{ width: 0 }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 2 }}
+                    />
+                  </div>
+                </motion.div>
               )}
-              <button
-                onClick={handleValidateCode}
-                disabled={accessCode.length !== 6 || isValidating}
-                className="bg-primary/10 border border-primary/20 text-primary py-3 rounded text-xs font-bold uppercase tracking-widest hover:bg-primary/20 disabled:opacity-30"
-              >
-                {isValidating ? "Validating..." : "Verify Code"}
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => navigate("/interview")}
-              disabled={!cameraOn || !micOn}
-              className="w-full bg-primary hover:bg-primary/90 text-black font-bold py-5 rounded uppercase tracking-[0.2em] transition-all transform hover:scale-[1.01] active:scale-[0.98] flex items-center justify-center gap-3 text-lg shadow-xl shadow-primary/10 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
-            >
-              Enter Interview
-              <span className="material-symbols-outlined">arrow_forward</span>
-            </button>
-          )}
-
-          <div className="flex justify-center gap-4">
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[10px]">
-                lock
-              </span>
-              End-to-End Encrypted
-            </p>
-            <p className="text-[10px] uppercase tracking-widest text-slate-600 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[10px]">
-                verified_user
-              </span>
-              GDPR Compliant
-            </p>
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </main>
 
-      <footer className="mt-auto py-8 px-20 flex justify-between items-center text-slate-600">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-sm">copyright</span>
-          <span className="text-xs tracking-widest uppercase">
-            {currentYear} Owlyn Technologies
-          </span>
-        </div>
-        <div className="flex gap-8">
-          <span className="text-xs tracking-widest uppercase hover:text-primary cursor-pointer transition-colors">
-            Privacy Policy
-          </span>
-          <span className="text-xs tracking-widest uppercase hover:text-primary cursor-pointer transition-colors">
-            Support
-          </span>
-        </div>
+      <footer className="mt-12 text-[10px] font-bold uppercase tracking-[0.5em] text-slate-700 opacity-50">
+        Owlyn Core Protocol v0.12.4
       </footer>
+    </div>
+  );
+}
+
+function SecurityTag({
+  label,
+  status,
+  icon,
+}: {
+  label: string;
+  status: string;
+  icon: string;
+}) {
+  return (
+    <div className="flex items-center justify-between p-5 bg-white/[0.02] border border-white/5 rounded-sm">
+      <div className="flex items-center gap-4">
+        <span className="material-symbols-outlined text-xl text-slate-600">
+          {icon}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-slate-400">
+          {label}
+        </span>
+      </div>
+      <span
+        className={`text-[9px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-sm bg-black border border-white/5 ${status === "Linked" ? "text-green-500" : "text-[#c59f59]"}`}
+      >
+        {status}
+      </span>
     </div>
   );
 }
