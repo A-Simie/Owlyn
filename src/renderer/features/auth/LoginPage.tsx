@@ -101,7 +101,7 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,159,89,0.05),transparent_70%)] pointer-events-none" />
 
       <main
-        className={`w-full ${step === "selection" || step === "candidate-options" ? "max-w-4xl" : "max-w-md"} z-10 transition-all duration-500`}
+        className={`w-full ${step === "selection" || step === "candidate-options" ? "max-w-3xl" : "max-w-md"} z-10 transition-all duration-500`}
       >
         <AnimatePresence mode="wait">
           {step === "selection" && (
@@ -112,7 +112,7 @@ export default function LoginPage() {
               exit={{ opacity: 0, y: -20 }}
               className="space-y-12"
             >
-              <div className="text-center space-y-4">
+              <div className="text-center space-y-">
                 <motion.div
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
@@ -125,17 +125,14 @@ export default function LoginPage() {
                     owl
                   </span>
                 </motion.div>
-                <h1 className="text-6xl font-black text-white tracking-tighter uppercase italic">
+                <h1 className="text-4xl font-black text-white tracking-tighter uppercase">
                   Owlyn
                 </h1>
-                <p className="text-[#c59f59] text-[10px] uppercase tracking-[0.4em] font-bold">
-                  Choose your role
-                </p>
               </div>
 
               <div className="grid grid-cols-2 gap-8">
                 <RoleCard
-                  title="Candidate Access"
+                  title="Sign in as Candidate"
                   description="Join a scheduled session or practice your skills in a mock environment."
                   icon="person"
                   onClick={() => handleRoleSelect("CANDIDATE")}
@@ -168,7 +165,7 @@ export default function LoginPage() {
                   </span>
                   Back to selection
                 </button>
-                <h2 className="text-4xl font-black text-white tracking-tight uppercase">
+                <h2 className="text-3xl font-black text-white tracking-tight uppercase">
                   Candidate Entry
                 </h2>
               </div>
@@ -430,25 +427,20 @@ function RoleCard({
   return (
     <button
       onClick={onClick}
-      className="group relative flex flex-col p-10 bg-[#161616]/40 backdrop-blur-xl border border-white/5 rounded-[32px] hover:border-[#c59f59]/40 hover:bg-[#1A1A1A]/60 transition-all text-left overflow-hidden w-full h-[320px] justify-between"
+      className="group relative flex flex-col p-8 bg-[#161616]/40 backdrop-blur-xl border border-white/5 rounded-2xl hover:border-[#c59f59]/40 hover:bg-[#1A1A1A]/60 transition-all text-left overflow-hidden w-full h-[260px] justify-between"
     >
-      <div className="absolute top-0 right-0 w-48 h-48 bg-[#c59f59]/5 blur-[60px] rounded-full group-hover:bg-[#c59f59]/10 transition-all duration-700 -translate-y-12 translate-x-12" />
+      <div className="absolute top-0 right-0 w-40 h-40 bg-[#c59f59]/5 blur-[50px] rounded-full group-hover:bg-[#c59f59]/10 transition-all duration-700 -translate-y-10 translate-x-10" />
 
       <div>
-        <div className="w-14 h-14 mb-8 flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
-          <span className="material-symbols-outlined text-2xl">{icon}</span>
+        <div className="w-12 h-12 mb-6 flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
+          <span className="material-symbols-outlined text-xl">{icon}</span>
         </div>
-        <h3 className="text-2xl font-black text-white mb-4 tracking-tight group-hover:text-[#c59f59] transition-colors uppercase leading-tight">
+        <h3 className="text-lg font-black text-white mb-2 tracking-tight group-hover:text-[#c59f59] transition-colors uppercase leading-tight">
           {title}
         </h3>
-        <p className="text-slate-500 text-sm leading-relaxed max-w-[240px] font-light">
+        <p className="text-slate-500 text-xs leading-relaxed max-w-[200px] font-light">
           {description}
         </p>
-      </div>
-
-      <div className="flex items-center gap-3 text-[#c59f59] font-black text-[10px] uppercase tracking-[0.4em] opacity-40 group-hover:opacity-100 group-hover:translate-x-2 transition-all duration-500">
-        Access Portal
-        <span className="material-symbols-outlined text-sm">arrow_forward</span>
       </div>
     </button>
   );

@@ -39,6 +39,7 @@ export default function InterviewPage() {
     wsService.disconnect();
     audioPlaybackService.stop();
     stopAll();
+    candidateApi.releaseLockdown();
     navigate("/analysis");
   }, [navigate, stopAll]);
 
