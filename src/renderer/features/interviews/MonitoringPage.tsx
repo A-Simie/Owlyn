@@ -37,11 +37,11 @@ export default function MonitoringPage() {
           </button>
           <div>
             <h1 className="text-sm font-black uppercase tracking-[0.3em]">
-              Tactical Observation Deck
+              Live Interview Monitoring
             </h1>
             <p className="text-[10px] text-primary/60 font-medium uppercase tracking-widest flex items-center gap-2">
               <span className="size-1.5 bg-red-500 rounded-full animate-pulse" />{" "}
-              Live Monitoring Session: {interviewId}
+              Session ID: {interviewId}
             </p>
           </div>
         </div>
@@ -90,10 +90,10 @@ export default function MonitoringPage() {
           <div className="h-48 bg-black/40 rounded-xl border border-white/5 p-6 flex flex-col">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[10px] font-black primary uppercase tracking-[0.2em] text-primary">
-                Live Neural Analysis
+                Live Session Status
               </h3>
               <span className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">
-                Real-time Stream: 128kbps
+                Stream Activity
               </span>
             </div>
             <div className="flex-1 flex items-center justify-center border border-dashed border-white/10 rounded text-[10px] text-slate-600 uppercase tracking-widest">
@@ -109,50 +109,23 @@ export default function MonitoringPage() {
               Integrity Metrics
             </h3>
             <div className="space-y-6">
-              <MetricBar
-                label="Visual Focus"
-                value={98}
-                color="text-green-500"
-              />
-              <MetricBar
-                label="Speech Authenticity"
-                value={82}
-                color="text-primary"
-              />
-              <MetricBar
-                label="Environment Noise"
-                value={15}
-                color="text-slate-400"
-              />
-              <MetricBar
-                label="Third-party Detection"
-                value={0}
-                color="text-green-500"
-                inverse
-              />
+              <p className="text-[10px] text-slate-500 italic text-center py-4">
+                Waiting for real-time telemetry...
+              </p>
             </div>
           </div>
 
           <div className="flex-1 bg-[#1a1a1a] border border-white/10 rounded-xl p-6 flex flex-col overflow-hidden">
             <h3 className="text-xs font-black uppercase tracking-widest text-white mb-6">
-              Whispered Insights (Internal)
+              Real-time Insights
             </h3>
-            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
-              <PulseMessage
-                time="2m ago"
-                text="Detected candidate using external documentation on second display."
-                type="warning"
-              />
-              <PulseMessage
-                time="5m ago"
-                text="Candidate stress level peaked during multi-threading question."
-                type="info"
-              />
-              <PulseMessage
-                time="8m ago"
-                text="Neural core identifies Alex as a high-potential technical match."
-                type="success"
-              />
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar flex flex-col items-center justify-center text-center">
+              <span className="material-symbols-outlined text-primary/20 text-4xl mb-2">
+                history
+              </span>
+              <p className="text-[10px] text-slate-500 uppercase tracking-widest">
+                No active signals
+              </p>
             </div>
           </div>
         </div>

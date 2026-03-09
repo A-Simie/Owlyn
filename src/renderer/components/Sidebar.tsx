@@ -15,12 +15,6 @@ const NAV_ITEMS = [
     role: ["ADMIN", "RECRUITER"],
   },
   { path: "/agent", icon: "smart_toy", label: "AI Personas", role: ["ADMIN"] },
-  {
-    path: "/analysis",
-    icon: "library_books",
-    label: "Library",
-    role: ["ADMIN", "RECRUITER"],
-  },
   { path: "/settings", icon: "settings", label: "Settings", role: ["ADMIN"] },
 ];
 

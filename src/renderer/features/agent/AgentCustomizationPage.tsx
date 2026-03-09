@@ -128,7 +128,7 @@ export default function AgentCustomizationPage() {
       if (contextFiles.length > 0) fd.append("file", contextFiles[0]);
 
       await personasApi.createPersona(fd);
-      showStatus("Neural core synchronized successfully.");
+      showStatus("Persona saved successfully.");
       fetchPersonas();
       setName("");
       setDescription("");
@@ -145,14 +145,14 @@ export default function AgentCustomizationPage() {
     // If there's no custom modal system, we use confirm for high-stakes actions but defined in handler
     if (
       !window.confirm(
-        "Commencing recursive deletion. This cannot be undone. Proceed?",
+        "Are you sure you want to delete this persona? This action cannot be undone.",
       )
     )
       return;
     try {
       await personasApi.deletePersona(id);
       setPersonas(personas.filter((p) => p.id !== id));
-      showStatus("Persona erased from memory.");
+      showStatus("Persona deleted.");
     } catch (error) {
       showStatus(extractApiError(error).message, "error");
     }
@@ -183,7 +183,7 @@ export default function AgentCustomizationPage() {
                 Agent Configuration
               </h2>
               <p className="text-subtle text-xs uppercase tracking-widest">
-                Persona Editor · Neural Core v2.4
+                Persona Settings ·
               </p>
             </div>
             {status && (
@@ -263,10 +263,10 @@ export default function AgentCustomizationPage() {
                       <span className="material-symbols-outlined text-primary text-lg">
                         tune
                       </span>
-                      Personality Spectrum
+                      Persona Personality
                     </h3>
                     <span className="text-[10px] text-subtle uppercase tracking-widest">
-                      Adjust to modify response logic
+                      Fine-tune the AI's behavior and response style
                     </span>
                   </div>
                   <div className="space-y-8">
@@ -518,10 +518,10 @@ export default function AgentCustomizationPage() {
                 </div>
                 <div>
                   <h4 className="text-heading font-bold text-sm tracking-widest uppercase">
-                    Vocal Engine
+                    Voice Settings
                   </h4>
                   <p className="text-muted text-xs">
-                    Aries Deep-Learning Waveform (Neutral Masculine)
+                    Standard AI Broadcast Voice (Neutral Masculine)
                   </p>
                 </div>
               </div>

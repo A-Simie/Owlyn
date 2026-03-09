@@ -84,7 +84,6 @@ export default function App() {
           }
         >
           <Route path="/analysis/:sessionId" element={<AnalysisPage />} />
-          <Route path="/analysis" element={<AnalysisPage />} />
           <Route path="/monitor/:interviewId" element={<MonitoringPage />} />
           <Route path="/agent" element={<AgentCustomizationPage />} />
           <Route path="/dashboard" element={<TalentPoolPage />} />
