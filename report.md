@@ -4,11 +4,11 @@ This document outlines the remaining technical debt, mocked logic, and documenta
 
 ## 1. Core Implementation Gaps (Incomplete Features)
 
-### 1.1 Agent Voice & Avatar Customization (Phase 2.5)
+### 1.1 Evaluation Radar Charts (Phase 8)
 
-- **Status**: **UI ONLY**
-- **Gap**: The "Change Voice" and "Live Preview Voice" buttons in `AgentCustomizationPage.tsx` are cosmetic.
-- **Requirement**: Integrate with the ElevenLabs/OpenAI TTS API in the preview mode and update the `createPersona` payload to include the selected `voiceId`.
+- **Status**: **PENDING**
+- **Gap**: The competency radar charts in `AnalysisPage.tsx` currently map to static placeholder points.
+- **Requirement**: Implement the `RadarChart` component mapping logic to iterate over the `competencies` object in the session report.
 
 ---
 
@@ -59,11 +59,11 @@ While the **Environment Breach** (Window Blur) logic is implemented, the followi
 
 ## 5. Implementation Status Table (Summary)
 
-| Category           | Status | Remaining Task                                           |
-| :----------------- | :----- | :------------------------------------------------------- |
-| **Authentication** | 95%    | Resiliency testing for 2FA/OTP edge cases.               |
-| **Streaming**      | 100%   | Whiteboard delta synchronization integrated (Phase 5).   |
-| **Proctoring**     | 90%    | Global OS-level shortcut trapping.                       |
-| **Admin Tools**    | 70%    | Real voice/avatar file persistence.                      |
-| **Analytics**      | 75%    | Dynamic radar mapping and bulk report API verification.  |
-| **Multi-Mode**     | 100%   | TUTOR mode source selection modal implemented (Phase 7). |
+| Category           | Status | Remaining Task                                            |
+| :----------------- | :----- | :-------------------------------------------------------- |
+| **Authentication** | 100%   | Biometric Calibration & Identity Sync implemented.        |
+| **Streaming**      | 100%   | Whiteboard delta synchronization integrated.              |
+| **Proctoring**     | 90%    | Global OS-level shortcut trapping.                        |
+| **Admin Tools**    | 95%    | Active Intelligence status refined; redundant UI removed. |
+| **Analytics**      | 60%    | Dynamic radar mapping & bulk report API verification.     |
+| **Multi-Mode**     | 100%   | TUTOR mode source selection modal implemented.            |
