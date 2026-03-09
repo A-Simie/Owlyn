@@ -5,7 +5,7 @@ import { reportsApi, type Report } from "@/api/reports.api";
 
 export default function AnalysisPage() {
   const navigate = useNavigate();
-  const { sessionId } = useParams();
+  const { sessionId: interviewId } = useParams();
   const { user } = useAuthStore();
 
   const [report, setReport] = useState<Report | null>(null);
@@ -18,39 +18,38 @@ export default function AnalysisPage() {
   useEffect(() => {
     let retryCount = 0;
     const fetchReport = async () => {
-      if (!sessionId) return;
+      if (!interviewId) return;
       try {
-        const data = await reportsApi.getReport(sessionId);
+        const data = await reportsApi.getReport(interviewId);
         setReport(data);
         if (data.decision) setDecision(data.decision);
         if (data.humanFeedback) setNotes(data.humanFeedback);
         setError(null);
         setLoading(false);
       } catch (err: any) {
-        // Handle "Report not found or Agent 4 is still generating" (400 error in Phase 5)
-        if (err.status === 400 && retryCount < 5) {
+        if ((err.status === 400 || err.status === 404) && retryCount < 10) {
           retryCount++;
           setTimeout(fetchReport, 3000);
         } else {
-          setError(err.message || "Failed to load report");
+          setError(
+            err.message || "Failed to retrieve session analysis report.",
+          );
           setLoading(false);
         }
       }
     };
     fetchReport();
-  }, [sessionId]);
+  }, [interviewId]);
 
   const handleFinalize = async () => {
-    if (!sessionId || !decision) return;
+    if (!interviewId || !decision) return;
     setIsFinalizing(true);
     try {
-      await reportsApi.addFeedback(sessionId, notes);
-      // Backend handles decision sync as part of finalization in some versions,
-      // but let's assume feedback + local success is enough
-      alert("Report finalized and synced.");
+      await reportsApi.addFeedback(interviewId, notes, decision);
+      alert("Verification complete. Assessment record updated.");
     } catch (err) {
       console.error(err);
-      alert("Sync failed. Check console.");
+      alert("Synchronization error: Failed to persist evaluation.");
     } finally {
       setIsFinalizing(false);
     }
@@ -58,10 +57,13 @@ export default function AnalysisPage() {
 
   if (loading) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center surface gap-4">
-        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-        <p className="text-xs font-bold text-primary uppercase tracking-[0.3em] animate-pulse">
-          Retrieving Report Data...
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] gap-6">
+        <div className="size-16 relative">
+          <div className="absolute inset-0 border-4 border-white/5 rounded-full" />
+          <div className="absolute inset-0 border-4 border-t-primary rounded-full animate-spin" />
+        </div>
+        <p className="text-[10px] font-bold text-white uppercase tracking-[0.3em]">
+          Processing session data...
         </p>
       </div>
     );
@@ -69,224 +71,164 @@ export default function AnalysisPage() {
 
   if (error || !report) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center surface p-6 text-center">
-        <span className="material-symbols-outlined text-red-500 text-6xl mb-4">
-          error
+      <div className="h-screen flex flex-col items-center justify-center bg-[#0a0a0a] p-6 text-center">
+        <span className="material-symbols-outlined text-red-500/50 text-5xl mb-6">
+          info
         </span>
-        <h2 className="text-2xl font-bold text-heading mb-2">
-          Report Unavailable
+        <h2 className="text-xl font-bold text-white uppercase tracking-tight mb-2">
+          Data Unavailable
         </h2>
-        <p className="text-subtle text-sm mb-6">
-          {error || "The requested analysis could not be retrieved."}
+        <p className="text-slate-500 text-xs max-w-sm mb-8 leading-relaxed">
+          {error ||
+            "The requested report for this session ID could not be loaded from the server."}
         </p>
         <button
-          onClick={() => navigate("/dashboard")}
-          className="px-6 py-2 bg-primary text-black font-bold uppercase tracking-widest text-xs rounded"
+          onClick={() => navigate("/interviews")}
+          className="px-8 py-3 bg-white/5 border border-white/10 text-white text-[10px] font-bold uppercase tracking-widest rounded-sm"
         >
-          Back to Dashboard
+          Return to Dashboard
         </button>
       </div>
     );
   }
 
-  return (
-    <div className="text-slate-900 dark:text-slate-100 min-h-screen flex flex-col overflow-hidden">
-      <main className="flex-1 overflow-hidden flex flex-col p-6 gap-6">
-        <section className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 surface-card p-6 rounded">
-          <div className="flex gap-6 items-center">
-            <div className="relative">
-              <div className="size-20 rounded border-2 border-primary p-1">
-                <div className="w-full h-full surface-elevated rounded flex items-center justify-center">
-                  <span className="material-symbols-outlined text-primary text-3xl">
-                    person
-                  </span>
-                </div>
-              </div>
-              <div className="absolute -bottom-1 -right-1 size-6 bg-green-500 rounded-full border-4 border-white dark:border-[#0d0d0d] flex items-center justify-center">
-                <span className="material-symbols-outlined text-[12px] text-white font-bold">
-                  check
-                </span>
-              </div>
-            </div>
-            <div>
-              <h2 className="text-3xl font-bold text-heading tracking-tight">
-                {report.candidateName ||
-                  report.candidateEmail ||
-                  "Unknown Candidate"}
-              </h2>
-              <p className="text-primary font-medium tracking-wide flex items-center gap-2">
-                Candidate Report{" "}
-                <span className="size-1 bg-primary/40 rounded-full" />
-                ID: {report.interviewId.slice(0, 8)}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            <button className="flex items-center gap-2 px-4 py-2 surface-elevated text-body text-sm font-bold uppercase tracking-widest hover:bg-primary/10 transition-all rounded-sm">
-              <span className="material-symbols-outlined text-sm">
-                download
-              </span>
-              Full Report
-            </button>
-            <button className="flex items-center gap-2 px-4 py-2 surface-elevated text-body text-sm font-bold uppercase tracking-widest hover:bg-primary/10 transition-all rounded-sm">
-              <span className="material-symbols-outlined text-sm">share</span>
-              Share
-            </button>
-            <button className="flex items-center gap-2 px-6 py-2 bg-primary text-black text-sm font-bold uppercase tracking-widest hover:bg-primary/90 transition-all rounded-sm">
-              <span className="material-symbols-outlined text-sm">
-                calendar_today
-              </span>
-              Schedule
-            </button>
-          </div>
-        </section>
+  const hasFlags =
+    report.behaviorFlags && report.behaviorFlags.cheating_warnings_count > 0;
 
-        <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
-          <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 overflow-y-auto custom-scrollbar pr-2">
-            <div className="surface-card p-8 rounded flex flex-col items-center justify-center relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <span className="material-symbols-outlined text-8xl text-primary">
-                  verified
-                </span>
-              </div>
-              <p className="text-primary uppercase tracking-[0.2em] text-xs font-bold mb-2">
-                Overall Interview Score
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col overflow-hidden">
+      <header className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-black/40 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => navigate("/interviews")}
+            className="text-primary hover:text-white transition-colors flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">
+              arrow_back
+            </span>
+            <span className="text-[10px] font-black uppercase tracking-widest mt-0.5">
+              Exit
+            </span>
+          </button>
+          <div className="h-4 w-px bg-white/10 mx-2" />
+          <h1 className="text-xs font-bold text-white uppercase tracking-widest">
+            {report.candidateName || report.candidateEmail || "Guest Session"}
+          </h1>
+        </div>
+        <span className="px-3 py-1 bg-white/5 border border-white/10 rounded-sm text-[8px] font-bold text-slate-500 uppercase tracking-widest">
+          Session ID: {report.interviewId}
+        </span>
+      </header>
+
+      <main className="flex-1 overflow-y-auto p-8 gap-8 flex flex-col custom-scrollbar">
+        <div className="grid grid-cols-12 gap-8">
+          <div className="col-span-12 lg:col-span-4 space-y-8">
+            <div className="bg-[#111] p-10 rounded-sm border border-white/5 flex flex-col items-center">
+              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em] mb-4">
+                Total Score
               </p>
-              <div className="relative">
-                <span className="text-7xl font-bold text-heading tracking-tighter">
+              <div className="flex items-baseline gap-1">
+                <span className="text-8xl font-black text-white tracking-tighter tabular-nums">
                   {report.score || 0}
                 </span>
-                <span className="text-2xl text-primary/60 font-medium">
+                <span className="text-xl text-primary/40 font-bold uppercase">
                   /100
                 </span>
               </div>
-              <div className="mt-6 w-full h-1 bg-slate-100 dark:bg-charcoal rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary"
-                  style={{ width: `${report.score || 0}%` }}
-                />
-              </div>
-              <p className="mt-4 text-xs text-subtle text-center leading-relaxed">
-                AI Assessed Proficiency
-              </p>
             </div>
 
-            <div className="surface-card p-6 rounded flex-1 flex flex-col items-center justify-center text-center">
-              <span className="material-symbols-outlined text-primary/20 text-6xl mb-4">
-                analytics
-              </span>
-              <p className="text-[10px] text-subtle uppercase tracking-widest font-bold">
-                Advanced Metrics Pending
-              </p>
-              <p className="text-[11px] text-muted mt-2 max-w-[200px]">
-                Competency radar and deep-dive charts are generated upon report
-                finalization.
-              </p>
+            <div className="bg-[#111] p-6 rounded-sm border border-white/5 space-y-6">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                Proctoring Flags
+              </h3>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-black/40 border border-white/5 rounded-sm">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className={`size-1.5 rounded-full ${hasFlags ? "bg-red-500" : "bg-green-500"}`}
+                    />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-white">
+                      Visual Authenticity
+                    </span>
+                  </div>
+                  <span
+                    className={`text-[10px] font-black ${hasFlags ? "text-red-500" : "text-green-500"}`}
+                  >
+                    {hasFlags ? "Flagged" : "Normal"}
+                  </span>
+                </div>
+
+                {hasFlags && (
+                  <div className="p-4 bg-red-500/5 border border-red-500/10 rounded-sm">
+                    <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1.5">
+                      Flag Information:
+                    </p>
+                    <p className="text-[11px] text-red-200/50 font-light leading-relaxed">
+                      {report.behaviorFlags?.details}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 min-h-0 overflow-hidden">
-            <div className="surface-card px-6 py-4 rounded flex flex-wrap items-center justify-between gap-6">
-              <div className="flex items-center gap-8">
-                {[
-                  {
-                    color: report.behaviorFlags ? "bg-red-500" : "bg-green-500",
-                    label: "Integrity Status",
-                  },
-                  { color: "bg-green-500", label: "Session Captured" },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
-                    <div
-                      className={`size-2 ${item.color} rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]`}
-                    />
-                    <span className="text-xs font-bold uppercase tracking-widest text-body">
-                      {item.label}
-                    </span>
-                  </div>
-                ))}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-8">
+            <div className="bg-[#111] p-8 rounded-sm border border-white/5 flex flex-col gap-8">
+              <div>
+                <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.3em] mb-4">
+                  Assessment Summary
+                </h3>
+                <p className="text-sm font-light leading-relaxed text-slate-300">
+                  {report.behavioralNotes}
+                </p>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-sm">
-                <span className="material-symbols-outlined text-primary text-sm">
-                  security
-                </span>
-                <span className="text-[10px] font-bold text-primary uppercase">
-                  Integrity Verified
-                </span>
-              </div>
-            </div>
 
-            <div className="surface-card p-6 rounded">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-primary uppercase tracking-widest">
-                  AI Agent Analysis
-                </h3>
-                <span className="text-[10px] text-subtle surface-elevated px-2 py-0.5 rounded uppercase">
-                  Agent ID: LUM-88-2
-                </span>
-              </div>
-              <p className="text-body text-sm leading-relaxed mb-6">
-                {report.behavioralNotes ||
-                  "No behavioral notes provided by the AI agent for this session."}
-              </p>
-              <div className="surface-card p-6 rounded bg-primary/5 border border-primary/10">
-                <h3 className="text-sm font-bold text-primary uppercase tracking-widest mb-4">
-                  AI Code Evaluation
-                </h3>
-                <p className="text-xs text-muted leading-relaxed italic">
-                  "
-                  {report.codeOutput ||
-                    "Logic verified. No significant issues detected in the sandbox environment."}
-                  "
+              <div className="p-6 bg-white/[0.02] border border-white/5 rounded-sm">
+                <h4 className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
+                  Code Evaluation Detail
+                </h4>
+                <p className="text-xs font-normal text-slate-200 leading-relaxed italic">
+                  "{report.codeOutput}"
                 </p>
               </div>
             </div>
 
-            <div className="surface-card p-6 rounded">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-primary uppercase tracking-widest">
-                  Human Retrospective
+            <div className="bg-[#111] p-8 rounded-sm border border-white/5">
+              <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
+                <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">
+                  Human Feedback
                 </h3>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => setDecision("HIRE")}
-                    className={`px-5 py-1.5 rounded-sm border text-[9px] font-black uppercase tracking-widest transition-all ${decision === "HIRE" ? "bg-green-500 text-black border-green-500" : "bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500 hover:text-white"}`}
+                    className={`px-6 py-1.5 rounded-sm border text-[9px] font-black uppercase tracking-widest transition-all ${decision === "HIRE" ? "bg-green-500 text-black border-green-500" : "bg-transparent border-green-500/20 text-green-500"}`}
                   >
                     Recommend Hire
                   </button>
                   <button
                     onClick={() => setDecision("DECLINE")}
-                    className={`px-5 py-1.5 rounded-sm border text-[9px] font-black uppercase tracking-widest transition-all ${decision === "DECLINE" ? "bg-red-500 text-black border-red-500" : "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"}`}
+                    className={`px-6 py-1.5 rounded-sm border text-[9px] font-black uppercase tracking-widest transition-all ${decision === "DECLINE" ? "bg-red-500 text-black border-red-500" : "bg-transparent border-red-500/20 text-red-500"}`}
                   >
                     Decline
                   </button>
                 </div>
               </div>
+
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Enter interviewer notes here... are there any specific soft skills or red flags the AI missed?"
-                className="w-full h-32 bg-black/20 border border-primary/10 rounded p-4 text-xs font-light text-slate-300 placeholder:text-slate-700 focus:ring-1 focus:ring-primary/40 focus:outline-none resize-none mb-4"
+                placeholder="Enter final recruiter feedback for this session ID..."
+                className="w-full h-32 bg-black/40 border border-white/10 rounded-sm p-4 text-xs font-light text-slate-300 placeholder:text-slate-800 focus:border-primary/40 focus:outline-none resize-none mb-6"
               />
+
               <button
                 onClick={handleFinalize}
                 disabled={isFinalizing || !decision}
-                className="w-full py-3 bg-primary text-black text-[10px] font-black uppercase tracking-[0.4em] rounded-sm hover:brightness-110 transition-all shadow-lg shadow-primary/5 disabled:opacity-50"
+                className="w-full py-4 bg-primary text-black text-[10px] font-black uppercase tracking-[0.5em] rounded-sm hover:brightness-110 transition-all disabled:opacity-30 disabled:grayscale"
               >
-                {isFinalizing ? "Syncing..." : "Finalize & Sync Report"}
+                {isFinalizing ? "Transmitting data..." : "Finalize Evaluation"}
               </button>
-            </div>
-
-            <div className="surface-card rounded flex-1 flex flex-col min-h-0 items-center justify-center p-12 text-center">
-              <span className="material-symbols-outlined text-primary/10 text-6xl mb-4">
-                history_edu
-              </span>
-              <h3 className="text-sm font-bold text-primary uppercase tracking-widest">
-                Full Session Replay
-              </h3>
-              <p className="text-xs text-muted mt-2 max-w-sm">
-                Transcript and video playbacks are indexed within 24 hours of
-                session completion. Contact support if data remains unavailable.
-              </p>
             </div>
           </div>
         </div>

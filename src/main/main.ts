@@ -47,6 +47,12 @@ function createWindow(): void {
     log.info("Main window ready");
   });
 
+  mainWindow.on("blur", () => {
+    // Only flag if not in dev mode (unless testing)
+    mainWindow?.webContents.send("lockdown:blur");
+    log.warn("Main window blurred - possible environment breach");
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
@@ -218,6 +224,18 @@ function registerIpcHandlers(): void {
       }
     }
     return true;
+  });
+
+  ipcMain.handle("desktop:sources", async () => {
+    const { desktopCapturer } = require("electron");
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+    });
+    return sources.map((s: any) => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL(),
+    }));
   });
 
   log.info("IPC handlers registered");

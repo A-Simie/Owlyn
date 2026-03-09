@@ -28,7 +28,7 @@ export default function InterviewPage() {
   const [activeTab, setActiveTab] = useState<Tab>("code");
   const [isConnected, setIsConnected] = useState(false);
   const [code, setCode] = useState(
-    "// Your solution here\nfunction solve() {\n\n}",
+    "// Solution implementation\nfunction solve() {\n\n}",
   );
   const [isAITalking, setIsAITalking] = useState(false);
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
@@ -44,20 +44,20 @@ export default function InterviewPage() {
   }, [navigate, stopAll]);
 
   const formatTime = (s: number) => {
-    const m = Math.floor(s / 60)
-      .toString()
-      .padStart(2, "0");
-    const sec = (s % 60).toString().padStart(2, "0");
-    return `${m}:${sec}`;
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const isWarning = elapsedSeconds >= 40 * 60 && elapsedSeconds < 44 * 60; // 5 min warning if duration is 45
+  const isCritical = elapsedSeconds >= 44 * 60; // 1 min warning
 
   const handleRunReview = async () => {
     setLoading(true);
-    // Signal the environment to execute based on latest synchronization
     wsService.sendRunCode();
-
     setTimeout(() => setLoading(false), 1500);
   };
+
   // Lifecycle
   useEffect(() => {
     const token = localStorage.getItem("owlyn_guest_token");
@@ -74,9 +74,9 @@ export default function InterviewPage() {
     let unsubConnect: (() => void) | undefined;
     let unsubDisconnect: (() => void) | undefined;
     let unsubMessage: (() => void) | undefined;
+    let unsubBlur: (() => void) | undefined;
 
     async function startSession() {
-      // Setup listeners first
       unsubConnect = wsService.onConnect(() => setIsConnected(true));
       unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
       unsubMessage = wsService.onMessage((msg) => {
@@ -100,25 +100,45 @@ export default function InterviewPage() {
         }
       });
 
+      unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
+        if (!isPractice) {
+          setProctorWarning("Environment Breach: Window focus lost.");
+          wsService.sendAlert(
+            "ENVIRONMENT_BREACH",
+            "Candidate navigated away from the application window.",
+          );
+        }
+      });
+
       try {
         if (!isPractice) {
           await candidateApi.initiateLockdown(accessCode!, token!);
         }
       } catch (err) {
-        console.warn(
-          "Lockdown/Status sync failed, proceeding to stream:",
-          extractApiError(err),
-        );
+        console.warn("Lockdown init failed:", extractApiError(err));
       }
 
       try {
-        if (!cameraOn) await startCamera();
-        if (!micOn) await startMic();
+        const mode =
+          localStorage.getItem("owlyn_interview_mode") || "INTERVIEW";
+        if (mode === "TUTOR" && window.owlyn?.desktop) {
+          const sources = await window.owlyn.desktop.getSources();
+          const screenSource = sources.find((s) => s.id.startsWith("screen"));
+          if (screenSource) {
+            await useMediaStore.getState().startScreenShare(screenSource.id);
+          } else if (sources.length > 0) {
+            await useMediaStore.getState().startScreenShare(sources[0].id);
+          } else {
+            if (!cameraOn) await startCamera();
+          }
+        } else {
+          if (!cameraOn) await startCamera();
+        }
 
-        // Use 'PRACTICE' as token if none provided to allow WSS handshake
+        if (!micOn) await startMic();
         wsService.connect(token || "PRACTICE");
       } catch (err) {
-        console.error("Media/WSS start failed:", extractApiError(err));
+        console.error("Media/WSS connection error:", extractApiError(err));
       }
     }
 
@@ -128,12 +148,12 @@ export default function InterviewPage() {
       unsubConnect?.();
       unsubDisconnect?.();
       unsubMessage?.();
+      unsubBlur?.();
       wsService.disconnect();
       audioPlaybackService.stop();
     };
   }, []);
 
-  // Media streaming (1fps webcam)
   useEffect(() => {
     if (!cameraOn || !isConnected) return;
     const sendFrame = () => {
@@ -145,13 +165,13 @@ export default function InterviewPage() {
       if (!ctx) return;
       ctx.drawImage(videoRef.current, 0, 0, 320, 240);
       const base64 = canvas.toDataURL("image/jpeg", 0.4).split(",")[1];
-      wsService.sendMedia(base64);
+      const notes = localStorage.getItem("owlyn_notes") || "";
+      wsService.sendMedia(base64, undefined, code, notes);
     };
     const interval = setInterval(sendFrame, 1000);
     return () => clearInterval(interval);
   }, [cameraOn, isConnected]);
 
-  // Sync video stream
   useEffect(() => {
     if (videoRef.current) {
       videoRef.current.srcObject = cameraStream;
@@ -161,14 +181,13 @@ export default function InterviewPage() {
 
   return (
     <div className="h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden">
-      {/* Proctor Alert Banner */}
       <AnimatePresence>
         {proctorWarning && (
           <motion.div
             initial={{ y: -60 }}
             animate={{ y: 0 }}
             exit={{ y: -60 }}
-            className="absolute top-0 left-0 w-full h-12 bg-red-600 text-white z-[100] flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-[0.3em] shadow-2xl"
+            className="absolute top-0 left-0 w-full h-12 bg-red-600 text-white z-[100] flex items-center justify-center gap-3 font-bold text-xs uppercase tracking-widest shadow-2xl"
           >
             <span className="material-symbols-outlined">warning</span>
             {proctorWarning}
@@ -176,12 +195,11 @@ export default function InterviewPage() {
         )}
       </AnimatePresence>
 
-      {/* Header Bar */}
       <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 bg-[#0D0D0D] z-50">
         <div className="flex items-center gap-6">
-          <div className="size-10 rounded-sm bg-[#c59f59]/10 border border-[#c59f59]/20 flex items-center justify-center">
+          <div className="size-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
             <span
-              className="material-symbols-outlined text-[#c59f59] text-2xl"
+              className="material-symbols-outlined text-primary text-2xl"
               style={{ fontVariationSettings: "'FILL' 1" }}
             >
               owl
@@ -189,17 +207,15 @@ export default function InterviewPage() {
           </div>
           <div className="h-8 w-px bg-white/5 mx-2" />
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-black text-slate-500 tracking-[0.4em]">
-              Interview Session
+            <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">
+              Active Session
             </span>
             <div className="flex items-center gap-1.5 mt-1.5">
               <div
-                className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.8)]" : "bg-red-500"}`}
+                className={`size-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
               />
-              <span
-                className={`text-[8px] font-black uppercase tracking-[0.2em] ${isConnected ? "text-green-500/80" : "text-red-500/80"}`}
-              >
-                Agent {isConnected ? "Connected" : "Offline"}
+              <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                {isConnected ? "Connected" : "Offline"}
               </span>
             </div>
           </div>
@@ -207,44 +223,45 @@ export default function InterviewPage() {
 
         <div className="flex items-center gap-10">
           <div className="flex flex-col items-center">
-            <span className="text-[9px] uppercase font-black text-[#c59f59] tracking-[0.4em] mb-1">
-              Time Elapsed
+            <span
+              className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}
+            >
+              {isCritical ? "Critical" : isWarning ? "Remaining" : "Time"}
             </span>
-            <span className="text-xl font-mono text-white tracking-widest">
-              {formatTime(elapsedSeconds)}
+            <span
+              className={`text-xl font-mono ${isCritical ? "text-red-500" : isWarning ? "text-[#c59f59]" : "text-white"}`}
+            >
+              {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
             </span>
           </div>
           <button
             onClick={handleEndSession}
-            className="px-8 py-3 bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-[0.4em] rounded-sm hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/5 active:scale-[0.98]"
+            className="px-8 py-3 bg-red-600/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all"
           >
             End Session
           </button>
         </div>
       </header>
 
-      {/* Workspace Area */}
       <div className="flex-1 flex min-h-0 bg-[#0B0B0B]">
-        {/* Main Content Area (Tabs) */}
         <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
-          {/* Tab Navigation */}
-          <div className="flex items-center px-6 gap-2 border-b border-white/5 h-14 bg-[#0D0DB]">
+          <div className="flex items-center px-6 gap-2 border-b border-white/5 h-14 bg-black/20">
             <TabButton
               active={activeTab === "code"}
               onClick={() => setActiveTab("code")}
-              label="Interactive Code"
+              label="Code"
               icon="code"
             />
             <TabButton
               active={activeTab === "whiteboard"}
               onClick={() => setActiveTab("whiteboard")}
-              label="Multimodal Canvas"
+              label="Whiteboard"
               icon="draw"
             />
             <TabButton
               active={activeTab === "notes"}
               onClick={() => setActiveTab("notes")}
-              label="Session Notes"
+              label="Notes"
               icon="description"
             />
 
@@ -252,17 +269,12 @@ export default function InterviewPage() {
               <button
                 onClick={handleRunReview}
                 disabled={loading}
-                className="flex items-center gap-3 px-6 py-2.5 bg-[#c59f59] text-black text-[10px] font-black uppercase tracking-[0.3em] rounded-sm transition-all aion-glow hover:brightness-110 disabled:opacity-50"
+                className="flex items-center gap-3 px-6 py-2.5 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 disabled:opacity-50"
               >
                 {loading ? (
                   <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                 ) : (
-                  <>
-                    <span className="material-symbols-outlined text-sm">
-                      play_arrow
-                    </span>
-                    Run & Review
-                  </>
+                  "Run Code"
                 )}
               </button>
             </div>
@@ -307,15 +319,14 @@ export default function InterviewPage() {
           </div>
         </div>
 
-        {/* Sidebar (Proctoring & Transcript) */}
         <div className="w-[420px] bg-[#0D0D0D] flex flex-col shrink-0 min-h-0">
           <div className="p-8 space-y-8">
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-                <span>Optical Feed</span>
-                <span className="text-green-500">Live</span>
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span>Webcam</span>
+                <span className="text-green-500/50">Live</span>
               </div>
-              <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
+              <div className="relative aspect-video rounded-sm overflow-hidden border border-white/5 bg-black shadow-2xl">
                 <video
                   ref={videoRef}
                   className="w-full h-full object-cover scale-x-[-1]"
@@ -326,72 +337,49 @@ export default function InterviewPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-                <span>Interviewer Status</span>
-                {isAITalking && (
-                  <span className="text-[#c59f59] animate-pulse">Speaking</span>
-                )}
+              <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                <span>AI Status</span>
               </div>
-              <div className="surface-card border border-white/5 rounded-lg p-6 relative overflow-hidden group min-h-[100px] flex items-center justify-center">
-                <div className="absolute left-0 top-0 w-1 h-full bg-[#c59f59]/30" />
-                <p className="text-xs text-slate-400 leading-relaxed font-light text-center px-4">
-                  {isAITalking ? (
-                    <motion.span
-                      animate={{ opacity: [0.5, 1, 0.5] }}
-                      transition={{ repeat: Infinity, duration: 2 }}
-                    >
-                      Evaluating response and processing multimodal input...
-                    </motion.span>
-                  ) : (
-                    "Waiting for candidate interaction..."
-                  )}
+              <div className="bg-white/[0.02] border border-white/5 rounded-sm p-6 flex items-center justify-center">
+                <p className="text-[10px] text-slate-500 tracking-wide font-medium text-center">
+                  {isAITalking
+                    ? "Processing audio output..."
+                    : "Awaiting input"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Transcript Area */}
           <div className="flex-1 flex flex-col min-h-0 border-t border-white/5">
-            <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-500">
-                Live Transcript
+            <div className="p-6 border-b border-white/5 bg-white/[0.01]">
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                Transcript
               </span>
             </div>
             <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-              {transcript.length === 0 && (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-4 opacity-20">
-                  <span className="material-symbols-outlined text-4xl">
-                    chat_bubble
-                  </span>
-                  <p className="text-[9px] uppercase tracking-widest font-black">
-                    No signals captured
+              {transcript.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-10">
+                  <p className="text-[10px] uppercase tracking-widest font-black">
+                    No messages
                   </p>
                 </div>
-              )}
-              {transcript.map((msg, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: msg.speaker === "ai" ? -10 : 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={`flex flex-col ${msg.speaker === "ai" ? "items-start" : "items-end"} space-y-2`}
-                >
+              ) : (
+                transcript.map((msg, i) => (
                   <div
-                    className={`flex items-center gap-2 ${msg.speaker === "ai" ? "flex-row" : "flex-row-reverse"}`}
+                    key={i}
+                    className={`flex flex-col ${msg.speaker === "ai" ? "items-start" : "items-end"} space-y-2`}
                   >
-                    <div
-                      className={`size-1.5 rounded-full ${msg.speaker === "ai" ? "bg-[#c59f59]" : "bg-white/20"}`}
-                    />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-600">
                       {msg.speaker === "ai" ? "Owlyn" : "Candidate"}
                     </span>
+                    <div
+                      className={`max-w-[85%] p-4 rounded-sm text-xs font-light leading-relaxed border ${msg.speaker === "ai" ? "bg-white/[0.03] border-white/5 text-slate-300" : "bg-primary/5 border-primary/20 text-white"}`}
+                    >
+                      {msg.text}
+                    </div>
                   </div>
-                  <div
-                    className={`max-w-[85%] p-4 rounded-lg text-xs font-light leading-relaxed shadow-lg ${msg.speaker === "ai" ? "bg-white/[0.03] border border-white/5 text-slate-300" : "bg-[#c59f59]/10 border border-[#c59f59]/20 text-white"}`}
-                  >
-                    {msg.text}
-                  </div>
-                </motion.div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -414,7 +402,7 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`h-10 px-6 flex items-center gap-3 transition-all rounded-sm text-[10px] font-black uppercase tracking-[0.2em] border ${active ? "bg-[#c59f59]/10 border-[#c59f59]/40 text-[#c59f59]" : "bg-transparent border-transparent text-slate-600 hover:text-slate-400"}`}
+      className={`h-10 px-6 flex items-center gap-3 transition-all rounded-sm text-[10px] font-black uppercase tracking-widest border ${active ? "bg-primary/10 border-primary/30 text-primary" : "bg-transparent border-transparent text-slate-600 hover:text-slate-400"}`}
     >
       <span className="material-symbols-outlined text-lg">{icon}</span>
       {label}

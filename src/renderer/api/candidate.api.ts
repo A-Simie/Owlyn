@@ -39,4 +39,15 @@ export const candidateApi = {
       await window.owlyn.lockdown.toggle(false);
     }
   },
+  getCopilotSuggestion: async (
+    code: string,
+    language: string,
+    cursorPosition: number,
+  ) => {
+    const { data } = await apiClient.post<{ suggestion: string }>(
+      "/api/copilot",
+      { code, language, cursorPosition },
+    );
+    return data;
+  },
 };

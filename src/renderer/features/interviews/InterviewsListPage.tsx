@@ -54,6 +54,7 @@ export default function InterviewsListPage() {
     questionCount: 5,
     personaId: "",
     durationMinutes: 45,
+    mode: "INTERVIEW" as "INTERVIEW" | "PRACTICE" | "TUTOR",
     toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
   });
   const [draftedQuestions, setDraftedQuestions] = useState("");
@@ -143,6 +144,7 @@ export default function InterviewsListPage() {
         personaId: newInterview.personaId || undefined,
         generatedQuestions: draftedQuestions || undefined,
         aiInstructions: newInterview.instructions || undefined,
+        mode: newInterview.mode,
       });
       setCreatedAccessCode(res.accessCode);
       setShowCreateModal(false);
@@ -153,6 +155,7 @@ export default function InterviewsListPage() {
         questionCount: 5,
         personaId: "",
         durationMinutes: 45,
+        mode: "INTERVIEW",
         toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
       });
       setDraftedQuestions("");
@@ -474,7 +477,27 @@ export default function InterviewsListPage() {
 
                     <div className="space-y-2">
                       <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
-                        Tools Enabled
+                        Interview Mode
+                      </label>
+                      <select
+                        value={newInterview.mode}
+                        onChange={(e) =>
+                          setNewInterview({
+                            ...newInterview,
+                            mode: e.target.value as any,
+                          })
+                        }
+                        className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary appearance-none"
+                      >
+                        <option value="INTERVIEW">Standard Interview</option>
+                        <option value="PRACTICE">Practice Session</option>
+                        <option value="TUTOR">Tutor Mode</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
+                        Interface Tools
                       </label>
                       <div className="flex gap-4">
                         {(["codeEditor", "whiteboard", "notes"] as const).map(
@@ -493,7 +516,11 @@ export default function InterviewsListPage() {
                               }
                               className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded border transition-all ${newInterview.toolsEnabled[tool] ? "bg-primary border-primary text-black" : "border-primary/20 text-slate-500 hover:border-primary/40"}`}
                             >
-                              {tool.replace(/([A-Z])/g, " $1").trim()}
+                              {tool === "codeEditor"
+                                ? "Code"
+                                : tool === "whiteboard"
+                                  ? "Whiteboard"
+                                  : "Notes"}
                             </button>
                           ),
                         )}
@@ -501,17 +528,17 @@ export default function InterviewsListPage() {
                     </div>
                   </div>
 
-                  <div className="p-6 bg-primary/5 border border-primary/10 rounded-xl space-y-6">
-                    <div className="flex items-center gap-3 border-b border-primary/10 pb-4">
+                  <div className="p-6 bg-white/[0.02] border border-white/5 rounded-xl space-y-6">
+                    <div className="flex items-center gap-3 border-b border-white/5 pb-4">
                       <span className="material-symbols-outlined text-primary">
-                        auto_awesome
+                        settings_pro
                       </span>
                       <div>
                         <h4 className="text-sm font-bold text-white">
-                          AI Question Generator
+                          Question Generation
                         </h4>
                         <p className="text-[10px] text-slate-500 uppercase tracking-widest">
-                          Powered by Gemini 3.0 Flash
+                          Gemini 1.5 Flash Engine
                         </p>
                       </div>
                     </div>

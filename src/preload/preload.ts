@@ -24,6 +24,16 @@ const api = {
   lockdown: {
     toggle: (enabled: boolean): Promise<boolean> =>
       ipcRenderer.invoke("lockdown:toggle", enabled),
+    onBlur: (callback: () => void): (() => void) => {
+      const listener = () => callback();
+      ipcRenderer.on("lockdown:blur", listener);
+      return () => ipcRenderer.off("lockdown:blur", listener);
+    },
+  },
+  desktop: {
+    getSources: (): Promise<
+      { id: string; name: string; thumbnail: string }[]
+    > => ipcRenderer.invoke("desktop:sources"),
   },
 } as const;
 

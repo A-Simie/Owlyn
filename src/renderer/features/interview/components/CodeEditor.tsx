@@ -1,5 +1,6 @@
 import Editor, { OnMount } from "@monaco-editor/react";
 import { useState, useRef } from "react";
+import { candidateApi } from "@/api/candidate.api";
 
 interface CodeEditorProps {
   value: string;
@@ -18,19 +19,26 @@ export default function CodeEditor({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
 
-    // Phase 4.2: Register Inline Completions Provider (Ghost Text)
+    // Phase 4.2: Register Inline Completions Provider (Real API)
     monaco.languages.registerInlineCompletionsProvider(language, {
       provideInlineCompletions: async (model: any, position: any) => {
-        // This will eventually be powered by the Agent 3 WebSocket feed in Phase 5
-        const lineContent = model.getLineContent(position.lineNumber);
+        const code = model.getValue();
+        const cursorPosition = model.getOffsetAt(position);
 
-        // Mock suggestion logic for demo
-        if (lineContent.includes("function") && !lineContent.includes("{")) {
+        try {
+          //debounce every 1.5 seconds
+          const { suggestion } = await candidateApi.getCopilotSuggestion(
+            code,
+            language,
+            cursorPosition,
+          );
+
+          if (!suggestion) return { items: [] };
+
           return {
             items: [
               {
-                insertText:
-                  " main() {\n  console.log('Owlyn AI Engine linked');\n}",
+                insertText: suggestion,
                 range: new monaco.Range(
                   position.lineNumber,
                   position.column,
@@ -40,8 +48,10 @@ export default function CodeEditor({
               },
             ],
           };
+        } catch (err) {
+          console.error("Copilot failure:", err);
+          return { items: [] };
         }
-        return { items: [] };
       },
       freeInlineCompletions: () => {},
     });

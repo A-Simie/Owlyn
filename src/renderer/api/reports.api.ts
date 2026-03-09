@@ -27,11 +27,16 @@ export const reportsApi = {
     return data;
   },
 
-  addFeedback: async (interviewId: string, feedback: string) => {
+  addFeedback: async (
+    interviewId: string,
+    feedback: string,
+    decision: "HIRE" | "DECLINE",
+  ) => {
     const { data } = await apiClient.post<Report>(
       `/api/reports/${interviewId}/feedback`,
       {
         humanFeedback: feedback,
+        decision,
       },
     );
     return data;

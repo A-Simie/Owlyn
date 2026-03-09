@@ -2,7 +2,7 @@
 
 ## Frontend Core Architecture and State Management
 
-The Owlyn frontend is architected as a high-performance React 18.3 application running within an Electron 33 renderer process. The build system utilizes electron-vite for optimized compilation and HMR during development.
+The Owlyn frontend is architected as a high-performance React 18.3 application running within an Electron renderer process. The build system utilizes electron-vite for optimized compilation and HMR during development.
 
 ### State Management Strategy (Zustand)
 
