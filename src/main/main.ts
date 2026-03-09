@@ -21,6 +21,7 @@ if (IS_DEV) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let isLockdownActive = false;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -48,9 +49,10 @@ function createWindow(): void {
   });
 
   mainWindow.on("blur", () => {
-    // Only flag if not in dev mode (unless testing)
-    mainWindow?.webContents.send("lockdown:blur");
-    log.warn("Main window blurred - possible environment breach");
+    if (isLockdownActive) {
+      mainWindow?.webContents.send("lockdown:blur");
+      log.warn("Main window blurred - possible environment breach");
+    }
   });
 
   mainWindow.on("closed", () => {
@@ -192,6 +194,7 @@ function registerIpcHandlers(): void {
   ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
     if (!mainWindow) return false;
 
+    isLockdownActive = enabled;
     log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
 
     if (enabled) {

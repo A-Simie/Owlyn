@@ -76,6 +76,7 @@ class WebSocketService {
     audioChunk?: string,
     codeEditorText?: string,
     notes?: string,
+    whiteboardData?: string,
   ): void {
     this.send({
       event: "MEDIA",
@@ -83,6 +84,7 @@ class WebSocketService {
         videoFrame,
         audioChunk,
         codeEditorText,
+        whiteboardData,
         notes,
         timestamp: Date.now(),
       },

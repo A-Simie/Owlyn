@@ -19,6 +19,7 @@ type Tab = "code" | "whiteboard" | "notes";
 export default function InterviewPage() {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
   const { elapsedSeconds, tick } = useSessionStore();
   const { transcript, addTranscript, setCurrentQuestion } = useInterviewStore();
   const { cameraOn, micOn, cameraStream, startCamera, startMic, stopAll } =
@@ -33,6 +34,8 @@ export default function InterviewPage() {
   const [isAITalking, setIsAITalking] = useState(false);
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [showSourcePicker, setShowSourcePicker] = useState(false);
+  const [sources, setSources] = useState<any[]>([]);
 
   // Handlers
   const handleEndSession = useCallback(() => {
@@ -122,21 +125,14 @@ export default function InterviewPage() {
         const mode =
           localStorage.getItem("owlyn_interview_mode") || "INTERVIEW";
         if (mode === "TUTOR" && window.owlyn?.desktop) {
-          const sources = await window.owlyn.desktop.getSources();
-          const screenSource = sources.find((s) => s.id.startsWith("screen"));
-          if (screenSource) {
-            await useMediaStore.getState().startScreenShare(screenSource.id);
-          } else if (sources.length > 0) {
-            await useMediaStore.getState().startScreenShare(sources[0].id);
-          } else {
-            if (!cameraOn) await startCamera();
-          }
+          const fetchedSources = await window.owlyn.desktop.getSources();
+          setSources(fetchedSources);
+          setShowSourcePicker(true);
         } else {
           if (!cameraOn) await startCamera();
+          if (!micOn) await startMic();
+          wsService.connect(token || "PRACTICE");
         }
-
-        if (!micOn) await startMic();
-        wsService.connect(token || "PRACTICE");
       } catch (err) {
         console.error("Media/WSS connection error:", extractApiError(err));
       }
@@ -166,7 +162,8 @@ export default function InterviewPage() {
       ctx.drawImage(videoRef.current, 0, 0, 320, 240);
       const base64 = canvas.toDataURL("image/jpeg", 0.4).split(",")[1];
       const notes = localStorage.getItem("owlyn_notes") || "";
-      wsService.sendMedia(base64, undefined, code, notes);
+      const whiteboardData = whiteboardRef.current?.getData();
+      wsService.sendMedia(base64, undefined, code, notes, whiteboardData);
     };
     const interval = setInterval(sendFrame, 1000);
     return () => clearInterval(interval);
@@ -301,7 +298,7 @@ export default function InterviewPage() {
                   exit={{ opacity: 0 }}
                   className="absolute inset-0"
                 >
-                  <Whiteboard />
+                  <Whiteboard ref={whiteboardRef} />
                 </motion.div>
               )}
               {activeTab === "notes" && (
@@ -384,6 +381,62 @@ export default function InterviewPage() {
           </div>
         </div>
       </div>
+
+      {showSourcePicker && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
+          <div className="bg-[#0D0D0D] border border-primary/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="p-8 border-b border-white/5 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white uppercase tracking-tight">
+                  Tutor Mode: Select Workspace
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">
+                  Agent will view this screen to provide real-time guidance
+                </p>
+              </div>
+            </div>
+            <div className="p-8 grid grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
+              {sources.map((source) => (
+                <button
+                  key={source.id}
+                  onClick={async () => {
+                    await useMediaStore.getState().startScreenShare(source.id);
+                    await startMic();
+                    const token = localStorage.getItem("owlyn_guest_token");
+                    wsService.connect(token || "PRACTICE");
+                    setShowSourcePicker(false);
+                  }}
+                  className="group relative aspect-video bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-primary/40 transition-all text-left"
+                >
+                  <img
+                    src={source.thumbnail}
+                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-bottom p-4">
+                    <span className="mt-auto text-[10px] font-bold text-white uppercase truncate">
+                      {source.name}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="p-6 border-t border-white/5 bg-white/[0.02]">
+              <button
+                onClick={async () => {
+                  if (!cameraOn) await startCamera();
+                  await startMic();
+                  const token = localStorage.getItem("owlyn_guest_token");
+                  wsService.connect(token || "PRACTICE");
+                  setShowSourcePicker(false);
+                }}
+                className="w-full py-4 bg-white/5 border border-white/10 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-white/10 transition-all"
+              >
+                Skip Screen Sharing (Use Camera Only)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

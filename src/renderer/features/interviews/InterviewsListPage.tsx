@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { interviewsApi } from "@/api/interviews.api";
 import { personasApi } from "@/api/personas.api";
 import { extractApiError } from "@/lib/api-error";
@@ -40,6 +40,7 @@ type TabFilter = "all" | "UPCOMING" | "COMPLETED" | "CANCELLED";
 
 export default function InterviewsListPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [interviews, setInterviews] = useState<InterviewListItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [loading, setLoading] = useState(false);
@@ -80,15 +81,17 @@ export default function InterviewsListPage() {
   useEffect(() => {
     fetchInterviews();
     personasApi.getPersonas().then(setPersonas).catch(console.error);
+  }, [fetchInterviews]);
 
+  useEffect(() => {
     // Check for ?create=true deep link
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(location.search);
     if (params.get("create") === "true") {
       setShowCreateModal(true);
       // Clean up the URL
-      window.history.replaceState({}, "", window.location.pathname);
+      navigate(location.pathname, { replace: true });
     }
-  }, [fetchInterviews]);
+  }, [location, navigate]);
 
   const filtered =
     activeTab === "all"

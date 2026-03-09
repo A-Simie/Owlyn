@@ -6,6 +6,7 @@ export const WsOutgoingMediaSchema = z.object({
     videoFrame: z.string(),
     audioChunk: z.string().optional(),
     codeEditorText: z.string().optional(),
+    whiteboardData: z.string().optional(),
     notes: z.string().optional(),
     timestamp: z.number().optional(),
   }),

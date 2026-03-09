@@ -1,11 +1,23 @@
-import { useRef, useState, useEffect, useCallback } from "react";
+import {
+  useRef,
+  useState,
+  useEffect,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 
-export default function Whiteboard() {
+const Whiteboard = forwardRef((props, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [color, setColor] = useState("#c59f59");
   const [tool, setTool] = useState<"pen" | "eraser">("pen");
   const [lineWidth, setLineWidth] = useState(3);
+
+  useImperativeHandle(ref, () => ({
+    getData: () => {
+      return canvasRef.current?.toDataURL("image/jpeg", 0.3).split(",")[1];
+    },
+  }));
 
   // Sync canvas resolution
   useEffect(() => {
@@ -147,7 +159,11 @@ export default function Whiteboard() {
       </div>
     </div>
   );
-}
+});
+
+Whiteboard.displayName = "Whiteboard";
+
+export default Whiteboard;
 
 function ToolBtn({
   icon,
