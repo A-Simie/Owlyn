@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect } from "react";
 import LoginPage from "./features/auth/LoginPage";
 import SignupPage from "./features/auth/SignupPage";
+import CalibrationPage from "./features/calibration/CalibrationPage";
 import HardwarePage from "./features/hardware/HardwarePage";
 import LobbyPage from "./features/lobby/LobbyPage";
 import InterviewPage from "./features/interview/InterviewPage";
@@ -51,6 +52,14 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/calibration"
+          element={
+            <CandidateGuard>
+              <CalibrationPage />
+            </CandidateGuard>
+          }
+        />
         <Route
           path="/hardware"
           element={

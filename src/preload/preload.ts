@@ -35,6 +35,10 @@ const api = {
       { id: string; name: string; thumbnail: string }[]
     > => ipcRenderer.invoke("desktop:sources"),
   },
+  clipboard: {
+    writeText: (text: string): void =>
+      ipcRenderer.send("clipboard:write", text),
+  },
 } as const;
 
 export type OwlynAPI = typeof api;

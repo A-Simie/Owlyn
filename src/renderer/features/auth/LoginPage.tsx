@@ -98,7 +98,7 @@ export default function LoginPage() {
       localStorage.setItem("owlyn_interview_title", res.title);
       localStorage.removeItem("owlyn_practice_mode");
       setValidationSuccess(true);
-      setTimeout(() => navigate("/lobby"), 1000);
+      setTimeout(() => navigate("/calibration"), 1000);
     } catch (err) {
       setError(extractApiError(err).message);
     } finally {

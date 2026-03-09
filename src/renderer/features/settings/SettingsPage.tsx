@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useMediaStore } from "@/stores/media.store";
 import { useAuthStore } from "@/stores/auth.store";
@@ -141,6 +142,15 @@ export default function SettingsPage() {
       alert(extractApiError(error).message);
     }
   };
+
+  const handleCopyTempPassword = useCallback(() => {
+    const pass = tempPasswordMsg?.split(":").pop()?.trim() || "";
+    if (window.owlyn?.clipboard) {
+      window.owlyn.clipboard.writeText(pass);
+    } else {
+      navigator.clipboard.writeText(pass);
+    }
+  }, [tempPasswordMsg]);
 
   const handleUpdateWorkspace = async (
     updates: Partial<Pick<Workspace, "name" | "logoUrl">>,
@@ -511,9 +521,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-white">Owlyn Desktop</p>
-              <p className="text-xs text-slate-500">
-                v1.0.0
-              </p>
+              <p className="text-xs text-slate-500">v1.0.0</p>
             </div>
             <div className="flex gap-4 text-xs text-slate-500">
               <a className="hover:text-primary transition-colors" href="#">
@@ -529,37 +537,49 @@ export default function SettingsPage() {
 
       {tempPasswordMsg && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-[#0d0d0d] border border-primary/20 w-full max-w-md rounded-2xl shadow-2xl p-8 text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-6 border border-green-500/20">
-              <span className="material-symbols-outlined text-green-400 text-3xl">
+          <div className="bg-[#0d0d0d] border border-primary/20 w-full max-w-md rounded-2xl shadow-2xl p-10 text-center relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-green-500/40 to-transparent" />
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/10 mb-8 border border-green-500/20 group animate-in zoom-in duration-500">
+              <span className="material-symbols-outlined text-green-400 text-4xl group-hover:scale-110 transition-transform">
                 check_circle
               </span>
             </div>
-            <h3 className="text-xl font-bold text-white mb-4">Invite Sent!</h3>
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 mb-6 relative group/pass">
-              <p className="text-sm text-slate-300 font-mono break-all select-all pr-10">
-                {tempPasswordMsg}
-              </p>
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(tempPasswordMsg || "");
-                  alert("Password copied to clipboard!");
-                }}
-                className="absolute top-1/2 -translate-y-1/2 right-2 p-2 text-primary/40 hover:text-primary transition-colors"
-                title="Copy to clipboard"
-              >
-                <span className="material-symbols-outlined text-sm">
-                  content_copy
-                </span>
-              </button>
-            </div>
-            <p className="text-xs text-slate-500 mb-6">
-              Copy the temporary password above and send it to the recruiter so
-              they can log in.
+            <h3 className="text-2xl font-bold text-white mb-2 uppercase tracking-tight">
+              Invite Sent!
+            </h3>
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-8">
+              Recruiter successfully added to workspace
             </p>
+
+            <div className="space-y-4 mb-8">
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 relative group overflow-hidden">
+                <div className="flex flex-col gap-3">
+                  <span className="text-[9px] font-black text-primary/40 uppercase tracking-[0.2em] text-center">
+                    Temporary Password
+                  </span>
+                  <p className="text-3xl font-bold text-primary font-mono select-all tracking-wider">
+                    {tempPasswordMsg.split(":").pop()?.trim()}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCopyTempPassword}
+                  className="absolute top-3 right-3 p-2 text-primary/20 hover:text-primary transition-all rounded-lg hover:bg-primary/5"
+                  title="Copy password"
+                >
+                  <span className="material-symbols-outlined text-lg">
+                    content_copy
+                  </span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-500 leading-relaxed uppercase font-bold tracking-widest px-8">
+                Copy the temporary password above and send it to the recruiter
+                securely.
+              </p>
+            </div>
+
             <button
               onClick={() => setTempPasswordMsg(null)}
-              className="w-full py-3 bg-primary text-black font-bold text-xs uppercase tracking-widest rounded-lg hover:brightness-110 transition-all"
+              className="w-full py-4 bg-primary text-black font-black text-xs uppercase tracking-[0.3em] rounded-lg hover:brightness-110 transition-all shadow-xl shadow-primary/20"
             >
               Done
             </button>

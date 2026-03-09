@@ -101,13 +101,6 @@ export default function InterviewsListPage() {
   const upcoming = interviews.filter((i) => i.status === "UPCOMING");
   const completed = interviews.filter((i) => i.status === "COMPLETED");
 
-  const handleStartInterview = useCallback(
-    (_interview: InterviewListItem) => {
-      navigate("/hardware");
-    },
-    [navigate],
-  );
-
   const handleViewResults = useCallback(
     (interview: InterviewListItem) => {
       navigate(`/analysis/${interview.interviewId}`);
@@ -172,6 +165,10 @@ export default function InterviewsListPage() {
   };
   const copyToClipboard = async (text: string) => {
     try {
+      if (window.owlyn?.clipboard) {
+        window.owlyn.clipboard.writeText(text);
+        return true;
+      }
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(text);
       } else {
@@ -369,17 +366,7 @@ export default function InterviewsListPage() {
                     Monitor LIVE
                   </button>
                 )}
-                {interview.status === "UPCOMING" && (
-                  <button
-                    onClick={() => handleStartInterview(interview)}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <span className="material-symbols-outlined text-sm">
-                      play_arrow
-                    </span>
-                    Start
-                  </button>
-                )}
+
                 {interview.status === "COMPLETED" && (
                   <button
                     onClick={() => handleViewResults(interview)}

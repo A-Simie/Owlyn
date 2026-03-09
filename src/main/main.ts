@@ -5,6 +5,7 @@ import {
   session,
   Menu,
   safeStorage,
+  clipboard,
 } from "electron";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
@@ -101,145 +102,106 @@ app.whenReady().then(() => {
         responseHeaders: {
           ...details.responseHeaders,
           "Content-Security-Policy": [
-            "default-src 'self'; " +
-              "script-src 'self'; " +
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-              "font-src 'self' https://fonts.gstatic.com; " +
-              "img-src 'self' data: https: blob:; " +
-              "media-src 'self' blob:; " +
-              "connect-src 'self' ws://localhost:* http://localhost:*;",
+            "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.ngrok-free.app wss://*.ngrok-free.app;",
           ],
         },
       });
     });
   }
 
-  registerIpcHandlers();
   createWindow();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+  app.on("activate", function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
+});
+
+// IPC Handlers
+ipcMain.handle("platform:info", () => ({
+  isMac: process.platform === "darwin",
+  version: app.getVersion(),
+}));
+
+ipcMain.handle("session:generate-id", () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+});
+
+ipcMain.on("window:minimize", () => mainWindow?.minimize());
+ipcMain.on("window:maximize", () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
   }
 });
+ipcMain.on("window:close", () => mainWindow?.close());
 
-const TOKEN_FILE = join(app.getPath("userData"), ".owlyn-token");
-
-function registerIpcHandlers(): void {
-  ipcMain.handle("platform:info", () => ({
-    platform: process.platform,
-    arch: process.arch,
-    version: app.getVersion(),
-  }));
-
-  ipcMain.handle("session:generate-id", () => {
-    return `OWL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  });
-
-  ipcMain.handle("window:minimize", () => mainWindow?.minimize());
-  ipcMain.handle("window:maximize", () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize();
-    } else {
-      mainWindow?.maximize();
-    }
-  });
-  ipcMain.handle("window:close", () => mainWindow?.close());
-
-  ipcMain.handle("auth:save-token", (_event, token: string) => {
-    if (!safeStorage.isEncryptionAvailable()) {
-      log.warn("safeStorage encryption not available, skipping token save");
-      return false;
-    }
-    const encrypted = safeStorage.encryptString(token);
-    writeFileSync(TOKEN_FILE, encrypted);
-    log.info("Token saved to safeStorage");
-    return true;
-  });
-
-  ipcMain.handle("auth:get-token", () => {
-    if (!existsSync(TOKEN_FILE)) return null;
-    if (!safeStorage.isEncryptionAvailable()) return null;
+ipcMain.handle("auth:get-token", () => {
+  const path = join(app.getPath("userData"), "token.dat");
+  if (existsSync(path)) {
     try {
-      const encrypted = readFileSync(TOKEN_FILE);
+      const encrypted = readFileSync(path);
       return safeStorage.decryptString(encrypted);
     } catch {
-      log.warn("Failed to decrypt token, clearing");
-      try {
-        unlinkSync(TOKEN_FILE);
-      } catch {
-        /* ignore */
-      }
       return null;
     }
+  }
+  return null;
+});
+
+ipcMain.handle("auth:set-token", (_event, token: string) => {
+  const path = join(app.getPath("userData"), "token.dat");
+  if (token) {
+    const encrypted = safeStorage.encryptString(token);
+    writeFileSync(path, encrypted);
+  } else if (existsSync(path)) {
+    unlinkSync(path);
+  }
+  return true;
+});
+
+ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
+  if (!mainWindow) return false;
+
+  isLockdownActive = enabled;
+  log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
+
+  if (enabled) {
+    mainWindow.setFullScreen(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setContentProtection(true);
+  } else {
+    mainWindow.setFullScreen(false);
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setContentProtection(false);
+  }
+  return true;
+});
+
+ipcMain.handle("desktop:sources", async () => {
+  const { desktopCapturer } = require("electron");
+  const sources = await desktopCapturer.getSources({
+    types: ["window", "screen"],
+    thumbnailSize: { width: 300, height: 200 },
   });
-
-  ipcMain.handle("auth:clear-token", () => {
-    try {
-      if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
-      log.info("Token cleared");
-    } catch {
-      /* ignore */
-    }
-    return true;
-  });
-
-  ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
-    if (!mainWindow) return false;
-
-    isLockdownActive = enabled;
-    log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
-
-    if (enabled) {
-      mainWindow.setFullScreen(true);
-      mainWindow.setAlwaysOnTop(true, "screen-saver");
-      mainWindow.setResizable(false);
-      mainWindow.setMovable(false);
-      mainWindow.setMinimumSize(
-        mainWindow.getSize()[0],
-        mainWindow.getSize()[1],
-      );
-      mainWindow.setMaximizable(false);
-      mainWindow.setMinimizable(false);
-
-      // Prevent screen capture/sharing on macOS and Windows
-      if (process.platform === "darwin" || process.platform === "win32") {
-        mainWindow.setContentProtection(true);
-      }
-    } else {
-      mainWindow.setFullScreen(false);
-      mainWindow.setAlwaysOnTop(false);
-      mainWindow.setResizable(true);
-      mainWindow.setMovable(true);
-      mainWindow.setMinimumSize(1024, 700);
-      mainWindow.setMaximizable(true);
-      mainWindow.setMinimizable(true);
-
-      if (process.platform === "darwin" || process.platform === "win32") {
-        mainWindow.setContentProtection(false);
-      }
-    }
-    return true;
-  });
-
-  ipcMain.handle("desktop:sources", async () => {
-    const { desktopCapturer } = require("electron");
-    const sources = await desktopCapturer.getSources({
-      types: ["window", "screen"],
-    });
-    return sources.map((s: any) => ({
+  return sources.map(
+    (s: {
+      id: string;
+      name: string;
+      thumbnail: { toDataURL: () => string };
+    }) => ({
       id: s.id,
       name: s.name,
       thumbnail: s.thumbnail.toDataURL(),
-    }));
-  });
+    }),
+  );
+});
 
-  log.info("IPC handlers registered");
-}
+ipcMain.on("clipboard:write", (_event, text: string) => {
+  clipboard.writeText(text);
+  log.info("Native clipboard write successful");
+});

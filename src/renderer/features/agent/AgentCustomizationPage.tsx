@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion } from "framer-motion";
 import { personasApi } from "@/api/personas.api";
 import { extractApiError } from "@/lib/api-error";
 import type { Persona } from "@shared/schemas/persona.schema";
@@ -195,18 +196,31 @@ export default function AgentCustomizationPage() {
             )}
           </div>
           <div className="flex items-center gap-4">
+            <div className="flex items-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-lg h-10 px-4 focus-within:border-primary/50 transition-all">
+              <span className="material-symbols-outlined text-sm text-primary mr-3">
+                fingerprint
+              </span>
+              <input
+                type="text"
+                placeholder="Name your Persona..."
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="bg-transparent border-none text-heading text-sm font-bold focus:ring-0 p-0 w-48 placeholder:text-slate-500"
+              />
+            </div>
+            <div className="h-6 w-px bg-white/10 mx-2" />
             <button className="px-4 py-2 text-muted hover:text-heading text-sm font-medium">
               Discard
             </button>
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="bg-primary text-black px-6 py-2 rounded font-bold text-sm uppercase tracking-wider shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="bg-primary text-black px-8 py-2 rounded-lg font-black text-[10px] uppercase tracking-[0.2em] shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 active:scale-95 transition-all"
             >
               {isSaving && (
                 <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               )}
-              {isSaving ? "Processing..." : "Save Persona"}
+              {isSaving ? "Processing..." : "Deploy Persona"}
             </button>
           </div>
         </header>
@@ -228,26 +242,25 @@ export default function AgentCustomizationPage() {
                   </div>
                 </div>
                 <div className="text-center mt-4 z-10 w-full space-y-4">
-                  <input
-                    type="text"
-                    placeholder="Persona Name (e.g. Owlyn-4)"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-transparent border-none text-heading text-xl font-bold text-center focus:ring-0 p-0"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Eval Title (e.g. Senior Technical Evaluator)"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="w-full bg-transparent border-none text-primary/60 text-xs tracking-widest uppercase text-center focus:ring-0 p-0"
-                  />
-                  <button className="mx-auto flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-full transition-all">
-                    <span className="material-symbols-outlined text-sm text-primary">
-                      play_circle
+                  <div className="space-y-1">
+                    <p className="text-[10px] text-primary font-black uppercase tracking-[0.3em]">
+                      {name || "Unnamed Persona"}
+                    </p>
+                    <input
+                      type="text"
+                      placeholder="Title | e.g. Senior Evaluator"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="w-full bg-transparent border-none text-slate-500 text-[10px] tracking-widest uppercase text-center focus:ring-0 p-0 placeholder:text-slate-800"
+                    />
+                  </div>
+                  <div className="h-px w-12 bg-white/10 mx-auto" />
+                  <button className="mx-auto flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-full transition-all group/play">
+                    <span className="material-symbols-outlined text-base text-primary group-hover/play:scale-125 transition-transform">
+                      graphic_eq
                     </span>
-                    <span className="text-xs font-semibold uppercase tracking-wider text-body">
-                      Live Preview Voice
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-body">
+                      Preview Voice
                     </span>
                   </button>
                 </div>
@@ -508,39 +521,46 @@ export default function AgentCustomizationPage() {
               </div>
             </section>
 
-            {/* Voice */}
-            <section className="bg-primary/5 border border-primary/20 rounded-xl p-8 flex items-center justify-between">
-              <div className="flex items-center gap-6">
-                <div className="size-14 surface-elevated rounded flex items-center justify-center border border-primary/30">
-                  <span className="material-symbols-outlined text-primary text-3xl">
-                    graphic_eq
-                  </span>
+            {/* Active Intelligence Feedback */}
+            <section className="bg-primary/[0.03] border border-primary/10 rounded-2xl p-10 flex items-center justify-between group overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700" />
+              <div className="flex items-center gap-8 relative z-10">
+                <div className="size-20 bg-[#0B0B0B] rounded-2xl flex items-center justify-center border border-primary/20 shadow-2xl group-hover:border-primary/50 transition-all">
+                  <div className="flex pb-1 gap-1">
+                    {[12, 18, 14, 22].map((h, i) => (
+                      <motion.div
+                        key={i}
+                        className="w-1.5 bg-primary rounded-full"
+                        animate={{ height: [h, h * 1.5, h] }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                          delay: i * 0.2,
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <h4 className="text-heading font-bold text-sm tracking-widest uppercase">
-                    Voice Settings
+                  <h4 className="text-lg font-bold text-white uppercase tracking-tight mb-1">
+                    Vocal Synthesis Interface
                   </h4>
-                  <p className="text-muted text-xs">
-                    Standard AI Broadcast Voice (Neutral Masculine)
+                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
+                    AI standard neutral masculina · dynamic range enabled
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1">
-                  {[6, 10, 8, 12, 6].map((h, i) => (
-                    <div
-                      key={i}
-                      className="w-1 bg-primary rounded-full animate-bounce"
-                      style={{
-                        height: `${h * 2}px`,
-                        animationDelay: `${i * 0.1}s`,
-                        opacity: 0.4 + (h / 12) * 0.6,
-                      }}
-                    />
-                  ))}
+              <div className="flex items-center gap-6 relative z-10">
+                <div className="text-right">
+                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mb-1">
+                    Audio Status
+                  </p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">
+                    Ready for broadcast
+                  </p>
                 </div>
-                <button className="px-6 py-2 rounded-full border border-primary text-primary text-xs font-bold uppercase tracking-widest hover:bg-primary hover:text-black transition-all">
-                  Change Voice
+                <button className="px-8 py-3.5 bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm hover:bg-white/10 transition-all active:scale-95">
+                  Test Module
                 </button>
               </div>
             </section>
