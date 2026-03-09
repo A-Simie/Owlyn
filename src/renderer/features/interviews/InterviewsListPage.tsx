@@ -533,15 +533,12 @@ export default function InterviewsListPage() {
 
                   <div className="p-6 bg-white/[0.02] border border-white/5 rounded-xl space-y-6">
                     <div className="flex items-center gap-3 border-b border-white/5 pb-4">
-                      <span className="material-symbols-outlined text-primary">
-                        settings_pro
-                      </span>
                       <div>
                         <h4 className="text-sm font-bold text-white">
                           Question Generation
                         </h4>
                         <p className="text-[10px] text-slate-500 uppercase tracking-widest">
-                          Gemini 1.5 Flash Engine
+                          Owlyn
                         </p>
                       </div>
                     </div>
