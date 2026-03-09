@@ -112,7 +112,7 @@ Meet the engineers behind Owlyn:
 | Contributor              | GitHub Profile                                     |
 | :----------------------- | :------------------------------------------------- |
 | **Mosimiloluwa Adebisi** | [@A-Simie](https://github.com/A-Simie)             |
-| **Amina**                | [@akeem](https://github.com/Akeem1955) |
+| **Akeem**                | [@akeem](https://github.com/Akeem1955) |
 | **Rahmannugar**          | [@Rahmannugar](https://github.com/Rahmannugar)     |
 
 ## License
