@@ -36,6 +36,8 @@ export default function InterviewPage() {
   const [loading, setLoading] = useState(false);
   const [showSourcePicker, setShowSourcePicker] = useState(false);
   const [sources, setSources] = useState<any[]>([]);
+  const [isPractice, setIsPractice] = useState(false);
+  const [isTutor, setIsTutor] = useState(false);
 
   // Handlers
   const handleEndSession = useCallback(() => {
@@ -65,90 +67,86 @@ export default function InterviewPage() {
   useEffect(() => {
     const token = localStorage.getItem("owlyn_guest_token");
     const accessCode = localStorage.getItem("owlyn_access_code");
-    const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
+    const practiceMode = localStorage.getItem("owlyn_practice_mode") === "true";
+    const tutorMode = localStorage.getItem("owlyn_tutor_mode") === "true";
 
-    if (!isPractice && (!token || !accessCode)) {
+    setIsPractice(practiceMode);
+    setIsTutor(tutorMode);
+
+    if (tutorMode && window.owlyn?.desktop) {
+      window.owlyn.desktop.getSources().then(setSources);
+      setShowSourcePicker(true);
+    }
+
+    if (!practiceMode && !tutorMode && (!token || !accessCode)) {
       navigate("/lobby");
       return;
     }
 
     const timer = setInterval(tick, 1000);
 
-    let unsubConnect: (() => void) | undefined;
-    let unsubDisconnect: (() => void) | undefined;
-    let unsubMessage: (() => void) | undefined;
-    let unsubBlur: (() => void) | undefined;
+    const unsubConnect = wsService.onConnect(() => setIsConnected(true));
+    const unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
+    const unsubMessage = wsService.onMessage((msg) => {
+      if (msg.type === "transcript") {
+        addTranscript({
+          id: Date.now().toString(),
+          timestamp: msg.timestamp,
+          speaker: msg.speaker,
+          text: msg.text,
+        });
+        if (msg.speaker === "ai") setCurrentQuestion(msg.text);
+      }
+      if (msg.type === "inlineData") {
+        setIsAITalking(true);
+        audioPlaybackService.playBase64Chunk(msg.data);
+        setTimeout(() => setIsAITalking(false), 2000);
+      }
+      if (msg.type === "PROCTOR_WARNING") {
+        setProctorWarning(msg.message);
+        setTimeout(() => setProctorWarning(null), 5000);
+      }
+    });
+
+    const unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
+      if (!practiceMode && !tutorMode) {
+        setProctorWarning("Environment Breach: Window focus lost.");
+        wsService.sendAlert(
+          "ENVIRONMENT_BREACH",
+          "Candidate navigated away from the application window.",
+        );
+      }
+    });
 
     async function startSession() {
-      unsubConnect = wsService.onConnect(() => setIsConnected(true));
-      unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
-      unsubMessage = wsService.onMessage((msg) => {
-        if (msg.type === "transcript") {
-          addTranscript({
-            id: Date.now().toString(),
-            timestamp: msg.timestamp,
-            speaker: msg.speaker,
-            text: msg.text,
-          });
-          if (msg.speaker === "ai") setCurrentQuestion(msg.text);
-        }
-        if (msg.type === "inlineData") {
-          setIsAITalking(true);
-          audioPlaybackService.playBase64Chunk(msg.data);
-          setTimeout(() => setIsAITalking(false), 2000);
-        }
-        if (msg.type === "PROCTOR_WARNING") {
-          setProctorWarning(msg.message);
-          setTimeout(() => setProctorWarning(null), 5000);
-        }
-      });
-
-      unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
-        if (!isPractice) {
-          setProctorWarning("Environment Breach: Window focus lost.");
-          wsService.sendAlert(
-            "ENVIRONMENT_BREACH",
-            "Candidate navigated away from the application window.",
-          );
-        }
-      });
-
       try {
-        if (!isPractice) {
+        if (!practiceMode && !tutorMode) {
           await candidateApi.initiateLockdown(accessCode!, token!);
         }
       } catch (err) {
         console.warn("Lockdown init failed:", extractApiError(err));
       }
 
-      try {
-        const mode =
-          localStorage.getItem("owlyn_interview_mode") || "INTERVIEW";
-        if (mode === "TUTOR" && window.owlyn?.desktop) {
-          const fetchedSources = await window.owlyn.desktop.getSources();
-          setSources(fetchedSources);
-          setShowSourcePicker(true);
-        } else {
-          if (!cameraOn) await startCamera();
-          if (!micOn) await startMic();
-          wsService.connect(token || "PRACTICE");
-        }
-      } catch (err) {
-        console.error("Media/WSS connection error:", extractApiError(err));
-      }
+      if (!cameraOn) await startCamera();
+      if (!micOn) await startMic();
+      wsService.connect(token || "PRACTICE");
     }
 
-    startSession();
+    if (!tutorMode) {
+      startSession();
+    }
+
     return () => {
       clearInterval(timer);
-      unsubConnect?.();
-      unsubDisconnect?.();
-      unsubMessage?.();
+      unsubConnect();
+      unsubDisconnect();
+      unsubMessage();
       unsubBlur?.();
       wsService.disconnect();
       audioPlaybackService.stop();
+      stopAll();
     };
-  }, []);
+  }, [navigate, tick, addTranscript, setCurrentQuestion]);
 
   useEffect(() => {
     if (!cameraOn || !isConnected) return;

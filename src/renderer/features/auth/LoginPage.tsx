@@ -110,8 +110,18 @@ export default function LoginPage() {
     localStorage.removeItem("owlyn_guest_token");
     localStorage.removeItem("owlyn_access_code");
     localStorage.removeItem("owlyn_interview_title");
+    localStorage.removeItem("owlyn_tutor_mode");
     localStorage.setItem("owlyn_practice_mode", "true");
-    navigate("/hardware");
+    navigate("/calibration");
+  };
+
+  const handleTutorMode = () => {
+    localStorage.removeItem("owlyn_guest_token");
+    localStorage.removeItem("owlyn_access_code");
+    localStorage.removeItem("owlyn_interview_title");
+    localStorage.removeItem("owlyn_practice_mode");
+    localStorage.setItem("owlyn_tutor_mode", "true");
+    navigate("/calibration");
   };
 
   return (
@@ -189,41 +199,60 @@ export default function LoginPage() {
                 </h2>
               </div>
 
-              <div className="grid grid-cols-2 gap-8">
+              <div className="grid grid-cols-3 gap-6">
                 <div
                   onClick={() => setStep("interview-code")}
-                  className="group relative p-10 surface-card border border-white/5 rounded-[32px] hover:border-[#c59f59]/40 transition-all cursor-pointer text-center space-y-6"
+                  className="group relative p-8 surface-card border border-white/5 rounded-[32px] hover:border-primary/40 transition-all cursor-pointer text-center space-y-4"
                 >
-                  <div className="w-16 h-16 mx-auto flex items-center justify-center text-[#c59f59] border border-[#c59f59]/20 rounded-sm bg-[#c59f59]/5 group-hover:bg-[#c59f59] group-hover:text-black transition-all">
-                    <span className="material-symbols-outlined text-3xl">
+                  <div className="w-14 h-14 mx-auto flex items-center justify-center text-primary border border-primary/20 rounded-sm bg-primary/5 group-hover:bg-primary group-hover:text-black transition-all">
+                    <span className="material-symbols-outlined text-2xl">
                       pin
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-white uppercase tracking-wide">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold text-white uppercase tracking-wide">
                       Enter Code
                     </h3>
-                    <p className="text-slate-500 text-sm font-light leading-relaxed">
-                      Join a scheduled technical session.
+                    <p className="text-slate-500 text-[10px] font-light leading-relaxed">
+                      Join a scheduled session.
                     </p>
                   </div>
                 </div>
 
                 <div
                   onClick={handlePracticeMode}
-                  className="group relative p-10 surface-card border border-white/5 rounded-[32px] hover:border-green-500/40 transition-all cursor-pointer text-center space-y-6"
+                  className="group relative p-8 surface-card border border-white/5 rounded-[32px] hover:border-green-500/40 transition-all cursor-pointer text-center space-y-4"
                 >
-                  <div className="w-16 h-16 mx-auto flex items-center justify-center text-green-500 border border-green-500/20 rounded-sm bg-green-500/5 group-hover:bg-green-500 group-hover:text-black transition-all">
-                    <span className="material-symbols-outlined text-3xl">
+                  <div className="w-14 h-14 mx-auto flex items-center justify-center text-green-500 border border-green-500/20 rounded-sm bg-green-500/5 group-hover:bg-green-500 group-hover:text-black transition-all">
+                    <span className="material-symbols-outlined text-2xl">
                       science
                     </span>
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-xl font-bold text-white uppercase tracking-wide">
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold text-white uppercase tracking-wide">
                       Practice
                     </h3>
-                    <p className="text-slate-500 text-sm font-light leading-relaxed">
-                      Test your skills in a mock session.
+                    <p className="text-slate-500 text-[10px] font-light leading-relaxed">
+                      Test skills in mock session.
+                    </p>
+                  </div>
+                </div>
+
+                <div
+                  onClick={handleTutorMode}
+                  className="group relative p-8 surface-card border border-white/5 rounded-[32px] hover:border-blue-500/40 transition-all cursor-pointer text-center space-y-4"
+                >
+                  <div className="w-14 h-14 mx-auto flex items-center justify-center text-blue-500 border border-blue-500/20 rounded-sm bg-blue-500/5 group-hover:bg-blue-500 group-hover:text-black transition-all">
+                    <span className="material-symbols-outlined text-2xl">
+                      school
+                    </span>
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="text-base font-bold text-white uppercase tracking-wide">
+                      AI Tutor
+                    </h3>
+                    <p className="text-slate-500 text-[10px] font-light leading-relaxed">
+                      AI assistance while you code.
                     </p>
                   </div>
                 </div>
