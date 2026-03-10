@@ -10,6 +10,8 @@ export const PersonaSchema = z.object({
     tone: z.string(),
     domainExpertise: z.array(z.string()),
     hasKnowledgeBase: z.boolean(),
+    language: z.string().optional(),
+    isAdaptive: z.boolean().optional(),
 })
 
 export const CreatePersonaPayloadSchema = z.object({
@@ -20,6 +22,8 @@ export const CreatePersonaPayloadSchema = z.object({
     directnessScore: z.number().min(0).max(100),
     tone: z.string(),
     domainExpertise: z.array(z.string()),
+    language: z.string().default("English"),
+    isAdaptive: z.boolean().default(true),
 })
 
 export type Persona = z.infer<typeof PersonaSchema>

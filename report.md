@@ -64,6 +64,15 @@ While the **Environment Breach** (Window Blur) logic is implemented, the followi
 | **Authentication** | 100%   | Biometric Calibration & Identity Sync implemented.        |
 | **Streaming**      | 100%   | Whiteboard delta synchronization integrated.              |
 | **Proctoring**     | 90%    | Global OS-level shortcut trapping.                        |
-| **Admin Tools**    | 95%    | Active Intelligence status refined; redundant UI removed. |
+| **Admin Tools**    | 100%   | Interview Settings (Lang/Adaptive) implemented.           |
 | **Analytics**      | 60%    | Dynamic radar mapping & bulk report API verification.     |
 | **Multi-Mode**     | 100%   | TUTOR mode source selection modal implemented.            |
+
+---
+
+## 6. Recently Implemented: Persona Interview Settings
+
+- **Feature**: Language & Adaptive Mode Selection.
+- **Frontend**: Added a custom grid-styled selection interface in `AgentCustomizationPage.tsx`.
+- **Schema**: Updated `persona.schema.ts` to include `language` (default: "English") and `isAdaptive` (default: true) in the payload schema.
+- **Payload**: Successfully integrated these fields into the `handleSave` persona creation flow.

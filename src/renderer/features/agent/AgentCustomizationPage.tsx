@@ -36,6 +36,22 @@ const DOMAINS_LIST = [
   "System Design",
 ];
 
+const LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Italian",
+  "Portuguese",
+  "Dutch",
+  "Russian",
+  "Japanese",
+  "Korean",
+  "Chinese",
+  "Arabic",
+  "Hindi",
+];
+
 export default function AgentCustomizationPage() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
@@ -48,6 +64,8 @@ export default function AgentCustomizationPage() {
   const [voiceId, setVoiceId] = useState("Aries");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [contextFiles, setContextFiles] = useState<File[]>([]);
+  const [selectedLanguage, setSelectedLanguage] = useState("English");
+  const [isAdaptive, setIsAdaptive] = useState(true);
 
   const [sliders, setSliders] = useState({
     strictness: 75,
@@ -120,6 +138,8 @@ export default function AgentCustomizationPage() {
         directnessScore: 100 - sliders.collaborative,
         tone: selectedTone.toUpperCase(),
         domainExpertise: selectedDomains,
+        language: selectedLanguage,
+        isAdaptive,
       };
       const fd = new FormData();
       fd.append(
@@ -255,14 +275,56 @@ export default function AgentCustomizationPage() {
                     />
                   </div>
                   <div className="h-px w-12 bg-white/10 mx-auto" />
-                  <button className="mx-auto flex items-center gap-2 px-5 py-2.5 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 rounded-full transition-all group/play">
-                    <span className="material-symbols-outlined text-base text-primary group-hover/play:scale-125 transition-transform">
-                      graphic_eq
-                    </span>
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-body">
-                      Preview Voice
-                    </span>
-                  </button>
+
+                  <div className="w-full pt-2">
+                    <p className="text-[9px] text-primary font-black uppercase tracking-[0.3em] mb-3 text-center w-full">
+                      Persona Settings
+                    </p>
+
+                    <div className="grid grid-cols-2 gap-3 w-full">
+                      {/* Language Selection */}
+                      <div className="relative group/lang flex flex-col items-center justify-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-3 hover:bg-slate-200 dark:hover:bg-white/10 transition-all focus-within:border-primary/50">
+                        <span className="material-symbols-outlined text-[18px] text-primary/70 group-hover/lang:text-primary mb-1.5 transition-colors">
+                          translate
+                        </span>
+                        <select
+                          value={selectedLanguage}
+                          onChange={(e) => setSelectedLanguage(e.target.value)}
+                          className="w-full bg-transparent text-center text-[10px] font-black text-heading uppercase tracking-[0.15em] border-none focus:ring-0 p-0 cursor-pointer outline-none appearance-none z-10"
+                        >
+                          {LANGUAGES.map((lang) => (
+                            <option
+                              key={lang}
+                              value={lang}
+                              className="bg-white dark:bg-[#1a1a1a] text-slate-900 dark:text-slate-100 font-sans normal-case tracking-normal text-sm text-center"
+                            >
+                              {lang}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="text-[7px] text-subtle uppercase tracking-[0.2em] font-bold mt-1">
+                          Language
+                        </span>
+                      </div>
+
+                      {/* Adaptive Toggle */}
+                      <button
+                        onClick={() => setIsAdaptive(!isAdaptive)}
+                        className="relative group/adapt flex flex-col items-center justify-center bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-3 hover:bg-slate-200 dark:hover:bg-white/10 transition-all outline-none"
+                      >
+                        <span className={`material-symbols-outlined text-[18px] mb-1.5 transition-colors ${isAdaptive ? "text-primary" : "text-primary/30 group-hover/adapt:text-primary/70"}`}>
+                          psychology
+                        </span>
+                        <span className="text-[10px] font-black text-heading uppercase tracking-[0.15em]">
+                          {isAdaptive ? "TRUE" : "FALSE"}
+                        </span>
+                        <span className="text-[7px] text-subtle uppercase tracking-[0.2em] font-bold mt-1">
+                          Adaptive
+                        </span>
+                        <div className={`absolute inset-0 border rounded-2xl transition-colors pointer-events-none ${isAdaptive ? "border-primary/30" : "border-primary/0"}`} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
                 <div className="absolute -top-24 -right-24 size-48 bg-primary/5 rounded-full blur-3xl" />
                 <div className="absolute -bottom-24 -left-24 size-48 bg-primary/5 rounded-full blur-3xl" />
