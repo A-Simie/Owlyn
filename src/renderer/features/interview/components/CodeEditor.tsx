@@ -54,6 +54,7 @@ export default function CodeEditor({
         }
       },
       freeInlineCompletions: () => {},
+      disposeInlineCompletions: () => {},
     });
   };
 

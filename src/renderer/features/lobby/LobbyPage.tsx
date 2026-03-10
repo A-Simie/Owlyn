@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { candidateApi } from "@/api";
 
 export default function LobbyPage() {
   const navigate = useNavigate();
@@ -13,6 +14,11 @@ export default function LobbyPage() {
   });
 
   useEffect(() => {
+    // 8. Pre-Flight Health Check
+    candidateApi.healthCheck().catch((err) => {
+      console.error("Health check failed:", err);
+    });
+
     const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
     const title =
       localStorage.getItem("owlyn_interview_title") ||
@@ -29,10 +35,20 @@ export default function LobbyPage() {
     });
   }, []);
 
-  const handleStart = () => {
+  const handleStart = async () => {
     setIsStarting(true);
-    // Directly navigate to interview interface
-    navigate("/interview");
+    try {
+      if (!sessionInfo.isPractice) {
+        const token = localStorage.getItem("owlyn_guest_token");
+        const code = localStorage.getItem("owlyn_access_code");
+        // 10. Start Interview Lockdown
+        await candidateApi.initiateLockdown(code!, token!);
+      }
+      navigate("/interview");
+    } catch (err) {
+      console.error("Failed to start session:", err);
+      setIsStarting(false);
+    }
   };
 
   return (

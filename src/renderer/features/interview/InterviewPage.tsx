@@ -1,13 +1,22 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import {
+  LiveKitRoom,
+  useLocalParticipant,
+  useRoomContext,
+  VideoConference,
+  TrackReference,
+  VideoTrack,
+  useTracks,
+} from "@livekit/components-react";
+import { RoomEvent, DataPacket_Kind, Track } from "livekit-client";
+import "@livekit/components-styles";
+
 import { useSessionStore } from "@/stores/session.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
-import { wsService } from "@/services/ws.service";
-import { audioPlaybackService } from "@/services/playback.service";
 import { candidateApi } from "@/api";
-import { extractApiError } from "@/lib/api-error";
 
 // Components
 import CodeEditor from "./components/CodeEditor";
@@ -18,12 +27,37 @@ type Tab = "code" | "whiteboard" | "notes";
 
 export default function InterviewPage() {
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const livekitToken = localStorage.getItem("owlyn_livekit_token");
+  const livekitUrl = import.meta.env.VITE_LIVEKIT_URL;
+
+  if (!livekitToken) {
+    navigate("/lobby");
+    return null;
+  }
+
+  return (
+    <LiveKitRoom
+      serverUrl={livekitUrl}
+      token={livekitToken}
+      connect={true}
+      audio={true}
+      video={false} // We handle screen share manually or via component
+    >
+      <InterviewInterface />
+    </LiveKitRoom>
+  );
+}
+
+function InterviewInterface() {
+  const navigate = useNavigate();
   const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
   const { elapsedSeconds, tick } = useSessionStore();
   const { transcript, addTranscript, setCurrentQuestion } = useInterviewStore();
-  const { cameraOn, micOn, cameraStream, startCamera, startMic, stopAll } =
-    useMediaStore();
+  const { stopAll } = useMediaStore();
+  const room = useRoomContext();
+  const { localParticipant } = useLocalParticipant();
+  const tracks = useTracks([Track.Source.ScreenShare], { onlySubscribed: false });
+  const screenShareTrack = tracks.find((t) => t.participant.isLocal);
 
   // State
   const [activeTab, setActiveTab] = useState<Tab>("code");
@@ -31,22 +65,97 @@ export default function InterviewPage() {
   const [code, setCode] = useState(
     "// Solution implementation\nfunction solve() {\n\n}",
   );
-  const [isAITalking, setIsAITalking] = useState(false);
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showSourcePicker, setShowSourcePicker] = useState(false);
-  const [sources, setSources] = useState<any[]>([]);
-  const [isPractice, setIsPractice] = useState(false);
-  const [isTutor, setIsTutor] = useState(false);
+  const [isCopilotLoading, setIsCopilotLoading] = useState(false);
 
-  // Handlers
+  // 13. Listen for AI Commands (LiveKit Data Channels)
+  useEffect(() => {
+    if (!room) return;
+
+    const handleData = (payload: Uint8Array) => {
+      try {
+        const decoder = new TextDecoder();
+        const msg = JSON.parse(decoder.decode(payload));
+
+        if (msg.type === "transcript") {
+          addTranscript({
+            id: Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            speaker: msg.speaker,
+            text: msg.text,
+          });
+          if (msg.speaker === "ai") setCurrentQuestion(msg.text);
+        }
+
+        if (msg.type === "PROCTOR_WARNING") {
+          setProctorWarning(msg.message);
+          // Shake screen effect could be triggered here via a class
+          setTimeout(() => setProctorWarning(null), 5000);
+        }
+
+        if (msg.type === "TOOL_HIGHLIGHT") {
+          console.log("Highlighting line:", msg.line);
+          // Highlight logic...
+        }
+      } catch (err) {
+        console.warn("Failed to parse data message");
+      }
+    };
+
+    room.on(RoomEvent.DataReceived, handleData);
+    
+    if (room.state === "connected") setIsConnected(true);
+    
+    room.on(RoomEvent.Connected, () => setIsConnected(true));
+    room.on(RoomEvent.Disconnected, () => setIsConnected(false));
+
+    return () => {
+      room.off(RoomEvent.DataReceived, handleData);
+      room.off(RoomEvent.Connected, () => setIsConnected(true));
+      room.off(RoomEvent.Disconnected, () => setIsConnected(false));
+    };
+  }, [room, addTranscript, setCurrentQuestion]);
+
+  // Start Session Logic
+  useEffect(() => {
+    const timer = setInterval(tick, 1000);
+
+    // Initial Screen Share
+    const startSharing = async () => {
+      try {
+        if (localParticipant && !localParticipant.isScreenShareEnabled) {
+          await localParticipant.setScreenShareEnabled(true);
+        }
+      } catch (err) {
+        console.warn("Screen share failed");
+      }
+    };
+    startSharing();
+
+    return () => {
+      clearInterval(timer);
+      stopAll();
+    };
+  }, [tick, stopAll, localParticipant]);
+
   const handleEndSession = useCallback(() => {
-    wsService.disconnect();
-    audioPlaybackService.stop();
+    room?.disconnect();
     stopAll();
     candidateApi.releaseLockdown();
     navigate("/analysis");
-  }, [navigate, stopAll]);
+  }, [navigate, stopAll, room]);
+
+  const handleRunReview = async () => {
+    setLoading(true);
+    // 13. Sending UI Commands (LiveKit Data Channels)
+    if (room && localParticipant) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(JSON.stringify({ event: "RUN_CODE" }));
+      await localParticipant.publishData(data, { reliable: true });
+    }
+    setTimeout(() => setLoading(false), 1500);
+  };
 
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
@@ -54,128 +163,11 @@ export default function InterviewPage() {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  const isWarning = elapsedSeconds >= 40 * 60 && elapsedSeconds < 44 * 60; // 5 min warning if duration is 45
-  const isCritical = elapsedSeconds >= 44 * 60; // 1 min warning
-
-  const handleRunReview = async () => {
-    setLoading(true);
-    wsService.sendRunCode();
-    setTimeout(() => setLoading(false), 1500);
-  };
-
-  // Lifecycle
-  useEffect(() => {
-    const token = localStorage.getItem("owlyn_guest_token");
-    const accessCode = localStorage.getItem("owlyn_access_code");
-    const practiceMode = localStorage.getItem("owlyn_practice_mode") === "true";
-    const tutorMode = localStorage.getItem("owlyn_tutor_mode") === "true";
-
-    setIsPractice(practiceMode);
-    setIsTutor(tutorMode);
-
-    if (tutorMode && window.owlyn?.desktop) {
-      window.owlyn.desktop.getSources().then(setSources);
-      setShowSourcePicker(true);
-    }
-
-    if (!practiceMode && !tutorMode && (!token || !accessCode)) {
-      navigate("/lobby");
-      return;
-    }
-
-    const timer = setInterval(tick, 1000);
-
-    const unsubConnect = wsService.onConnect(() => setIsConnected(true));
-    const unsubDisconnect = wsService.onDisconnect(() => setIsConnected(false));
-    const unsubMessage = wsService.onMessage((msg) => {
-      if (msg.type === "transcript") {
-        addTranscript({
-          id: Date.now().toString(),
-          timestamp: msg.timestamp,
-          speaker: msg.speaker,
-          text: msg.text,
-        });
-        if (msg.speaker === "ai") setCurrentQuestion(msg.text);
-      }
-      if (msg.type === "inlineData") {
-        setIsAITalking(true);
-        audioPlaybackService.playBase64Chunk(msg.data);
-        setTimeout(() => setIsAITalking(false), 2000);
-      }
-      if (msg.type === "PROCTOR_WARNING") {
-        setProctorWarning(msg.message);
-        setTimeout(() => setProctorWarning(null), 5000);
-      }
-    });
-
-    // const unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
-    //   if (!practiceMode && !tutorMode) {
-    //     setProctorWarning("Environment Breach: Window focus lost.");
-    //     wsService.sendAlert(
-    //       "ENVIRONMENT_BREACH",
-    //       "Candidate navigated away from the application window.",
-    //     );
-    //   }
-    // });
-
-    async function startSession() {
-      try {
-        if (!practiceMode && !tutorMode) {
-          await candidateApi.initiateLockdown(accessCode!, token!);
-        }
-      } catch (err) {
-        console.warn("Lockdown init failed:", extractApiError(err));
-      }
-
-      if (!cameraOn) await startCamera();
-      if (!micOn) await startMic();
-      wsService.connect(token || "PRACTICE");
-    }
-
-    if (!tutorMode) {
-      startSession();
-    }
-
-    return () => {
-      clearInterval(timer);
-      unsubConnect();
-      unsubDisconnect();
-      unsubMessage();
-      // unsubBlur?.();
-      wsService.disconnect();
-      audioPlaybackService.stop();
-      stopAll();
-    };
-  }, [navigate, tick, addTranscript, setCurrentQuestion]);
-
-  useEffect(() => {
-    if (!cameraOn || !isConnected) return;
-    const sendFrame = () => {
-      if (!videoRef.current) return;
-      const canvas = document.createElement("canvas");
-      canvas.width = 320;
-      canvas.height = 240;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(videoRef.current, 0, 0, 320, 240);
-      const base64 = canvas.toDataURL("image/jpeg", 0.4).split(",")[1];
-      const notes = localStorage.getItem("owlyn_notes") || "";
-      const whiteboardData = whiteboardRef.current?.getData();
-      wsService.sendMedia(base64, undefined, code, notes, whiteboardData);
-    };
-    const interval = setInterval(sendFrame, 1000);
-    return () => clearInterval(interval);
-  }, [cameraOn, isConnected]);
-
-  useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = cameraStream;
-      if (cameraStream) videoRef.current.play().catch(() => {});
-    }
-  }, [cameraStream]);
+  const isWarning = elapsedSeconds >= 40 * 60 && elapsedSeconds < 44 * 60;
+  const isCritical = elapsedSeconds >= 44 * 60;
 
   return (
-    <div className="h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden">
+    <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-300 ${proctorWarning ? "ring-4 ring-inset ring-red-600 animate-pulse" : ""}`}>
       <AnimatePresence>
         {proctorWarning && (
           <motion.div
@@ -193,10 +185,7 @@ export default function InterviewPage() {
       <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 bg-[#0D0D0D] z-50">
         <div className="flex items-center gap-6">
           <div className="size-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <span
-              className="material-symbols-outlined text-primary text-2xl"
-              style={{ fontVariationSettings: "'FILL' 1" }}
-            >
+            <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               owl
             </span>
           </div>
@@ -218,14 +207,10 @@ export default function InterviewPage() {
 
         <div className="flex items-center gap-10">
           <div className="flex flex-col items-center">
-            <span
-              className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}
-            >
+            <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}>
               {isCritical ? "Critical" : isWarning ? "Remaining" : "Time"}
             </span>
-            <span
-              className={`text-xl font-mono ${isCritical ? "text-red-500" : isWarning ? "text-[#c59f59]" : "text-white"}`}
-            >
+            <span className={`text-xl font-mono ${isCritical ? "text-red-500" : isWarning ? "text-[#c59f59]" : "text-white"}`}>
               {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
             </span>
           </div>
@@ -260,7 +245,12 @@ export default function InterviewPage() {
               icon="description"
             />
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-3">
+              {isCopilotLoading && (
+                <span className="text-[10px] text-primary animate-pulse font-bold uppercase tracking-widest">
+                  Copilot thinking...
+                </span>
+              )}
               <button
                 onClick={handleRunReview}
                 disabled={loading}
@@ -318,28 +308,29 @@ export default function InterviewPage() {
           <div className="p-8 space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                <span>Webcam</span>
-                <span className="text-green-500/50">Live</span>
+                <span>Display Share</span>
+                <span className="text-primary/50 animate-pulse">Monitoring Active</span>
               </div>
-              <div className="relative aspect-video rounded-sm overflow-hidden border border-white/5 bg-black shadow-2xl">
-                <video
-                  ref={videoRef}
-                  className="w-full h-full object-cover scale-x-[-1]"
-                  muted
-                  playsInline
-                />
+              <div className="relative aspect-video rounded-sm overflow-hidden border border-white/5 bg-black shadow-2xl flex items-center justify-center">
+                 {screenShareTrack ? (
+                   <VideoTrack trackRef={screenShareTrack} className="w-full h-full object-cover" />
+                 ) : (
+                   <span className="material-symbols-outlined text-4xl text-white/10">desktop_windows</span>
+                 )}
+                 <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                    <div className="size-2 rounded-full bg-primary animate-pulse" />
+                    <span className="text-[8px] font-bold text-primary uppercase tracking-widest">Secure Stream</span>
+                 </div>
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                <span>AI Status</span>
+                <span>AI Agent</span>
               </div>
               <div className="bg-white/[0.02] border border-white/5 rounded-sm p-6 flex items-center justify-center">
                 <p className="text-[10px] text-slate-500 tracking-wide font-medium text-center">
-                  {isAITalking
-                    ? "Processing audio output..."
-                    : "Awaiting input"}
+                  LiveKit Engine Active
                 </p>
               </div>
             </div>
@@ -379,62 +370,6 @@ export default function InterviewPage() {
           </div>
         </div>
       </div>
-
-      {showSourcePicker && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/90 backdrop-blur-xl">
-          <div className="bg-[#0D0D0D] border border-primary/20 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col">
-            <div className="p-8 border-b border-white/5 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white uppercase tracking-tight">
-                  Tutor Mode: Select Workspace
-                </h2>
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">
-                  Agent will view this screen to provide real-time guidance
-                </p>
-              </div>
-            </div>
-            <div className="p-8 grid grid-cols-2 gap-4 max-h-[50vh] overflow-y-auto custom-scrollbar">
-              {sources.map((source) => (
-                <button
-                  key={source.id}
-                  onClick={async () => {
-                    await useMediaStore.getState().startScreenShare(source.id);
-                    await startMic();
-                    const token = localStorage.getItem("owlyn_guest_token");
-                    wsService.connect(token || "PRACTICE");
-                    setShowSourcePicker(false);
-                  }}
-                  className="group relative aspect-video bg-black/40 border border-white/5 rounded-xl overflow-hidden hover:border-primary/40 transition-all text-left"
-                >
-                  <img
-                    src={source.thumbnail}
-                    className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex items-bottom p-4">
-                    <span className="mt-auto text-[10px] font-bold text-white uppercase truncate">
-                      {source.name}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-            <div className="p-6 border-t border-white/5 bg-white/[0.02]">
-              <button
-                onClick={async () => {
-                  if (!cameraOn) await startCamera();
-                  await startMic();
-                  const token = localStorage.getItem("owlyn_guest_token");
-                  wsService.connect(token || "PRACTICE");
-                  setShowSourcePicker(false);
-                }}
-                className="w-full py-4 bg-white/5 border border-white/10 text-slate-400 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-white/10 transition-all"
-              >
-                Skip Screen Sharing (Use Camera Only)
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

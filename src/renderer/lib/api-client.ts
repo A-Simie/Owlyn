@@ -35,7 +35,7 @@ function createApiClient(): AxiosInstance {
 
     client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
-            const token = authStoreGetTokenFn?.()
+            const token = authStoreGetTokenFn?.() || localStorage.getItem('owlyn_guest_token')
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`
             }

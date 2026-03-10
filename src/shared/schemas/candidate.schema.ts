@@ -24,6 +24,7 @@ export const ValidateCodePayloadSchema = z.object({
 
 export const ValidateCodeResponseSchema = z.object({
     token: z.string(),
+    livekitToken: z.string(),
     interviewId: z.string(),
     title: z.string(),
     durationMinutes: z.number(),

@@ -93,6 +93,7 @@ export default function LoginPage() {
     try {
       const res = await candidateApi.validateCode({ code });
       localStorage.setItem("owlyn_guest_token", res.token);
+      localStorage.setItem("owlyn_livekit_token", res.livekitToken);
       localStorage.setItem("owlyn_interview_id", res.interviewId);
       localStorage.setItem("owlyn_access_code", code);
       localStorage.setItem("owlyn_interview_title", res.title);
