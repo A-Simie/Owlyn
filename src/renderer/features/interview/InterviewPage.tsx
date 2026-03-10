@@ -108,15 +108,15 @@ export default function InterviewPage() {
       }
     });
 
-    const unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
-      if (!practiceMode && !tutorMode) {
-        setProctorWarning("Environment Breach: Window focus lost.");
-        wsService.sendAlert(
-          "ENVIRONMENT_BREACH",
-          "Candidate navigated away from the application window.",
-        );
-      }
-    });
+    // const unsubBlur = window.owlyn?.lockdown?.onBlur(() => {
+    //   if (!practiceMode && !tutorMode) {
+    //     setProctorWarning("Environment Breach: Window focus lost.");
+    //     wsService.sendAlert(
+    //       "ENVIRONMENT_BREACH",
+    //       "Candidate navigated away from the application window.",
+    //     );
+    //   }
+    // });
 
     async function startSession() {
       try {
@@ -141,7 +141,7 @@ export default function InterviewPage() {
       unsubConnect();
       unsubDisconnect();
       unsubMessage();
-      unsubBlur?.();
+      // unsubBlur?.();
       wsService.disconnect();
       audioPlaybackService.stop();
       stopAll();
