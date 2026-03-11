@@ -78,6 +78,20 @@ While the **Environment Breach** (Window Blur) logic is implemented, the followi
     - Corrected dropdown alignment and positioning.
     - Standardized button states (Yes/No) to use the primary yellow accent when active for better UX clarity.
 - **Schema**: Updated `persona.schema.ts` to include `language` and `isAdaptive` in the creation payload.
+- **Request Body (JSON)**:
+```json
+{
+  "name": "Senior Technical Interviewer",
+  "roleTitle": "Software Engineer",
+  "empathyScore": 85,
+  "analyticalDepth": 90,
+  "directnessScore": 70,
+  "tone": "Professional",
+  "domainExpertise": ["Java", "System Design"],
+  "language": "English",
+  "isAdaptive": true
+}
+```
 
 ---
 
