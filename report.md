@@ -73,6 +73,22 @@ While the **Environment Breach** (Window Blur) logic is implemented, the followi
 ## 6. Recently Implemented: Persona Interview Settings
 
 - **Feature**: Language & Adaptive Mode Selection.
-- **Frontend**: Added a custom grid-styled selection interface in `AgentCustomizationPage.tsx`.
-- **Schema**: Updated `persona.schema.ts` to include `language` (default: "English") and `isAdaptive` (default: true) in the payload schema.
-- **Payload**: Successfully integrated these fields into the `handleSave` persona creation flow.
+- **Frontend**: Implemented a responsive grid-styled selection interface in `AgentCustomizationPage.tsx`.
+- **UI Polish**: 
+    - Corrected dropdown alignment and positioning.
+    - Standardized button states (Yes/No) to use the primary yellow accent when active for better UX clarity.
+- **Schema**: Updated `persona.schema.ts` to include `language` and `isAdaptive` in the creation payload.
+
+---
+
+## 7. Infrastructure Upgrade: LiveKit Transition
+
+- **Status**: **COMPLETE**
+- **Migration**: Replaced legacy WebSocket (`ws.service.ts`) with **LiveKit (WebRTC)**.
+- **Key Enhancements**:
+    - **Native Media**: Automatic publishing of high-quality microphone and screen-share tracks.
+    - **Data Channels**: Use of LiveKit's reliable data packets for `RUN_CODE` and `PROCTOR_WARNING` events.
+    - **Stability Fixes**:
+        - Resolved **403 Forbidden** errors by implementing guest-token detection in the API interceptor.
+        - Fixed **Monaco Editor crashes** (`disposeInlineCompletions` error) by satisfying the provider interface.
+        - Simplified AI Copilot to a clean HTTP-based debounced engine.
