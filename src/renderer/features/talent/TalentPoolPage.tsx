@@ -11,14 +11,19 @@ export default function TalentPoolPage() {
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [minScore, setMinScore] = useState(85);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [topPerformer, setTopPerformer] = useState<Report | null>(null);
 
   const circumference = 2 * Math.PI * 18;
 
   useEffect(() => {
     const fetchReports = async () => {
       try {
-        const data = await reportsApi.getAllReports();
-        setReports(data || []);
+        const [reportsData, topData] = await Promise.all([
+          reportsApi.getAllReports(),
+          reportsApi.getTopPerformer().catch(() => null)
+        ]);
+        setReports(reportsData || []);
+        setTopPerformer(topData);
       } catch (err) {
         console.error("Failed to fetch reports:", err);
       } finally {
@@ -33,16 +38,25 @@ export default function TalentPoolPage() {
       id: r.interviewId,
       name: r.candidateName || r.candidateEmail || "Anonymous",
       score: r.score || 0,
-      status: (r.score || 0) > 85 ? "HIGHLY RECOMMENDED" : "Under Review",
+      status: r.finalDecision === "PENDING"
+        ? (r.score || 0) > 85
+          ? "HIGHLY RECOMMENDED"
+          : "Under Review"
+        : r.finalDecision,
       statusColor:
-        (r.score || 0) > 85
+        r.finalDecision === "HIRE" ||
+        (r.finalDecision === "PENDING" && (r.score || 0) > 85)
           ? "bg-primary/10 text-primary border-primary/20"
-          : "bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20",
+          : r.finalDecision === "DECLINE"
+            ? "bg-red-500/10 text-red-500 border-red-500/20"
+            : "bg-slate-100 dark:bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-500/20",
       date: "Recent Session",
       online: false,
-      borderPrimary: (r.score || 0) > 85,
+      isTop: topPerformer?.interviewId === r.interviewId,
+      borderPrimary:
+        (r.score || 0) > 85 || topPerformer?.interviewId === r.interviewId,
     }));
-  }, [reports]);
+  }, [reports, topPerformer]);
 
   const filteredCandidates = useMemo(() => {
     return candidates.filter((c) => {
@@ -57,9 +71,13 @@ export default function TalentPoolPage() {
   }, [candidates, searchQuery, roleFilter, minScore, statusFilter]);
 
   const spotlightCandidate = useMemo(() => {
-    if (candidates.length === 0) return null;
-    return [...candidates].sort((a, b) => b.score - a.score)[0];
-  }, [candidates]);
+    if (!topPerformer) return null;
+    return {
+      id: topPerformer.interviewId,
+      name: topPerformer.candidateName || topPerformer.candidateEmail || "Elite Candidate",
+      score: topPerformer.score || 0,
+    };
+  }, [topPerformer]);
 
   const handleDelete = (id: string) => {
     if (confirm("Are you sure you want to remove this candidate?")) {
@@ -84,7 +102,7 @@ export default function TalentPoolPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
           <p className="text-xs font-bold text-primary uppercase tracking-[0.3em] animate-pulse">
-            Loading evaluation data...
+            Loading dashboard...
           </p>
         </div>
       </div>
@@ -95,18 +113,16 @@ export default function TalentPoolPage() {
     <div className="text-slate-900 dark:text-slate-100 h-full overflow-hidden flex flex-col">
       <main className="flex-1 flex overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-72 border-r divider surface-alt flex flex-col p-6 overflow-y-auto">
+        <aside className="w-48 border-r divider surface-alt flex flex-col p-6 overflow-y-auto">
           <div className="space-y-4 mb-10">
             {[
               {
                 label: "Evaluations Total",
                 value: candidates.length,
-                change: "Lifetime",
               },
               {
                 label: "High Potential",
                 value: candidates.filter((c) => c.score >= 85).length,
-                change: "Top Tier",
               },
               {
                 label: "Average Score",
@@ -116,7 +132,6 @@ export default function TalentPoolPage() {
                       candidates.length
                     ).toFixed(1) + "%"
                   : "0%",
-                change: "Aggregate",
               },
             ].map((stat) => (
               <div
@@ -130,9 +145,6 @@ export default function TalentPoolPage() {
                   <h3 className="text-2xl font-bold text-heading">
                     {stat.value}
                   </h3>
-                  <span className="text-xs text-green-500 mb-1">
-                    {stat.change}
-                  </span>
                 </div>
               </div>
             ))}
@@ -301,13 +313,18 @@ export default function TalentPoolPage() {
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-4">
                               <div className="relative">
-                                <div
-                                  className={`w-10 h-10 rounded-full ${c.borderPrimary ? "border-2 border-primary" : "border border-slate-200 dark:border-primary/20"} bg-primary/10 flex items-center justify-center`}
-                                >
-                                  <span className="material-symbols-outlined text-primary text-sm">
-                                    person
-                                  </span>
-                                </div>
+                                  <div
+                                    className={`w-10 h-10 rounded-full ${c.borderPrimary ? "border-2 border-primary" : "border border-slate-200 dark:border-primary/20"} bg-primary/10 flex items-center justify-center relative`}
+                                  >
+                                    <span className="material-symbols-outlined text-primary text-sm">
+                                      {c.isTop ? "workspace_premium" : "person"}
+                                    </span>
+                                    {c.isTop && (
+                                      <div className="absolute -top-1 -right-1 size-4 bg-primary text-black rounded-full flex items-center justify-center text-[8px] font-black border-2 border-[#0B0B0B]">
+                                        1
+                                      </div>
+                                    )}
+                                  </div>
                                 {c.online && (
                                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white dark:border-obsidian rounded-full" />
                                 )}
@@ -396,7 +413,77 @@ export default function TalentPoolPage() {
           </div>
         </section>
 
+        {/* Right Sidebar */}
+        <aside className="w-80 border-l divider surface-alt flex flex-col overflow-hidden">
+          <div className="p-6 border-b divider">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4">
+              Talent Spotlight
+            </h4>
+            {spotlightCandidate ? (
+              <div
+                onClick={() => navigate(`/analysis/${spotlightCandidate.id}`)}
+                className="relative group cursor-pointer overflow-hidden rounded-xl surface-elevated h-32 flex items-center justify-center border border-primary/10 hover:border-primary/40 transition-all"
+              >
+                <div className="absolute inset-0 bg-primary/5 group-hover:bg-primary/10 transition-colors" />
+                <span className="material-symbols-outlined text-primary/20 text-6xl group-hover:scale-110 transition-transform duration-500">
+                  person
+                </span>
+                <div className="absolute inset-0 bg-gradient-to-t from-black dark:from-background-dark to-transparent opacity-80" />
+                <div className="absolute bottom-3 left-3">
+                  <p className="text-xs font-bold text-white mb-0.5">
+                    {spotlightCandidate.name}
+                  </p>
+                  <p className="text-[10px] text-primary uppercase tracking-tighter">
+                    Top Performer
+                  </p>
+                </div>
+                <div className="absolute top-3 right-3 bg-primary text-black px-2 py-0.5 rounded-lg font-bold text-[10px] shadow-lg">
+                  {spotlightCandidate.score} AI Rank
+                </div>
+              </div>
+            ) : (
+              <div className="h-32 flex flex-col items-center justify-center border border-dashed border-primary/10 rounded-xl bg-primary/[0.02]">
+                <span className="material-symbols-outlined text-primary/20 text-3xl mb-2">
+                  analytics
+                </span>
+                <p className="text-[10px] text-subtle uppercase tracking-widest">
+                  No Spotlight Available
+                </p>
+              </div>
+            )}
+          </div>
 
+          <div className="flex-1 p-6 overflow-y-auto">
+            <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary mb-6">
+              Real-time Evaluations
+            </h4>
+            <div className="space-y-6">
+              {reports.slice(0, 3).map((report, i) => (
+                <div key={report.reportId} className="flex gap-4 relative">
+                  {i < Math.min(reports.length, 3) - 1 && (
+                    <div className="absolute left-[7px] top-6 bottom-[-24px] w-[1px] bg-primary/20" />
+                  )}
+                  <div className="w-4 h-4 rounded-full flex-shrink-0 mt-1 bg-primary ring-4 ring-primary/10" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold text-heading">
+                      Report Generated
+                    </p>
+                    <p className="text-[10px] text-subtle leading-relaxed">
+                      AI Assessment complete for{" "}
+                      {report.candidateName || report.candidateEmail}. Overall
+                      score: {report.score}%.
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {reports.length === 0 && (
+                <p className="text-[10px] text-subtle italic">
+                  No recent activity detected.
+                </p>
+              )}
+            </div>
+          </div>
+        </aside>
       </main>
     </div>
   );

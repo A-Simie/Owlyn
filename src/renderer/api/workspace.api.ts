@@ -7,8 +7,14 @@ export const workspaceApi = {
         return data
     },
 
-    updateWorkspace: async (payload: Partial<Pick<Workspace, 'name' | 'logoUrl'>>) => {
-        const { data } = await apiClient.put<Workspace>('/api/workspace', payload)
+    updateWorkspace: async (payload: { name?: string; logo?: File }) => {
+        const formData = new FormData()
+        if (payload.name) formData.append('name', payload.name)
+        if (payload.logo) formData.append('logo', payload.logo)
+
+        const { data } = await apiClient.put<Workspace>('/api/workspace', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+        })
         return data
     },
 

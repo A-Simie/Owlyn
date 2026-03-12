@@ -11,7 +11,7 @@ export default function AnalysisPage() {
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [decision, setDecision] = useState<"HIRE" | "DECLINE" | null>(null);
+  const [decision, setDecision] = useState<"HIRE" | "DECLINE" | "PENDING" | null>(null);
   const [notes, setNotes] = useState("");
   const [isFinalizing, setIsFinalizing] = useState(false);
 
@@ -22,7 +22,7 @@ export default function AnalysisPage() {
       try {
         const data = await reportsApi.getReport(interviewId);
         setReport(data);
-        if (data.decision) setDecision(data.decision);
+        if (data.finalDecision) setDecision(data.finalDecision);
         if (data.humanFeedback) setNotes(data.humanFeedback);
         setError(null);
         setLoading(false);
@@ -165,7 +165,7 @@ export default function AnalysisPage() {
                       Flag Information:
                     </p>
                     <p className="text-[11px] text-red-200/50 font-light leading-relaxed">
-                      {report.behaviorFlags?.details}
+                      Multiple behavioral anomalies detected including eye-tracking deviations or unauthorized browser activity.
                     </p>
                   </div>
                 )}

@@ -8,6 +8,7 @@ interface CandidateState {
     accessCode: string | null
     interviewTitle: string | null
     candidateName: string | null
+    personaName: string | null
     isPracticeMode: boolean
     hydrated: boolean
     
@@ -18,6 +19,7 @@ interface CandidateState {
         accessCode: string
         title: string
         candidateName?: string
+        personaName?: string
     }) => void
     setPracticeMode: (enabled: boolean) => void
     clearSession: () => void
@@ -31,6 +33,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
     accessCode: null,
     interviewTitle: null,
     candidateName: null,
+    personaName: null,
     isPracticeMode: false,
     hydrated: false,
 
@@ -42,6 +45,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             accessCode: params.accessCode,
             interviewTitle: params.title,
             candidateName: params.candidateName || null,
+            personaName: params.personaName || null,
             isPracticeMode: false
         })
         // Save sensitive token securely
@@ -69,6 +73,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             accessCode: null,
             interviewTitle: null,
             candidateName: null,
+            personaName: null,
             isPracticeMode: false
         })
         try {

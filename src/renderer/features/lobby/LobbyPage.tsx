@@ -64,10 +64,10 @@ export default function LobbyPage() {
             </div>
             <div className="space-y-3 border-l border-white/5 pl-10">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                Duration
+                Interviewer
               </p>
               <p className="text-lg font-bold text-primary uppercase tracking-tight">
-                {isPracticeMode ? "No Limit" : "45 Minutes"}
+                {isPracticeMode ? "AI Tutor" : (useCandidateStore.getState().personaName || "Owlyn 4")}
               </p>
             </div>
           </div>

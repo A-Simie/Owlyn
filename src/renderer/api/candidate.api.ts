@@ -50,4 +50,14 @@ export const candidateApi = {
     );
     return data;
   },
+  
+  startPracticeSession: async (payload: { topic: string; difficulty: string; durationMinutes: number }) => {
+    const { data } = await apiClient.post<any>("/api/public/sessions/practice", payload);
+    return data;
+  },
+
+  startTutorSession: async () => {
+    const { data } = await apiClient.post<any>("/api/public/sessions/tutor");
+    return data;
+  },
 };

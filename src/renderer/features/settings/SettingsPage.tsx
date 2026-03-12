@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useMediaStore } from "@/stores/media.store";
 import { useAuthStore } from "@/stores/auth.store";
@@ -24,7 +24,12 @@ export default function SettingsPage() {
   const [isInviting, setIsInviting] = useState(false);
   const [tempPasswordMsg, setTempPasswordMsg] = useState<string | null>(null);
   const [wsLoading, setWsLoading] = useState(false);
+  const [wsUpdating, setWsUpdating] = useState(false);
   const [wsError, setWsError] = useState<string | null>(null);
+  const [wsName, setWsName] = useState("");
+  const [wsLogoFile, setWsLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const {
     autoRecordConsent,
     dataRetention,
@@ -56,6 +61,13 @@ export default function SettingsPage() {
   useEffect(() => {
     fetchWorkspaceData();
   }, [fetchWorkspaceData]);
+
+  useEffect(() => {
+    if (workspace) {
+      setWsName(workspace.name);
+      setLogoPreview(workspace.logoUrl || null);
+    }
+  }, [workspace]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,15 +109,46 @@ export default function SettingsPage() {
     }
   }, [tempPasswordMsg]);
 
-  const handleUpdateWorkspace = async (
-    updates: Partial<Pick<Workspace, "name" | "logoUrl">>,
-  ) => {
+  const handleUpdateWorkspace = async () => {
+    setWsUpdating(true);
     try {
-      const updated = await workspaceApi.updateWorkspace(updates);
+      const updated = await workspaceApi.updateWorkspace({
+        name: wsName,
+        logo: wsLogoFile || undefined,
+      });
       setWorkspace(updated);
+      setWsLogoFile(null);
+      alert("Workspace updated successfully!");
     } catch (error) {
       alert(extractApiError(error).message);
+    } finally {
+      setWsUpdating(false);
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 7 * 1024 * 1024) {
+        alert("File size must be less than 7MB");
+        return;
+      }
+      setWsLogoFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
   };
 
   const Toggle = ({
@@ -136,50 +179,79 @@ export default function SettingsPage() {
           </h2>
           <div className="space-y-6">
             {/* Profile */}
-            <div className="bg-[#0d0d0d] border border-primary/15 rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4">
+            <div className="bg-[#0d0d0d] border border-primary/15 rounded-xl p-6 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-4">
+                <button
+                  onClick={handleUpdateWorkspace}
+                  disabled={wsUpdating || (wsName === workspace?.name && !wsLogoFile)}
+                  className="px-6 py-2 bg-primary text-black font-black text-[10px] uppercase tracking-widest rounded-lg hover:brightness-110 disabled:opacity-20 transition-all flex items-center gap-2"
+                >
+                  {wsUpdating ? (
+                    <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  ) : (
+                    <span className="material-symbols-outlined text-sm">save</span>
+                  )}
+                  Save Changes
+                </button>
+              </div>
+
+              <h3 className="text-sm font-semibold text-white mb-6">
                 Workspace Profile
               </h3>
-              <div className="flex gap-6 items-center">
-                <div className="size-20 rounded-lg bg-primary/5 border border-primary/20 flex items-center justify-center overflow-hidden shrink-0">
-                  {workspace?.logoUrl ? (
-                    <img
-                      src={workspace.logoUrl}
-                      alt="Logo"
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <span className="material-symbols-outlined text-primary/40 text-4xl">
-                      image
-                    </span>
-                  )}
+              
+              <div className="flex gap-8 items-start">
+                <div className="flex flex-col items-center gap-3">
+                  <div 
+                    className="size-24 rounded-2xl bg-white/5 border border-primary/10 flex items-center justify-center overflow-hidden shrink-0 shadow-2xl relative group"
+                  >
+                    {logoPreview ? (
+                      <img
+                        src={logoPreview}
+                        alt="Logo"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-3xl font-black text-primary tracking-tighter">
+                        {wsName ? getInitials(wsName) : "OW"}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 text-[9px] font-black text-primary uppercase tracking-[0.2em] hover:text-white transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">upload</span>
+                    Change Logo
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
                 </div>
-                <div className="flex-1 space-y-4">
-                  <div>
-                    <label className="block text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-1">
+
+                <div className="flex-1 space-y-6 pt-1">
+                  <div className="max-w-md">
+                    <label className="block text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] mb-2 ml-1">
                       Workspace Name
                     </label>
                     <input
                       type="text"
-                      defaultValue={workspace?.name}
-                      onBlur={(e) =>
-                        handleUpdateWorkspace({ name: e.target.value })
-                      }
-                      className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-2 px-4 focus:ring-primary focus:border-primary"
+                      value={wsName}
+                      onChange={(e) => setWsName(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/5 rounded-xl text-white text-sm py-3 px-4 focus:border-primary/40 outline-none transition-all placeholder:text-white/10"
+                      placeholder="Enter company name"
                     />
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-primary uppercase tracking-widest mb-1.5 ml-1">
-                      Logo URL
-                    </label>
-                    <input
-                      type="text"
-                      defaultValue={workspace?.logoUrl}
-                      onBlur={(e) =>
-                        handleUpdateWorkspace({ logoUrl: e.target.value })
-                      }
-                      className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-2 px-4 focus:ring-primary focus:border-primary"
-                    />
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="px-3 py-1 bg-white/[0.02] border border-white/5 rounded-full">
+                       <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-loose">
+                         LOGO UPLOAD <span className="text-slate-700 mx-1">/</span> MAX 7MB
+                       </p>
+                    </div>
                   </div>
                 </div>
               </div>

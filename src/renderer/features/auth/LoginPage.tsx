@@ -99,7 +99,8 @@ export default function LoginPage() {
         interviewId: res.interviewId,
         accessCode: code,
         title: res.title,
-        candidateName: res.candidateName
+        candidateName: res.candidateName,
+        personaName: res.personaName
       });
       setValidationSuccess(true);
       setTimeout(() => navigate("/calibration"), 1000);

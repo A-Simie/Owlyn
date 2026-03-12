@@ -37,6 +37,13 @@ export const interviewsApi = {
     return data;
   },
 
+  getMonitorToken: async (id: string) => {
+    const { data } = await apiClient.get<{ livekitToken: string }>(
+      `/api/interviews/${id}/monitor-token`,
+    );
+    return data;
+  },
+
   finalizeReport: async (
     id: string,
     payload: { decision: "HIRE" | "DECLINE"; notes: string },
