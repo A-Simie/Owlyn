@@ -1,6 +1,4 @@
-# 🦉 OWLYN SYSTEM: GRANULAR INTEGRATION SPEC
-
-This is the definitive technical handshake. No fluff, just exact keys, types, and multipart structures.
+# Backend guide for Owlyn
 
 ### 1. Workspace Profile Updates
 Used for company branding.
@@ -15,9 +13,8 @@ Used for company branding.
 
 ---
 
-### 2. AI Persona Management
-Granular split between persona configuration (JSON) and training data (File).
-- **ENDPOINT**: `POST /api/personas` or `PUT /api/personas/{id}`
+### 2. AI Persona update
+- **ENDPOINT**: `PUT /api/personas/{id}`
 - **CONTENT-TYPE**: `multipart/form-data`
 - **PAYLOAD DETAILS**:
   - `persona`: `Blob/String` (Required) - A JSON string with the following exact keys:
@@ -43,6 +40,7 @@ Granular split between persona configuration (JSON) and training data (File).
 {
   "title": "string",
   "candidateName": "string",
+  "candidateEmail": "string",
   "personaId": "uuid",
   "durationMinutes": 45,
   "toolsEnabled": {
@@ -75,7 +73,28 @@ Granular split between persona configuration (JSON) and training data (File).
 
 ---
 
-### 4. Real-time LiveKit Data Channels
+### 4. B2C & Practice Sessions
+Standalone endpoints for public/guest access.
+- **GET /api/health**: Verified as the heartbeat endpoint for network RTT diagnostics.
+- **POST /api/public/sessions/practice**:
+  - **PAYLOAD**: `{"topic": "...", "difficulty": "...", "durationMinutes": 45}`
+  - **RESPONSE**: Same signature as Candidate Validation (JWT + LiveKit Token).
+- **POST /api/public/sessions/tutor**:
+  - **PAYLOAD**: Empty.
+  - **RESPONSE**: Same signature as Candidate Validation.
+  - **UI FLAG**: `isTutorMode` should trigger the Electron widget/compact view.
+
+---
+
+### 5. Analytics & Top Performer
+Consolidated dashboard intelligence.
+- **ENDPOINT**: `GET /api/reports/top`
+- **SCOPE**: Workspace-wide.
+- **BEHAVIOR**: Returns the single highest AI-ranked report across all successfully completed interviews. Each report object MUST include `candidateName` and `candidateEmail`. Should be displayed exclusively on the `TalentPoolPage`.
+
+---
+
+### 6. Real-time LiveKit Data Channels
 Exact JSON packets for the Python Data Plane -> Electron UI.
 - **Proctoring**: `{"type": "PROCTOR_WARNING", "message": "Look at the camera"}`
 - **Monaco Interaction**: `{"type": "TOOL_HIGHLIGHT", "line": 42}`

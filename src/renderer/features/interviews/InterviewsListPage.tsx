@@ -56,6 +56,7 @@ export default function InterviewsListPage() {
     questionCount: 5,
     personaId: "",
     candidateName: "",
+    candidateEmail: "",
     durationMinutes: 45,
     toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
   });
@@ -141,7 +142,8 @@ export default function InterviewsListPage() {
         personaId: newInterview.personaId || undefined,
         generatedQuestions: draftedQuestions || undefined,
         aiInstructions: newInterview.instructions || undefined,
-        candidateName: newInterview.candidateName || undefined,
+        candidateName: newInterview.candidateName,
+        candidateEmail: newInterview.candidateEmail,
       });
       setCreatedAccessCode(res.accessCode);
       setShowCreateModal(false);
@@ -152,6 +154,7 @@ export default function InterviewsListPage() {
         questionCount: 5,
         personaId: "",
         candidateName: "",
+        candidateEmail: "",
         durationMinutes: 45,
         toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
       });
@@ -410,22 +413,41 @@ export default function InterviewsListPage() {
               {createStep === "info" ? (
                 <>
                   <div className="space-y-4 mb-6">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
-                        Candidate Name
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="e.g. John Doe"
-                        value={newInterview.candidateName}
-                        onChange={(e) =>
-                          setNewInterview({
-                            ...newInterview,
-                            candidateName: e.target.value,
-                          })
-                        }
-                        className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary"
-                      />
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
+                          Candidate Name
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. John Doe"
+                          value={newInterview.candidateName}
+                          onChange={(e) =>
+                            setNewInterview({
+                              ...newInterview,
+                              candidateName: e.target.value,
+                            })
+                          }
+                          className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
+                          Candidate Email
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="e.g. john@example.com"
+                          value={newInterview.candidateEmail}
+                          onChange={(e) =>
+                            setNewInterview({
+                              ...newInterview,
+                              candidateEmail: e.target.value,
+                            })
+                          }
+                          className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary"
+                        />
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-2 gap-6">
@@ -626,7 +648,12 @@ export default function InterviewsListPage() {
               {createStep === "info" ? (
                 <button
                   onClick={handleGenerateQuestions}
-                  disabled={isGenerating || !newInterview.title}
+                  disabled={
+                    isGenerating || 
+                    !newInterview.title || 
+                    !newInterview.candidateName || 
+                    !newInterview.candidateEmail
+                  }
                   className="flex-1 py-4 bg-primary text-black font-bold uppercase tracking-[0.2em] rounded-lg hover:brightness-110 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-xl shadow-primary/10"
                 >
                   {isGenerating ? (

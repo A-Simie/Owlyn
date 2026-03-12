@@ -4,8 +4,8 @@ import { z } from "zod";
 export const ReportSchema = z.object({
   reportId: z.string(),
   interviewId: z.string(),
-  candidateEmail: z.string().optional(),
-  candidateName: z.string().optional(),
+  candidateEmail: z.string(),
+  candidateName: z.string(),
   score: z.number().optional(),
   behavioralNotes: z.string().optional(),
   codeOutput: z.string().optional(),

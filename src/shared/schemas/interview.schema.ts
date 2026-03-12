@@ -19,7 +19,8 @@ export const CreateInterviewPayloadSchema = z.object({
   aiInstructions: z.string().optional(),
   generatedQuestions: z.string().optional(),
   personaId: z.string().uuid().optional(),
-  candidateName: z.string().optional(),
+  candidateName: z.string().min(2, "Candidate name is required"),
+  candidateEmail: z.string().email("Invalid email format"),
   mode: z
     .enum(["INTERVIEW", "PRACTICE", "TUTOR"])
     .default("INTERVIEW")
@@ -43,6 +44,7 @@ export const InterviewListItemSchema = z.object({
   accessCode: z.string(),
   status: z.string(),
   candidateName: z.string().optional(),
+  candidateEmail: z.string().optional(),
   mode: z.enum(["INTERVIEW", "PRACTICE", "TUTOR"]).optional(),
 });
 
