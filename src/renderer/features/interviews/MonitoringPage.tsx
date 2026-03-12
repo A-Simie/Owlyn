@@ -10,7 +10,7 @@ import {
 } from "@livekit/components-react";
 import { Track, RoomEvent } from "livekit-client";
 import { interviewsApi } from "@/api";
-import { useAuthStore } from "@/stores/auth.store";
+import { useMediaStore } from "@/stores/media.store";
 
 export default function MonitoringPage() {
   const { interviewId } = useParams();
@@ -111,6 +111,8 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
     room.on(RoomEvent.DataReceived, handleData);
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
+      room.disconnect();
+      useMediaStore.getState().stopAll();
     };
   }, [room]);
 

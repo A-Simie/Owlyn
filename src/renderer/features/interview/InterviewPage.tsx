@@ -150,8 +150,10 @@ function InterviewInterface() {
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.Disconnected, () => setIsConnected(false));
+      room.disconnect();
+      stopAll();
     };
-  }, [room, localParticipant, addTranscript, setCurrentQuestion]);
+  }, [room, localParticipant, addTranscript, setCurrentQuestion, stopAll]);
 
   useEffect(() => {
     if (localParticipant && isConnected) {

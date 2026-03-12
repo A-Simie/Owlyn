@@ -51,7 +51,9 @@ export default function CalibrationPage() {
         // Fallback or retry?
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -91,7 +93,10 @@ export default function CalibrationPage() {
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
 
-      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+      if (
+        canvas.width !== video.videoWidth ||
+        canvas.height !== video.videoHeight
+      ) {
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
       }
@@ -119,7 +124,7 @@ export default function CalibrationPage() {
 
         // Draw Landmarks
         ctx.fillStyle = "rgba(197, 159, 89, 0.8)";
-        landmarks.positions.forEach(pt => {
+        landmarks.positions.forEach((pt) => {
           ctx.beginPath();
           ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI * 2);
           ctx.fill();
@@ -211,7 +216,8 @@ export default function CalibrationPage() {
                     Face Not Detected
                   </h3>
                   <p className="text-xs text-slate-300 max-w-xs uppercase font-bold tracking-widest leading-loose">
-                    Position your head within the camera's view to initiate the session.
+                    Position your head within the camera's view to initiate the
+                    session.
                   </p>
                 </motion.div>
               )}
