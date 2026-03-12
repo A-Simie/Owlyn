@@ -49,7 +49,7 @@ Used for company branding.
     "notes": true
   }
 }
-
+when we send the tools enabled, send it back so we can show it to candidate.i.e if notes/whiteboard/editor is false, we would not show the component to candidate making the interview more dynamic
 ```
 
 **B. Candidate Validation** (POST `/api/interviews/validate-code`)

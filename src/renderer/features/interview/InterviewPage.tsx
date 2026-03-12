@@ -20,6 +20,7 @@ import Notes from "./components/Notes";
 import TranscriptSidebar from "./components/TranscriptSidebar";
 import FaceTracker from "./components/FaceTracker";
 import AudioWaveform from "./components/AudioWaveform";
+import InterviewCompletionModal from "./components/InterviewCompletionModal";
 
 type Tab = "code" | "whiteboard" | "notes";
 
@@ -37,9 +38,6 @@ export default function InterviewPage() {
       token={livekitToken}
       serverUrl={import.meta.env.VITE_LIVEKIT_URL}
       connect={true}
-      audio={true}
-      video={true} 
-      screen={true}
       className="h-screen w-full bg-[#0B0B0B]"
     >
       <InterviewInterface />
@@ -73,6 +71,7 @@ function InterviewInterface() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const [aiStatus, setAiStatus] = useState<string>("Standby");
+  const [showCompletion, setShowCompletion] = useState(false);
 
   const toggleWidget = async () => {
     const nextState = !isWidget;
@@ -158,14 +157,35 @@ function InterviewInterface() {
     const timer = setInterval(tick, 1000);
     const startPublishing = async () => {
       if (!localParticipant) return;
+      
+      // 1. Microphone (Crucial for AI communication)
       try {
-        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+        await localParticipant.setMicrophoneEnabled(true);
+        console.log("Microphone published");
+      } catch (err) {
+        console.error("Microphone capture failed:", err);
+      }
+
+      // 2. Camera (For Proctoring)
+      try {
         await localParticipant.setCameraEnabled(true, {
           resolution: { width: 640, height: 480 },
-          frameRate: 1,
+          // Using a standard framerate and letting the AI filter it is safer than 1FPS at driver level
+          facingMode: "user"
         });
+        console.log("Camera published");
       } catch (err) {
-        console.warn("Media capture rejected:", err);
+        console.warn("Camera capture rejected:", err);
+      }
+
+      // 3. Screen Share (For Code Analysis)
+      // Note: In some browsers/Electron environments, this MUST be triggered by a click.
+      // We attempt it here, but also ensure the UI allows manual retry if needed.
+      try {
+        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+        console.log("Screen share published");
+      } catch (err) {
+        console.warn("Screen share capture rejected (NotSupportedError is common without user gesture or in Electron without source selection):", err);
       }
     };
 
@@ -187,15 +207,25 @@ function InterviewInterface() {
     setTimeout(() => setIsProcessing(false), 2000);
   };
 
+  const finalizeExit = () => {
+    resetInterview();
+    useSessionStore.getState().reset();
+    clearSession();
+    navigate("/analysis");
+  };
+
   const handleEndSession = async () => {
-    if (confirm("End session")) {
-      room?.disconnect();
+    if (confirm("Are you sure you want to end your interview session?")) {
+      await room?.disconnect();
       stopAll();
       await candidateApi.releaseLockdown();
-      resetInterview();
-      useSessionStore.getState().reset();
-      clearSession();
-      navigate("/analysis");
+      
+      const { isPracticeMode, isTutorMode } = useCandidateStore.getState();
+      if (!isPracticeMode && !isTutorMode) {
+        setShowCompletion(true);
+      } else {
+        finalizeExit();
+      }
     }
   };
 
@@ -282,7 +312,7 @@ function InterviewInterface() {
                   <button
                     onClick={handleRunCode}
                     disabled={isProcessing}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-black text-[9px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-3 bg-primary text-black text-[9px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
                   >
                     {isProcessing ? (
                       <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
@@ -388,6 +418,15 @@ function InterviewInterface() {
               warning
             </span>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showCompletion && (
+          <InterviewCompletionModal 
+            onClose={finalizeExit} 
+            candidateName={useCandidateStore.getState().candidateName} 
+          />
         )}
       </AnimatePresence>
     </div>
