@@ -63,7 +63,6 @@ export default function MonitoringPage() {
 function MonitoringInterface({ interview, onExit }: { interview: any; onExit: () => void }) {
   const room = useRoomContext();
   const [alerts, setAlerts] = useState<any[]>([]);
-  const [integrityScore, setIntegrityScore] = useState(100);
 
   const tracks = useTracks(
     [Track.Source.ScreenShare, Track.Source.Camera],
@@ -83,7 +82,6 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
 
         if (data.type === "PROCTOR_WARNING") {
           addAlert(data.message);
-          setIntegrityScore(prev => Math.max(0, prev - 10));
         }
       } catch (err) {
         console.warn("Failed to parse monitoring data");
@@ -157,48 +155,27 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
               </div>
             )}
 
-            <div className="absolute bottom-6 right-6 size-56 bg-black rounded-lg border border-white/10 overflow-hidden shadow-2xl z-20">
-              {cameraTrack ? (
-                <VideoTrack trackRef={cameraTrack} className="w-full h-full object-cover" />
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#111]">
-                  <span className="material-symbols-outlined text-white/10">videocam_off</span>
-                  <span className="text-[8px] uppercase tracking-widest text-white/20">No camera data</span>
+            <div className="absolute bottom-6 right-6 flex items-end gap-3 z-20">
+
+              {/* Webcam View */}
+              <div className="size-56 bg-black rounded-lg border border-white/10 overflow-hidden shadow-2xl relative">
+                {cameraTrack ? (
+                  <VideoTrack trackRef={cameraTrack} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#111]">
+                    <span className="material-symbols-outlined text-white/10">videocam_off</span>
+                    <span className="text-[8px] uppercase tracking_widest text-white/20">No camera data</span>
+                  </div>
+                )}
+                <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/80 text-[8px] font-bold uppercase tracking-widest rounded-sm">
+                  Webcam Feed
                 </div>
-              )}
-              <div className="absolute top-2 left-2 px-1.5 py-0.5 bg-black/80 text-[8px] font-bold uppercase tracking-widest rounded-sm">
-                Webcam Feed
               </div>
             </div>
           </div>
         </div>
 
         <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 h-full overflow-hidden">
-          <div className="bg-[#121212] border border-white/5 rounded-lg p-6 space-y-6">
-            <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Trust Matrix</h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between items-end">
-                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Integrity Score</span>
-                  <span className={`text-xs font-black ${integrityScore < 70 ? "text-red-500" : "text-primary"}`}>{integrityScore}%</span>
-                </div>
-                <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: "100%" }}
-                    animate={{ width: `${integrityScore}%` }}
-                    className={`h-full transition-all duration-500 ${integrityScore < 70 ? "bg-red-500" : "bg-primary"}`}
-                  />
-                </div>
-              </div>
-               <div className="pt-2">
-                <p className="text-[9px] text-slate-500 leading-relaxed uppercase tracking-tighter">
-                  {integrityScore === 100 
-                    ? "Candidate is following all behavioral protocols." 
-                    : "Partial integrity loss due to detected anomalies."}
-                </p>
-              </div>
-            </div>
-          </div>
 
           <div className="flex-1 bg-[#121212] border border-white/5 rounded-lg flex flex-col overflow-hidden">
             <header className="p-5 border-b border-white/5 flex items-center justify-between bg-white/[0.01]">
@@ -237,3 +214,4 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
     </div>
   );
 }
+

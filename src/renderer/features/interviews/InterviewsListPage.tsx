@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { interviewsApi } from "@/api/interviews.api";
 import { personasApi } from "@/api/personas.api";
+import { reportsApi, type Report } from "@/api/reports.api";
 import { extractApiError } from "@/lib/api-error";
 import type { Persona } from "@shared/schemas/persona.schema";
 import type { InterviewListItem } from "@shared/schemas/interview.schema";
@@ -65,6 +66,7 @@ export default function InterviewsListPage() {
     null,
   );
   const [justCopied, setJustCopied] = useState(false);
+  const [topPerformer, setTopPerformer] = useState<Report | null>(null);
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -81,6 +83,7 @@ export default function InterviewsListPage() {
   useEffect(() => {
     fetchInterviews();
     personasApi.getPersonas().then(setPersonas).catch(console.error);
+    reportsApi.getTopPerformer().then(setTopPerformer).catch(() => setTopPerformer(null));
   }, [fetchInterviews]);
 
   useEffect(() => {
@@ -189,6 +192,7 @@ export default function InterviewsListPage() {
       return false;
     }
   };
+
 
   const notifyCopy = (btn: HTMLElement | null) => {
     if (!btn) return;

@@ -48,8 +48,6 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             interviewTitle: params.title,
             candidateName: params.candidateName || null,
             personaName: params.personaName || null,
-            isPracticeMode: false,
-            isTutorMode: false
         })
         // Save sensitive token securely
         try {
@@ -63,9 +61,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
         set({ 
             isPracticeMode: enabled,
             isTutorMode: isTutor,
-            token: null,
-            accessCode: null,
-            interviewTitle: enabled ? 'Practice Session' : null
+       
         })
     },
 

@@ -58,8 +58,13 @@ export default function CalibrationPage() {
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        canvas.width = videoRef.current.videoWidth;
-        canvas.height = videoRef.current.videoHeight;
+        const vw = videoRef.current.videoWidth;
+        const vh = videoRef.current.videoHeight;
+        
+        if (vw === 0 || vh === 0) return;
+
+        canvas.width = vw;
+        canvas.height = vh;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 

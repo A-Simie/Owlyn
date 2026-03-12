@@ -111,14 +111,52 @@ export default function LoginPage() {
     }
   };
 
-  const handlePracticeMode = () => {
-    useCandidateStore.getState().setPracticeMode(true);
-    navigate("/calibration");
+  const handlePracticeMode = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await candidateApi.startPracticeSession({
+        topic: "General Software Engineering",
+        difficulty: "MEDIUM",
+        durationMinutes: 45
+      });
+      useCandidateStore.getState().setSession({
+        token: res.token,
+        livekitToken: res.livekitToken,
+        interviewId: res.interviewId,
+        accessCode: "PRACTICE",
+        title: "Mock Interview",
+        candidateName: "Guest Candidate"
+      });
+      useCandidateStore.getState().setPracticeMode(true);
+      navigate("/calibration");
+    } catch (err) {
+      setError(extractApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleTutorMode = () => {
-    useCandidateStore.getState().setPracticeMode(true, true);
-    navigate("/calibration");
+  const handleTutorMode = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await candidateApi.startTutorSession();
+      useCandidateStore.getState().setSession({
+        token: res.token,
+        livekitToken: res.livekitToken,
+        interviewId: res.interviewId,
+        accessCode: "TUTOR",
+        title: "AI Tutor Session",
+        candidateName: "Guest Candidate"
+      });
+      useCandidateStore.getState().setPracticeMode(true, true);
+      navigate("/calibration");
+    } catch (err) {
+      setError(extractApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

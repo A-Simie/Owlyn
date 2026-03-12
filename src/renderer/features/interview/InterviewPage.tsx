@@ -53,7 +53,7 @@ function InterviewInterface() {
   const navigate = useNavigate();
   const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
   const { elapsedSeconds, tick } = useSessionStore();
-  const { transcript, addTranscript, setCurrentQuestion, reset: resetInterview } = useInterviewStore();
+  const { transcript, addTranscript, setCurrentQuestion, reset: resetInterview, isAiSpeaking, setAiSpeaking } = useInterviewStore();
   const { clearSession } = useCandidateStore();
   const { stopAll } = useMediaStore();
   const room = useRoomContext();
@@ -111,6 +111,10 @@ function InterviewInterface() {
           console.log("Highlighting line:", msg.line);
           // Highlight logic...
         }
+        
+        if (msg.type === "AI_SPEAKING") {
+          setAiSpeaking(msg.active);
+        }
       } catch (err) {
         console.warn("Failed to parse data message");
       }
@@ -157,13 +161,20 @@ function InterviewInterface() {
 
     if (isConnected) {
       startPublishing();
+      // Lockdown Activation (Only if NOT tutor mode)
+      if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
+        window.owlyn.lockdown.toggle(true);
+      }
     }
 
     return () => {
       clearInterval(timer);
       stopAll();
+      if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
+        window.owlyn.lockdown.toggle(false);
+      }
     };
-  }, [tick, stopAll, localParticipant, isConnected]);
+  }, [tick, stopAll, localParticipant, isConnected, isTutorMode]);
 
   const handleEndSession = useCallback(() => {
     room?.disconnect();
@@ -210,57 +221,59 @@ function InterviewInterface() {
         )}
       </AnimatePresence>
 
-      <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 bg-[#0D0D0D] z-50">
-        <div className="flex items-center gap-6">
-          <div className="size-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-              owl
-            </span>
-          </div>
-          <div className="h-8 w-px bg-white/5 mx-2" />
-          <div className="flex flex-col">
-            <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">
-              Active Session
-            </span>
-            <div className="flex items-center gap-1.5 mt-1.5">
-              <div
-                className={`size-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
-              />
-              <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
-                {isConnected ? "Connected" : "Offline"}
+      {!isWidget && (
+        <header className="h-20 shrink-0 border-b border-white/5 flex items-center justify-between px-10 bg-[#0D0D0D] z-50">
+          <div className="flex items-center gap-6">
+            <div className="size-10 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
+              <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                owl
               </span>
             </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-10">
-          {isTutorMode && (
-             <button
-              onClick={toggleWidget}
-              className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-primary hover:text-black transition-all"
-            >
-              <span className="material-symbols-outlined text-sm">
-                {isWidget ? "open_in_full" : "pip"}
+            <div className="h-8 w-px bg-white/5 mx-2" />
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-black text-slate-500 tracking-widest">
+                Active Session
               </span>
-              {isWidget ? "Maximize" : "Toggle Widget"}
-            </button>
-          )}
-          <div className="flex flex-col items-center">
-            <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}>
-              {isCritical ? "Critical" : isWarning ? "Remaining" : "Time"}
-            </span>
-            <span className={`text-xl font-mono ${isCritical ? "text-red-500" : isWarning ? "text-[#c59f59]" : "text-white"}`}>
-              {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
-            </span>
+              <div className="flex items-center gap-1.5 mt-1.5">
+                <div
+                  className={`size-1.5 rounded-full ${isConnected ? "bg-green-500" : "bg-red-500"}`}
+                />
+                <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
+                  {isConnected ? "Connected" : "Offline"}
+                </span>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={handleEndSession}
-            className="px-8 py-3 bg-red-600/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all"
-          >
-            End Session
-          </button>
-        </div>
-      </header>
+
+          <div className="flex items-center gap-10">
+            {isTutorMode && (
+               <button
+                onClick={toggleWidget}
+                className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-primary hover:text-black transition-all"
+              >
+                <span className="material-symbols-outlined text-sm">
+                  pip
+                </span>
+                Toggle Widget
+              </button>
+            )}
+            <div className="flex flex-col items-center">
+              <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}>
+                {isCritical ? "Critical" : isWarning ? "Remaining" : "Time"}
+              </span>
+              <span className={`text-xl font-mono ${isCritical ? "text-red-500" : isWarning ? "text-[#c59f59]" : "text-white"}`}>
+                {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
+              </span>
+            </div>
+            <button
+              onClick={handleEndSession}
+              className="px-8 py-3 bg-red-600/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all"
+            >
+              End Session
+            </button>
+          </div>
+        </header>
+      )}
 
       <div className="flex-1 flex min-h-0 bg-[#0B0B0B]">
         {!isWidget && (
@@ -346,7 +359,7 @@ function InterviewInterface() {
         )}
 
         <div className={`${isWidget ? "flex-1" : "w-[420px]"} bg-[#0D0D0D] flex flex-col shrink-0 min-h-0`}>
-          <div className="p-8 space-y-8">
+          <div className={`${isWidget ? "p-4 space-y-4" : "p-8 space-y-8"}`}>
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
                 <span>Display Share</span>
@@ -356,7 +369,10 @@ function InterviewInterface() {
                  {screenShareTrack ? (
                    <VideoTrack trackRef={screenShareTrack} className="w-full h-full object-cover" />
                  ) : (
-                   <span className="material-symbols-outlined text-4xl text-white/10">desktop_windows</span>
+                   <div className="flex flex-col items-center gap-2">
+                      <span className="material-symbols-outlined text-4xl text-white/10">desktop_windows</span>
+                      <span className="text-[8px] font-black uppercase text-slate-700 tracking-[0.2em]">Source Offline</span>
+                   </div>
                  )}
                  <div className="absolute bottom-4 left-4 flex items-center gap-2">
                     <div className="size-2 rounded-full bg-primary animate-pulse" />
@@ -376,25 +392,28 @@ function InterviewInterface() {
               />
             )}
 
-            <div className="space-y-4">
+            <div className={`space-y-4 ${isWidget ? "bg-white/[0.02] p-4 rounded-sm border border-white/5" : ""}`}>
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-                <span>AI Agent</span>
+                <span>AI Agent Visualizer</span>
               </div>
-              <div className="bg-white/[0.02] border border-white/5 rounded-sm p-6 flex items-center justify-center">
-                <p className="text-[10px] text-slate-500 tracking-wide font-medium text-center">
-                  LiveKit Engine Active
+              <div className={`flex flex-col items-center justify-center gap-3 ${isWidget ? "" : "bg-white/[0.02] border border-white/5 rounded-sm p-6"}`}>
+                <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
+                <p className="text-[8px] text-slate-500 tracking-widest font-black uppercase">
+                  Owlyn Core Intelligence
                 </p>
               </div>
             </div>
           </div>
 
           <div className="flex-1 flex flex-col min-h-0 border-t border-white/5">
-            <div className="p-6 border-b border-white/5 bg-white/[0.01]">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                Transcript
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+            {!isWidget && (
+              <div className="p-6 border-b border-white/5 bg-white/[0.01]">
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+                  Transcript
+                </span>
+              </div>
+            )}
+            <div className={`flex-1 overflow-y-auto custom-scrollbar ${isWidget ? "p-4 space-y-2" : "p-8 space-y-6"}`}>
               {transcript.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center opacity-10">
                   <p className="text-[10px] uppercase tracking-widest font-black">
@@ -445,5 +464,30 @@ function TabButton({
       <span className="material-symbols-outlined text-lg">{icon}</span>
       {label}
     </button>
+  );
+}
+function AudioWaveform({ isActive, color }: { isActive: boolean; color: string }) {
+  return (
+    <div className="flex items-end gap-[2px] h-3 w-8">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <motion.div
+          key={i}
+          animate={isActive ? {
+            height: [
+              Math.random() * 8 + 4,
+              Math.random() * 8 + 4,
+              Math.random() * 8 + 4
+            ]
+          } : { height: 4 }}
+          transition={isActive ? {
+            repeat: Infinity,
+            duration: 0.5 + Math.random() * 0.5,
+            ease: "easeInOut"
+          } : {}}
+          className="w-1 rounded-full"
+          style={{ backgroundColor: color }}
+        />
+      ))}
+    </div>
   );
 }
