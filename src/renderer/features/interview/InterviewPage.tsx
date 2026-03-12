@@ -74,6 +74,7 @@ function InterviewInterface() {
   const [loading, setLoading] = useState(false);
   const [isCopilotLoading, setIsCopilotLoading] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
+  const [aiStatus, setAiStatus] = useState<string>("Standby");
 
   const { isTutorMode } = useCandidateStore();
 
@@ -120,6 +121,10 @@ function InterviewInterface() {
         if (msg.type === "TOOL_HIGHLIGHT") {
           setHighlightedLine(msg.line);
           setTimeout(() => setHighlightedLine(null), 3000);
+        }
+
+        if (msg.type === "AI_VISUALIZER_STATUS") {
+          setAiStatus(msg.status);
         }
 
         if (msg.type === "AI_SPEAKING") {
@@ -234,7 +239,7 @@ function InterviewInterface() {
   const isCritical = elapsedSeconds >= 44 * 60;
 
   return (
-    <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-300 ${proctorWarning ? "ring-4 ring-inset ring-red-600 animate-pulse" : ""}`}>
+    <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-300 ${proctorWarning ? "ring-4 ring-inset ring-red-600 proctor-shake" : ""}`}>
       <AnimatePresence>
         {proctorWarning && (
           <motion.div
@@ -432,9 +437,14 @@ function InterviewInterface() {
               </div>
               <div className={`flex flex-col items-center justify-center gap-3 ${isWidget ? "" : "bg-white/[0.02] border border-white/5 rounded-sm p-6"}`}>
                 <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
-                <p className="text-[8px] text-slate-500 tracking-widest font-black uppercase">
-                  Owlyn Core Intelligence
-                </p>
+                <div className="text-center space-y-1">
+                  <p className="text-[8px] text-slate-500 tracking-widest font-black uppercase">
+                    Core Intelligence
+                  </p>
+                  <p className="text-[9px] text-primary font-bold uppercase tracking-widest animate-pulse">
+                    {aiStatus}
+                  </p>
+                </div>
               </div>
             </div>
           </div>

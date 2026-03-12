@@ -2,6 +2,24 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaStore } from "@/stores/media.store";
+import * as faceapi from "@vladmandic/face-api";
+
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
+
+const steps = [
+  {
+    title: "Enable Vision",
+    desc: "Allow camera access to begin identity sync.",
+  },
+  {
+    title: "Position Frame",
+    desc: "Ensure your face is centered within the focus ring.",
+  },
+  {
+    title: "Environmental Check",
+    desc: "Optimal lighting detected for biometric monitoring.",
+  },
+];
 
 export default function CalibrationPage() {
   const navigate = useNavigate();
@@ -9,28 +27,32 @@ export default function CalibrationPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { startCamera, cameraStream, cameraOn } = useMediaStore();
 
-  const [isCalibrating, setIsCalibrating] = useState(true);
   const [faceDetected, setFaceDetected] = useState(false);
   const [step, setStep] = useState(0);
-
-  const steps = [
-    {
-      title: "Enable Vision",
-      desc: "Allow camera access to begin identity sync.",
-    },
-    {
-      title: "Position Frame",
-      desc: "Ensure your face is centered within the focus ring.",
-    },
-    {
-      title: "Environmental Check",
-      desc: "Optimal lighting detected for biometric monitoring.",
-    },
-  ];
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     startCamera();
   }, [startCamera]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        if (!cancelled) {
+          setModelsLoaded(true);
+          setIsInitializing(false);
+        }
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+        // Fallback or retry?
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (videoRef.current && cameraStream) {
@@ -41,112 +63,89 @@ export default function CalibrationPage() {
 
   // Face Detection Loop
   useEffect(() => {
-    if (!cameraOn || !videoRef.current) return;
+    if (!cameraOn || !videoRef.current || !modelsLoaded) return;
 
     let rafId: number;
-    let detector: any = null;
+    let running = true;
 
-    // Check for FaceDetector API (Experimental)
-    if ("FaceDetector" in window) {
-      // @ts-ignore
-      detector = new window.FaceDetector({ fastMode: true, maxFaces: 1 });
-    }
+    const options = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 224,
+      scoreThreshold: 0.35, // Permissive for calibration
+    });
 
-      const detect = async () => {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        if (!video || !canvas) return;
+    const detect = async () => {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas || !running) return;
 
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        // Sync dimensions precisely with source video track
-        if (video.videoWidth > 0 && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-        }
-
-        if (canvas.width === 0) {
-          rafId = requestAnimationFrame(detect);
-          return;
-        }
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        // ALWAYS draw a tactical focus frame in the center
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        const frameW = canvas.width * 0.4;
-        const frameH = canvas.height * 0.5;
-        const x = cx - frameW / 2;
-        const y = cy - frameH / 2;
-
-        ctx.strokeStyle = faceDetected ? "#c59f59" : "rgba(197, 159, 89, 0.2)";
-        ctx.lineWidth = 2;
-        
-        // Draw corners of the focus area
-        const l = 30;
-        ctx.beginPath();
-        // Top Left
-        ctx.moveTo(x, y + l); ctx.lineTo(x, y); ctx.lineTo(x + l, y);
-        // Top Right
-        ctx.moveTo(x + frameW - l, y); ctx.lineTo(x + frameW, y); ctx.lineTo(x + frameW, y + l);
-        // Bottom Right
-        ctx.moveTo(x + frameW, y + frameH - l); ctx.lineTo(x + frameW, y + frameH); ctx.lineTo(x + frameW - l, y + frameH);
-        // Bottom Left
-        ctx.moveTo(x + l, y + frameH); ctx.lineTo(x, y + frameH); ctx.lineTo(x, y + frameH - l);
-        ctx.stroke();
-
-        if (detector) {
-          try {
-            const faces = await detector.detect(video);
-            if (faces.length > 0) {
-              setFaceDetected(true);
-              const face = faces[0].boundingBox;
-
-              // Draw tactical overlay on the face itself
-              ctx.strokeStyle = "#c59f59";
-              ctx.lineWidth = 1;
-              ctx.setLineDash([5, 5]);
-              ctx.strokeRect(face.x, face.y, face.width, face.height);
-              ctx.setLineDash([]);
-
-              // ID markers
-              ctx.fillStyle = "#c59f59";
-              ctx.font = "bold 10px Inter";
-              ctx.fillText("BIOMETRIC_SYNC: ACTIVE", face.x, face.y - 10);
-            } else {
-              setFaceDetected(false);
-            }
-          } catch (e) {
-            console.error("Detection error:", e);
-          }
-        } else {
-          // If no detector, we guide the user to the center frame
-          // and simulate a "locked" state after they stay in frame for a bit
-          // For now, we'll keep the current "presence" logic but make it more visual
-          ctx.fillStyle = "rgba(197, 159, 89, 0.1)";
-          ctx.font = "10px Inter";
-          ctx.fillText("POSITION FACE WITHIN FRAME", x, y - 10);
-          
-          // Only "detect" if the video is actually playing and ready
-          const isReady = video.readyState >= 3 && video.currentTime > 0;
-          setFaceDetected(isReady);
-        }
+      // Wait for video to be ready
+      if (video.readyState < 2 || video.videoWidth === 0) {
         rafId = requestAnimationFrame(detect);
-      };
+        return;
+      }
+
+      const detections = await faceapi
+        .detectAllFaces(video, options)
+        .withFaceLandmarks();
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+      const frameW = canvas.width * 0.4;
+      const frameH = canvas.height * 0.5;
+      const x = cx - frameW / 2;
+      const y = cy - frameH / 2;
+
+      if (detections.length > 0) {
+        setFaceDetected(true);
+        const detection = detections[0];
+        const { box } = detection.detection;
+        const landmarks = detection.landmarks;
+
+        ctx.strokeStyle = "#c59f59";
+        ctx.setLineDash([10, 5]);
+        ctx.lineWidth = 2;
+        ctx.strokeRect(box.x, box.y, box.width, box.height);
+        ctx.setLineDash([]);
+
+        // Draw Landmarks
+        ctx.fillStyle = "rgba(197, 159, 89, 0.8)";
+        landmarks.positions.forEach(pt => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      } else {
+        setFaceDetected(false);
+      }
+
+      rafId = requestAnimationFrame(detect);
+    };
 
     detect();
-    return () => cancelAnimationFrame(rafId);
-  }, [cameraOn]);
+    return () => {
+      running = false;
+      cancelAnimationFrame(rafId);
+    };
+  }, [cameraOn, modelsLoaded]);
 
   useEffect(() => {
+    let interval: NodeJS.Timeout;
     if (faceDetected) {
-      const timer = setInterval(() => {
+      interval = setInterval(() => {
         setStep((s) => (s < 2 ? s + 1 : s));
-      }, 2000);
-      return () => clearInterval(timer);
+      }, 1500);
     }
+    return () => clearInterval(interval);
   }, [faceDetected]);
 
   return (
@@ -182,12 +181,26 @@ export default function CalibrationPage() {
             />
 
             <AnimatePresence>
-              {!faceDetected && (
+              {isInitializing && (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center text-center p-10"
+                  className="absolute inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center text-center p-10 z-[50]"
+                >
+                  <div className="size-12 border-2 border-primary/20 border-t-primary rounded-full animate-spin mb-4" />
+                  <h3 className="text-xs font-bold text-primary uppercase tracking-[0.3em]">
+                    Initializing Engine...
+                  </h3>
+                </motion.div>
+              )}
+
+              {!isInitializing && !faceDetected && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-red-950/40 backdrop-blur-md flex flex-col items-center justify-center text-center p-10"
                 >
                   <div className="size-20 rounded-full border-2 border-primary/20 flex items-center justify-center mb-6">
                     <span className="material-symbols-outlined text-4xl text-primary animate-pulse">
@@ -197,9 +210,8 @@ export default function CalibrationPage() {
                   <h3 className="text-lg font-bold text-white uppercase tracking-tight mb-2">
                     Face Not Detected
                   </h3>
-                  <p className="text-xs text-slate-500 max-w-xs uppercase font-bold tracking-widest leading-loose">
-                    Position your head within the camera's view to initiate the
-                    session.
+                  <p className="text-xs text-slate-300 max-w-xs uppercase font-bold tracking-widest leading-loose">
+                    Position your head within the camera's view to initiate the session.
                   </p>
                 </motion.div>
               )}
@@ -259,7 +271,7 @@ export default function CalibrationPage() {
 
             <button
               onClick={() => navigate("/hardware")}
-              disabled={step < 2}
+              disabled={step < 2 || !faceDetected}
               className="w-full py-5 bg-primary text-black font-black uppercase tracking-[0.4em] text-xs rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-20 shadow-2xl shadow-primary/20"
             >
               Continue to Diagnostic
