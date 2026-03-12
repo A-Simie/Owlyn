@@ -7,6 +7,7 @@ import {
   useRoomContext,
   VideoTrack,
   useTracks,
+  RoomAudioRenderer,
 } from "@livekit/components-react";
 import { RoomEvent, Track } from "livekit-client";
 import "@livekit/components-styles";
@@ -44,6 +45,7 @@ export default function InterviewPage() {
       video={false} 
       screen={false}
     >
+      <RoomAudioRenderer />
       <InterviewInterface />
     </LiveKitRoom>
   );
@@ -71,6 +73,7 @@ function InterviewInterface() {
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isCopilotLoading, setIsCopilotLoading] = useState(false);
+  const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
 
   const { isTutorMode } = useCandidateStore();
 
@@ -89,7 +92,15 @@ function InterviewInterface() {
     const handleData = (payload: Uint8Array) => {
       try {
         const decoder = new TextDecoder();
-        const msg = JSON.parse(decoder.decode(payload));
+        const text = decoder.decode(payload);
+        let msg;
+        try {
+          msg = JSON.parse(text);
+        } catch (e) {
+          // If not JSON, it might be a raw string message
+          console.log("Received raw data:", text);
+          return;
+        }
 
         if (msg.type === "transcript") {
           addTranscript({
@@ -103,28 +114,42 @@ function InterviewInterface() {
 
         if (msg.type === "PROCTOR_WARNING") {
           setProctorWarning(msg.message);
-          // Shake screen effect could be triggered here via a class
           setTimeout(() => setProctorWarning(null), 5000);
         }
 
         if (msg.type === "TOOL_HIGHLIGHT") {
-          console.log("Highlighting line:", msg.line);
-          // Highlight logic...
+          setHighlightedLine(msg.line);
+          setTimeout(() => setHighlightedLine(null), 3000);
         }
-        
+
         if (msg.type === "AI_SPEAKING") {
           setAiSpeaking(msg.active);
         }
       } catch (err) {
-        console.warn("Failed to parse data message");
+        console.warn("Failed to process data message");
       }
     };
 
     room.on(RoomEvent.DataReceived, handleData);
     
-    if (room.state === "connected") setIsConnected(true);
+    if (room.state === "connected") {
+      setIsConnected(true);
+      addTranscript({
+        id: "sys-0",
+        speaker: "ai",
+        text: "Connected to session. The AI agent is observing and will begin momentarily.",
+        timestamp: new Date().toISOString()
+      });
+    }
     
-    room.on(RoomEvent.Connected, () => setIsConnected(true));
+    room.on(RoomEvent.Connected, () => {
+      setIsConnected(true);
+      // Notify AI we are here
+      if (localParticipant) {
+        const encoder = new TextEncoder();
+        localParticipant.publishData(encoder.encode(JSON.stringify({ event: "USER_JOINED" })), { reliable: true });
+      }
+    });
     room.on(RoomEvent.Disconnected, () => setIsConnected(false));
 
     return () => {
@@ -301,24 +326,26 @@ function InterviewInterface() {
                 icon="description"
               />
 
-              <div className="ml-auto flex items-center gap-3">
-                {isCopilotLoading && (
-                  <span className="text-[10px] text-primary animate-pulse font-bold uppercase tracking-widest">
-                    Copilot thinking...
-                  </span>
+                {activeTab === "code" && (
+                  <div className="ml-auto flex items-center gap-3">
+                    {isCopilotLoading && (
+                      <span className="text-[10px] text-primary animate-pulse font-bold uppercase tracking-widest">
+                        Copilot thinking...
+                      </span>
+                    )}
+                    <button
+                      onClick={handleRunReview}
+                      disabled={loading}
+                      className="flex items-center gap-3 px-6 py-2.5 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 disabled:opacity-50"
+                    >
+                      {loading ? (
+                        <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                      ) : (
+                        "Run Code"
+                      )}
+                    </button>
+                  </div>
                 )}
-                <button
-                  onClick={handleRunReview}
-                  disabled={loading}
-                  className="flex items-center gap-3 px-6 py-2.5 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 disabled:opacity-50"
-                >
-                  {loading ? (
-                    <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  ) : (
-                    "Run Code"
-                  )}
-                </button>
-              </div>
             </div>
 
             <div className="flex-1 min-h-0 relative">
@@ -331,7 +358,11 @@ function InterviewInterface() {
                     exit={{ opacity: 0 }}
                     className="absolute inset-0"
                   >
-                    <CodeEditor value={code} onChange={setCode} />
+                    <CodeEditor 
+                      value={code} 
+                      onChange={setCode} 
+                      highlightedLine={highlightedLine}
+                    />
                   </motion.div>
                 )}
                 {activeTab === "whiteboard" && (

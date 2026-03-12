@@ -1,23 +1,48 @@
 import Editor, { OnMount } from "@monaco-editor/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { candidateApi } from "@/api/candidate.api";
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   language?: string;
+  highlightedLine?: number | null;
 }
 
 export default function CodeEditor({
   value,
   onChange,
   language = "javascript",
+  highlightedLine = null,
 }: CodeEditorProps) {
   const [theme] = useState<"vs-dark" | "light">("vs-dark");
   const monacoRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+
+    if (highlightedLine) {
+      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monacoRef.current.Range(highlightedLine, 1, highlightedLine, 1),
+          options: {
+            isWholeLine: true,
+            className: "bg-primary/20 border-l-4 border-primary",
+            glyphMarginClassName: "material-symbols-outlined text-primary text-xs",
+          },
+        },
+      ]);
+      editorRef.current.revealLineInCenter(highlightedLine);
+    } else {
+      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, []);
+    }
+  }, [highlightedLine]);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
+    editorRef.current = editor;
 
     let lastCallId = 0;
 

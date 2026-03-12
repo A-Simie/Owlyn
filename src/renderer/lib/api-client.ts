@@ -40,7 +40,7 @@ function createApiClient(): AxiosInstance {
 
     client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
-            const publicPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/verify-login', '/api/auth/verify-signup']
+            const publicPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/verify-login', '/api/auth/verify-signup', '/api/health', '/health']
             const isPublicPath = publicPaths.some((path) => config.url?.startsWith(path))
 
             if (!isPublicPath) {

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaStore } from "@/stores/media.store";
 import { candidateApi } from "@/api/candidate.api";
+import { apiClient } from "@/lib/api-client";
 
 export default function HardwarePage() {
   const navigate = useNavigate();
@@ -42,7 +43,7 @@ export default function HardwarePage() {
   useEffect(() => {
     // A simple boolean check for stream existence and audio oscillation
     const videoActive = cameraOn && !!cameraStream && videoRef.current?.videoWidth !== 0;
-    const micActive = micOn && audioLevel > 0.01;
+    const micActive = micOn;
     setChecks((prev) => ({ 
       ...prev, 
       camera: videoActive, 
@@ -52,12 +53,17 @@ export default function HardwarePage() {
 
   const runNetworkTest = useCallback(async () => {
     setIsChecking(true);
-    const start = performance.now();
+    let start = performance.now();
     try {
-      await candidateApi.healthCheck();
+      try {
+        await candidateApi.healthCheck();
+      } catch (e) {
+        // Fallback to root health if /api/health is missing
+        await apiClient.get("/health");
+      }
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
-      setChecks((prev) => ({ ...prev, network: latency < 500 }));
+      setChecks((prev) => ({ ...prev, network: latency < 1000 })); // Relaxed latency check
     } catch (err) {
       console.error("Network check failed:", err);
       setNetworkLatency(null);

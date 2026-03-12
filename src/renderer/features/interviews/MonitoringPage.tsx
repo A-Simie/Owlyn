@@ -6,6 +6,7 @@ import {
   useTracks,
   VideoTrack,
   useRoomContext,
+  RoomAudioRenderer,
 } from "@livekit/components-react";
 import { Track, RoomEvent } from "livekit-client";
 import { interviewsApi } from "@/api";
@@ -17,6 +18,7 @@ export default function MonitoringPage() {
   const [interview, setInterview] = useState<any>(null);
   const [monitorToken, setMonitorToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function init() {
@@ -28,8 +30,9 @@ export default function MonitoringPage() {
         ]);
         setInterview(details);
         setMonitorToken(tokenData.livekitToken);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Monitoring init failed:", err);
+        setError(err.response?.data?.message || err.message || "Failed to initialize monitoring");
       } finally {
         setLoading(false);
       }
@@ -37,12 +40,28 @@ export default function MonitoringPage() {
     init();
   }, [interviewId]);
 
-  if (loading || !monitorToken) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-[#0d0d0d] flex items-center justify-center">
         <div className="text-primary text-[10px] font-bold uppercase tracking-widest animate-pulse">
-          Establishing Secure Handshake...
+          Setting up monitoring dashboard...
         </div>
+      </div>
+    );
+  }
+
+  if (error || !monitorToken) {
+    return (
+      <div className="min-h-screen bg-[#0d0d0d] flex flex-col items-center justify-center gap-4">
+        <div className="text-red-500 text-[10px] font-bold uppercase tracking-widest">
+          {error || "Failed to connect to monitoring service"}
+        </div>
+        <button 
+          onClick={() => navigate("/interviews")}
+          className="px-6 py-2 bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-white/10"
+        >
+          Go Back
+        </button>
       </div>
     );
   }
@@ -55,6 +74,7 @@ export default function MonitoringPage() {
       audio={false}
       video={false}
     >
+      <RoomAudioRenderer />
       <MonitoringInterface interview={interview} onExit={() => navigate("/interviews")} />
     </LiveKitRoom>
   );
