@@ -132,9 +132,10 @@ function InterviewInterface() {
     room.on(RoomEvent.DataReceived, handleData);
 
     const checkAndSignal = () => {
-      if (room.state === ConnectionState.Connected && localParticipant) {
+      if (room.state === ConnectionState.Connected) {
+        const participant = room.localParticipant;
         const encoder = new TextEncoder();
-        localParticipant.publishData(
+        participant.publishData(
           encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
           { reliable: true }
         );
@@ -142,18 +143,19 @@ function InterviewInterface() {
       }
     };
 
-    if (room.state === ConnectionState.Connected) checkAndSignal();
-    else room.once(RoomEvent.Connected, checkAndSignal);
+    const handleDisconnected = () => setIsConnected(false);
 
-    room.on(RoomEvent.Disconnected, () => setIsConnected(false));
+    if (room.state === ConnectionState.Connected) checkAndSignal();
+    room.on(RoomEvent.Connected, checkAndSignal);
+
+    room.on(RoomEvent.Disconnected, handleDisconnected);
 
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
-      room.off(RoomEvent.Disconnected, () => setIsConnected(false));
-      room.disconnect();
-      stopAll();
+      room.off(RoomEvent.Connected, checkAndSignal);
+      room.off(RoomEvent.Disconnected, handleDisconnected);
     };
-  }, [room, localParticipant, addTranscript, setCurrentQuestion, stopAll]);
+  }, [room, addTranscript, setCurrentQuestion, setAiSpeaking]);
 
   useEffect(() => {
     if (localParticipant && isConnected) {
@@ -166,17 +168,22 @@ function InterviewInterface() {
   }, [activeTab, localParticipant, isConnected]);
 
   useEffect(() => {
-    useSessionStore.getState().reset(); // Reset timer on start
-    const timer = setInterval(tick, 1000);
+    useSessionStore.getState().reset();
+    const timer = setInterval(() => useSessionStore.getState().tick(), 1000);
     return () => {
       clearInterval(timer);
-      stopAll();
     };
-  }, [isConnected, localParticipant]);
+  }, []);
 
   const publishMedia = async () => {
     if (!localParticipant) return;
     setMediaError(null);
+
+    if (room.state !== ConnectionState.Connected) {
+      setMediaError("Session is still connecting. Please wait a few seconds.");
+      setIsMediaReady(false);
+      return;
+    }
 
     // 0. Lockdown Check: Multi-monitor 
     if (window.owlyn?.platform?.getDisplayCount) {
@@ -199,7 +206,16 @@ function InterviewInterface() {
       await localParticipant.setMicrophoneEnabled(true);
     } catch (err) {
       console.error("Microphone capture failed:", err);
-      setMediaError("Microphone access denied. Please check your browser permissions.");
+      const errorText = String(err).toLowerCase();
+      if (
+        errorText.includes("engine not connected") ||
+        errorText.includes("timeout") ||
+        errorText.includes("not connected")
+      ) {
+        setMediaError("Session connection is not ready yet. Please wait and retry.");
+      } else {
+        setMediaError("Microphone access denied. Please check your browser permissions.");
+      }
       setIsMediaReady(false);
       return;
     }
