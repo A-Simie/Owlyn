@@ -503,7 +503,7 @@ export default function InterviewsListPage() {
                         }
                         className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary appearance-none"
                       >
-                        <option value="">Default AI (Owlyn-4)</option>
+                        <option value="">Default AI (Owlyn)</option>
                         {personas.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name}

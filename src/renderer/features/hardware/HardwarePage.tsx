@@ -57,7 +57,6 @@ export default function HardwarePage() {
       await candidateApi.healthCheck();
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
-      // Gated at 500ms for acceptable real-time audio/video performance
       setChecks((prev) => ({ ...prev, network: latency < 500 }));
     } catch (err) {
       console.error("Network check failed:", err);
