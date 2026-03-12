@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth.store";
 import { useWorkspaceStore } from "@/stores/workspace.store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 const NAV_ITEMS = [
   {
@@ -24,10 +24,16 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { user, clearAuth } = useAuthStore();
   const { workspace, fetchWorkspace } = useWorkspaceStore();
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     fetchWorkspace();
   }, [fetchWorkspace]);
+
+
+  useEffect(() => {
+    setImageError(false);
+  }, [workspace?.logoUrl]);
 
   // Filter items based on role
   const filteredItems = NAV_ITEMS.filter(
@@ -47,26 +53,22 @@ export default function Sidebar() {
     <aside className="fixed top-0 left-0 h-screen w-56 flex flex-col bg-[#0d0d0d] border-r border-primary/15 z-50">
       {/* Brand */}
       <div className="flex items-center gap-3 px-5 pt-6 pb-4">
-        {workspace?.logoUrl ? (
+        {workspace?.logoUrl && !imageError && workspace.logoUrl !== "null" && workspace.logoUrl.trim() !== "" ? (
           <img 
+            key={workspace.logoUrl}
             src={workspace.logoUrl} 
             alt="Logo" 
+            onError={() => {
+              console.log("Sidebar logo load error");
+              setImageError(true);
+            }}
             className="w-10 h-10 rounded-lg object-cover border border-primary/20 shadow-lg"
           />
         ) : (
-          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20">
-            {workspace ? (
-              <span className="text-black font-black text-sm tracking-tighter">
-                {getInitials(workspace.name)}
-              </span>
-            ) : (
-              <span
-                className="material-symbols-outlined text-black text-xl"
-                style={{ fontVariationSettings: "'FILL' 1" }}
-              >
-                owl
-              </span>
-            )}
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/20 shrink-0">
+            <span className="text-black font-black text-[11px] tracking-tighter">
+              {workspace ? getInitials(workspace.name) : "OW"}
+            </span>
           </div>
         )}
         <div className="flex flex-col leading-none overflow-hidden">

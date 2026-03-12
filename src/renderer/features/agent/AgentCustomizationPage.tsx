@@ -59,15 +59,14 @@ export default function AgentCustomizationPage() {
 
   // Form State
   const [name, setName] = useState("");
-  const [roleTitle, setRoleTitle] = useState("");
   const [contextFiles, setContextFiles] = useState<File[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState("English");
   const [isAdaptive, setIsAdaptive] = useState(true);
 
   const [sliders, setSliders] = useState({
-    strictness: 75,
-    analytical: 90,
-    collaborative: 60,
+    empathy: 50,
+    analytical: 50,
+    directness: 50,
   });
   const [selectedTone, setSelectedTone] = useState("mentor");
   const [selectedDomains, setSelectedDomains] = useState<string[]>(["Kubernetes", "Go Lang"]);
@@ -118,13 +117,12 @@ export default function AgentCustomizationPage() {
 
   const resetForm = () => {
     setName("");
-    setRoleTitle("");
     setContextFiles([]);
     setSelectedPersona(null);
     setSliders({
-      strictness: 75,
-      analytical: 90,
-      collaborative: 60,
+      empathy: 50,
+      analytical: 50,
+      directness: 50,
     });
     setSelectedTone("mentor");
     setSelectedDomains(["Kubernetes", "Go Lang"]);
@@ -139,11 +137,10 @@ export default function AgentCustomizationPage() {
   const handleEdit = (persona: Persona) => {
     setSelectedPersona(persona);
     setName(persona.name);
-    setRoleTitle(persona.roleTitle || "");
     setSliders({
-      strictness: 100 - (persona.empathyScore || 50),
+      empathy: persona.empathyScore || 50,
       analytical: persona.analyticalDepth || 90,
-      collaborative: 100 - (persona.directnessScore || 50),
+      directness: persona.directnessScore || 50,
     });
     setSelectedTone((persona.tone?.toLowerCase() as any) || "mentor");
     setSelectedDomains(persona.domainExpertise || []);
@@ -174,10 +171,9 @@ export default function AgentCustomizationPage() {
     try {
       const personaData = {
         name,
-        roleTitle: roleTitle,
-        empathyScore: 100 - sliders.strictness,
+        empathyScore: sliders.empathy,
         analyticalDepth: sliders.analytical,
-        directnessScore: 100 - sliders.collaborative,
+        directnessScore: sliders.directness,
         tone: selectedTone.toUpperCase(),
         domainExpertise: selectedDomains,
         language: selectedLanguage,
@@ -236,149 +232,158 @@ export default function AgentCustomizationPage() {
           <div className="max-w-6xl mx-auto space-y-12">
             
             {/* Library Section */}
-            {personas.length > 0 && (
-              <section className="space-y-4">
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Your Persona Library</h3>
-                <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar no-scrollbar scroll-smooth">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{personas.length} Saved Agents</span>
+              </div>
+              
+              {personas.length > 0 ? (
+                <div className="flex gap-4 overflow-x-auto pb-6 custom-scrollbar scroll-smooth snap-x snap-mandatory">
                   {personas.map((p) => (
-                    <button
+                    <div
                       key={p.id}
                       onClick={() => handleEdit(p)}
-                      className={`flex-shrink-0 w-64 p-5 rounded-xl border transition-all text-left relative group ${selectedPersona?.id === p.id ? "bg-primary/10 border-primary" : "bg-white/5 border-white/10 hover:border-primary/30"}`}
+                      className={`flex-shrink-0 w-72 p-6 rounded-2xl border transition-all text-left relative group snap-start snap-always shadow-xl cursor-pointer ${selectedPersona?.id === p.id ? "bg-primary/10 border-primary ring-1 ring-primary/20" : "bg-white/[0.02] border-white/5 hover:border-primary/30"}`}
                     >
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="size-8 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center">
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
                           <span 
-                            className="material-symbols-outlined text-primary text-base"
+                            className="material-symbols-outlined text-primary text-xl"
                             style={{ fontVariationSettings: "'FILL' 1" }}
                           >
                             owl
                           </span>
                         </div>
-                        <span onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }} className="material-symbols-outlined text-sm text-red-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          delete
-                        </span>
+                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                           <button onClick={(e) => { e.stopPropagation(); handleEdit(p); }} className="size-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-primary transition-colors">
+                              <span className="material-symbols-outlined text-xs font-bold">edit</span>
+                           </button>
+                           <button onClick={(e) => { e.stopPropagation(); handleDelete(p.id); }} className="size-8 flex items-center justify-center rounded-lg bg-white/5 border border-white/5 text-slate-400 hover:text-red-500 transition-colors">
+                              <span className="material-symbols-outlined text-xs font-bold">delete</span>
+                           </button>
+                        </div>
                       </div>
-                      <p className="text-xs font-bold text-white truncate">{p.name}</p>
-                      <p className="text-[10px] text-slate-500 uppercase tracking-widest truncate mt-0.5">{p.language} · {p.tone}</p>
-                    </button>
+                      <p className="text-sm font-black text-white truncate uppercase tracking-tight">{p.name}</p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                         <span className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.language}</span>
+                         <span className="px-2 py-0.5 rounded bg-white/5 border border-white/5 text-[8px] font-black text-slate-400 uppercase tracking-widest">{p.tone}</span>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </section>
-            )}
+              ) : (
+                <div className="h-32 rounded-2xl border border-dashed border-white/5 bg-white/[0.01] flex flex-col items-center justify-center space-y-2 group hover:border-primary/20 transition-all">
+                  <span className="material-symbols-outlined text-primary/20 text-3xl group-hover:scale-110 transition-transform duration-500">add_circle</span>
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">No personas deployed yet</p>
+                </div>
+              )}
+            </section>
 
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-              <div className="lg:col-span-1 space-y-8">
-                {/* Visual Preview */}
-                <div className="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center relative overflow-hidden group border border-white/5 bg-white/[0.02]">
-                  <div className="relative z-10 py-4">
-                    <div className="size-40 rounded-full bg-black/40 border border-primary/10 flex items-center justify-center relative shadow-2xl">
-                      <div className="size-28 rounded-full border border-primary/20 flex items-center justify-center bg-primary/5 animate-pulse-slow">
+            {/* Configuration Section */}
+            <div className="space-y-10 pb-20">
+              {/* Core Identity & Processing */}
+              <section className="glass-panel rounded-3xl p-1 border border-white/5 bg-white/[0.01] overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-0 lg:divide-x divide-white/5">
+                  <div className="lg:col-span-1 p-8 flex flex-col items-center justify-center relative bg-white/[0.01]">
+                    <div className="size-24 rounded-full bg-black/40 border border-primary/20 flex items-center justify-center relative shadow-2xl">
+                      <div className="size-16 rounded-full border border-primary/20 flex items-center justify-center bg-primary/5 animate-pulse-slow">
                         <span 
-                          className="material-symbols-outlined text-5xl text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
+                          className="material-symbols-outlined text-4xl text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
                           style={{ fontVariationSettings: "'FILL' 1" }}
                         >
                           owl
                         </span>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-center z-10 mt-4">
-                    <h4 className="text-xs font-black text-white uppercase tracking-[0.3em]">{name || "Unnamed"}</h4>
-                    <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mt-1">{roleTitle || "AI Agent"}</p>
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
-                </div>
-              </div>
-
-              <div className="lg:col-span-2 space-y-10">
-                {/* Core Identity */}
-                <div className="glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
-                   <div className="flex items-center gap-3 mb-10">
-                      <span className="material-symbols-outlined text-primary text-xl">fingerprint</span>
-                      <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Identity & Behavior</h3>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Persona Name</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Master Mentor"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-5 text-sm font-bold text-white focus:border-primary/40 outline-none transition-all"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Role Title</label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Lead System Evaluator"
-                            value={roleTitle}
-                            onChange={(e) => setRoleTitle(e.target.value)}
-                            className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-5 text-sm font-bold text-white focus:border-primary/40 outline-none transition-all"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Native Language</label>
-                          <div className="relative group">
-                            <select
-                              value={selectedLanguage}
-                              onChange={(e) => setSelectedLanguage(e.target.value)}
-                              className="w-full h-[46px] bg-white/5 border border-white/5 rounded-xl px-5 text-[11px] font-black text-white uppercase tracking-widest focus:border-primary/40 outline-none appearance-none cursor-pointer hover:bg-white/10 transition-all"
-                            >
-                              {LANGUAGES.map(lang => <option key={lang} value={lang} className="bg-obsidian text-white">{lang.toUpperCase()}</option>)}
-                            </select>
-                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-lg text-primary/30 pointer-events-none group-hover:text-primary transition-colors">expand_more</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Processing Mode</label>
-                          <button
-                            onClick={() => setIsAdaptive(!isAdaptive)}
-                            className={`w-full h-[46px] px-5 rounded-xl border transition-all flex items-center justify-between group ${isAdaptive ? "bg-primary/5 border-primary/20 text-primary" : "bg-white/5 border-white/5 text-slate-500"}`}
-                          >
-                            <span className="text-[11px] font-black uppercase tracking-widest">{isAdaptive ? "Adaptive AI" : "Fixed Logic"}</span>
-                            <span className={`material-symbols-outlined text-lg ${isAdaptive ? "text-primary" : "text-slate-600"} group-hover:scale-110 transition-transform`}>{isAdaptive ? "psychology" : "psychology_alt"}</span>
-                          </button>
-                        </div>
-                      </div>
-                   </div>
-                </div>
-                {/* Personality Sliders */}
-                <div className="glass-panel rounded-2xl p-8 border border-white/5">
-                   <div className="flex items-center justify-between mb-10">
-                    <div className="flex items-center gap-3">
-                      <span className="material-symbols-outlined text-primary text-xl">tune</span>
-                      <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Personality Matrix</h3>
+                    <div className="text-center mt-6">
+                      <h4 className="text-[11px] font-black text-white uppercase tracking-[0.3em] truncate max-w-[120px]">{name || "Unnamed"}</h4>
                     </div>
                   </div>
-                  <div className="space-y-10">
+
+                  <div className="lg:col-span-3 p-8">
+                    <div className="flex items-center justify-between mb-8">
+                       <div className="flex items-center gap-3">
+                          <span className="material-symbols-outlined text-primary text-xl">fingerprint</span>
+                          <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Deployment Identity</h3>
+                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-2 col-span-1 md:col-span-2">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Persona Name</label>
+                        <input
+                          type="text"
+                          placeholder="Enter Persona Name"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="w-full bg-white/5 border border-white/5 rounded-xl py-3.5 px-5 text-sm font-bold text-white focus:border-primary/40 outline-none transition-all"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Native Language</label>
+                        <div className="relative group">
+                          <select
+                            value={selectedLanguage}
+                            onChange={(e) => setSelectedLanguage(e.target.value)}
+                            className="w-full h-11 bg-white/5 border border-white/5 rounded-xl px-4 text-[11px] font-black text-white uppercase tracking-widest focus:border-primary/40 outline-none appearance-none cursor-pointer"
+                          >
+                            {LANGUAGES.map(lang => <option key={lang} value={lang} className="bg-obsidian text-white">{lang.toUpperCase()}</option>)}
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-lg text-primary/30 pointer-events-none">expand_more</span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] ml-1">Response Logic</label>
+                        <div className="relative group">
+                          <select
+                            value={isAdaptive ? "true" : "false"}
+                            onChange={(e) => setIsAdaptive(e.target.value === "true")}
+                            className="w-full h-11 bg-white/5 border border-white/5 rounded-xl px-4 text-[11px] font-black text-white uppercase tracking-widest focus:border-primary/40 outline-none appearance-none cursor-pointer"
+                          >
+                            <option value="true" className="bg-obsidian text-white">ADAPTIVE</option>
+                            <option value="false" className="bg-obsidian text-white">FIXED LOGIC</option>
+                          </select>
+                          <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-lg text-primary/30 pointer-events-none">expand_more</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Configuration Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+                {/* Matrix Card */}
+                <div className="lg:col-span-2 glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
+                  <div className="flex items-center gap-3 mb-10">
+                    <span className="material-symbols-outlined text-primary text-xl">tune</span>
+                    <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Personality Matrix</h3>
+                  </div>
+                  <div className="space-y-12">
                     {[
-                      { left: "Empathy", right: `Strictness (${sliders.strictness}%)`, value: sliders.strictness, key: "strictness" as const, leftLabel: "SUPPORTIVE", rightLabel: "CHALLENGING" },
-                      { left: `Analytical Depth (${sliders.analytical}%)`, right: "Cultural Fit", value: sliders.analytical, key: "analytical" as const, leftLabel: "TECHNICAL", rightLabel: "BEHAVIORAL" },
-                      { left: "Directness", right: `Collaborative (${sliders.collaborative}%)`, value: sliders.collaborative, key: "collaborative" as const, leftLabel: "CONCISE", rightLabel: "ENGAGING" },
+                      { left: "Strictness", right: "Empathy", value: sliders.empathy, key: "empathy" as const, leftLabel: "CHALLENGING", rightLabel: "SUPPORTIVE" },
+                      { left: "Cultural Fit", right: "Analytical Depth", value: sliders.analytical, key: "analytical" as const, leftLabel: "BEHAVIORAL", rightLabel: "TECHNICAL" },
+                      { left: "Collaboration", right: "Directness", value: sliders.directness, key: "directness" as const, leftLabel: "ENGAGING", rightLabel: "CONCISE" },
                     ].map((slider) => (
                       <div key={slider.key} className="space-y-4">
                         <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
                           <span className={slider.value < 50 ? "text-primary" : "text-slate-500"}>{slider.left}</span>
-                          <span className={slider.value >= 50 ? "text-primary" : "text-slate-500"}>{slider.right}</span>
+                          <span className={slider.value >= 50 ? "text-primary transition-all" : "text-slate-500"}>{slider.right}</span>
                         </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={slider.value}
-                          onChange={(e) => handleSliderChange(slider.key, parseInt(e.target.value))}
-                          className="w-full h-1 bg-white/5 rounded-full appearance-none cursor-pointer accent-primary hover:accent-primary-bright transition-all"
-                        />
-                        <div className="flex justify-between text-[9px] text-slate-600 font-bold tracking-widest">
+                        <div className="relative pt-1">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={slider.value}
+                            onChange={(e) => handleSliderChange(slider.key, parseInt(e.target.value))}
+                            className="w-full h-1.5 bg-white/5 rounded-full appearance-none cursor-pointer accent-primary hover:accent-primary/80 transition-all"
+                          />
+                        </div>
+                        <div className="flex justify-between text-[9px] text-slate-600 font-bold tracking-[0.2em]">
                           <span>{slider.leftLabel}</span>
+                          <span>{slider.value}% {slider.right}</span>
                           <span>{slider.rightLabel}</span>
                         </div>
                       </div>
@@ -386,70 +391,69 @@ export default function AgentCustomizationPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Tone of Voice */}
-                  <div className="glass-panel rounded-2xl p-8 border border-white/5">
-                    <div className="flex items-center gap-3 mb-8">
-                       <span className="material-symbols-outlined text-primary text-xl">record_voice_over</span>
-                       <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Vocal Tone</h3>
-                    </div>
-                    <div className="grid grid-cols-1 gap-4">
-                      {TONES.map((tone) => (
-                        <button
-                          key={tone.id}
-                          onClick={() => setSelectedTone(tone.id)}
-                          className={`flex items-center gap-4 p-4 rounded-xl border transition-all text-left ${selectedTone === tone.id ? "bg-primary/10 border-primary/40" : "bg-white/5 border-white/10 hover:border-primary/20"}`}
-                        >
-                          <span className={`material-symbols-outlined text-2xl ${selectedTone === tone.id ? "text-primary" : "text-slate-500"}`}>{tone.icon}</span>
-                          <div>
-                            <p className="text-white text-xs font-black uppercase tracking-widest">{tone.label}</p>
-                            <p className="text-[10px] text-slate-500 font-medium mt-0.5">{tone.desc}</p>
-                          </div>
-                          {selectedTone === tone.id && <span className="material-symbols-outlined text-primary text-sm ml-auto">check_circle</span>}
-                        </button>
-                      ))}
-                    </div>
+                {/* Voice Accent */}
+                <div className="lg:col-span-1 glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
+                  <div className="flex items-center gap-3 mb-8">
+                     <span className="material-symbols-outlined text-primary text-xl">record_voice_over</span>
+                     <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Voice Accent</h3>
                   </div>
-
-                  {/* Domain Expertise */}
-                  <div className="glass-panel rounded-2xl p-8 border border-white/5">
-                    <div className="flex items-center gap-3 mb-8">
-                       <span className="material-symbols-outlined text-primary text-xl">terminal</span>
-                       <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Expertise</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2.5">
-                      {Array.from(new Set([...DOMAINS_LIST, ...selectedDomains])).map((label) => {
-                        const isActive = selectedDomains.includes(label);
-                        return (
-                          <button
-                            key={label}
-                            onClick={() => toggleDomain(label)}
-                            className={`px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-lg border transition-all ${isActive ? "bg-primary/10 border-primary/40 text-primary" : "bg-white/5 border-white/10 text-slate-500 hover:border-primary/20"}`}
-                          >
-                            {label}
-                          </button>
-                        );
-                      })}
-                      {isAddingDomain ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            autoFocus
-                            type="text"
-                            placeholder="..."
-                            value={customDomain}
-                            onChange={(e) => setCustomDomain(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === "Enter") handleAddCustomDomain(); if (e.key === "Escape") setIsAddingDomain(false); }}
-                            className="bg-white/10 border border-primary/30 rounded-lg text-[10px] font-black uppercase tracking-widest px-3 py-2 text-white w-24 outline-none focus:border-primary"
-                          />
+                  <div className="grid grid-cols-1 gap-3">
+                    {TONES.map((tone) => (
+                      <button
+                        key={tone.id}
+                        onClick={() => setSelectedTone(tone.id)}
+                        className={`flex items-center gap-4 p-4 rounded-xl border transition-all text-left ${selectedTone === tone.id ? "bg-primary/10 border-primary/40" : "bg-white/5 border-white/5 hover:border-primary/20"}`}
+                      >
+                        <span className={`material-symbols-outlined text-2xl ${selectedTone === tone.id ? "text-primary" : "text-slate-500"}`}>{tone.icon}</span>
+                        <div>
+                          <p className="text-white text-[11px] font-black uppercase tracking-widest">{tone.label}</p>
+                          <p className="text-[9px] text-slate-500 font-medium uppercase mt-0.5">{tone.desc}</p>
                         </div>
-                      ) : (
-                        <button onClick={() => setIsAddingDomain(true)} className="px-4 py-2 bg-primary/5 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/10 transition-all">+ Add</button>
-                      )}
-                    </div>
+                        {selectedTone === tone.id && <span className="material-symbols-outlined text-primary text-sm ml-auto">check_circle</span>}
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
-            </section>
+
+              {/* Skill Domains Card  */}
+              <div className="glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
+                <div className="flex items-center justify-between mb-8">
+                   <div className="flex items-center gap-3">
+                      <span className="material-symbols-outlined text-primary text-xl">terminal</span>
+                      <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Skill Domains</h3>
+                   </div>
+                   <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">{selectedDomains.length} Domains added</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(new Set([...DOMAINS_LIST, ...selectedDomains])).map((label) => {
+                    const isActive = selectedDomains.includes(label);
+                    return (
+                      <button
+                        key={label}
+                        onClick={() => toggleDomain(label)}
+                        className={`px-4 py-2 text-[9px] font-black uppercase tracking-widest rounded-lg border transition-all ${isActive ? "bg-primary/10 border-primary/40 text-primary" : "bg-white/5 border-white/3 text-slate-500 hover:border-primary/20"}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                  {isAddingDomain ? (
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="..."
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleAddCustomDomain(); if (e.key === "Escape") setIsAddingDomain(false); }}
+                      className="bg-white/5 border border-primary/30 rounded-lg text-[9px] font-black uppercase tracking-widest px-4 py-2 text-white w-28 outline-none"
+                    />
+                  ) : (
+                    <button onClick={() => setIsAddingDomain(true)} className="px-5 py-2 bg-primary/5 border border-primary/20 text-primary text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-primary/10 transition-all">+ Add</button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
