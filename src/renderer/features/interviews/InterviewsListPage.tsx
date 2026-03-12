@@ -54,8 +54,8 @@ export default function InterviewsListPage() {
     instructions: "",
     questionCount: 5,
     personaId: "",
+    candidateName: "",
     durationMinutes: 45,
-    mode: "INTERVIEW" as "INTERVIEW" | "PRACTICE" | "TUTOR",
     toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
   });
   const [draftedQuestions, setDraftedQuestions] = useState("");
@@ -140,7 +140,7 @@ export default function InterviewsListPage() {
         personaId: newInterview.personaId || undefined,
         generatedQuestions: draftedQuestions || undefined,
         aiInstructions: newInterview.instructions || undefined,
-        mode: newInterview.mode,
+        candidateName: newInterview.candidateName || undefined,
       });
       setCreatedAccessCode(res.accessCode);
       setShowCreateModal(false);
@@ -150,8 +150,8 @@ export default function InterviewsListPage() {
         instructions: "",
         questionCount: 5,
         personaId: "",
+        candidateName: "",
         durationMinutes: 45,
-        mode: "INTERVIEW",
         toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
       });
       setDraftedQuestions("");
@@ -316,6 +316,11 @@ export default function InterviewsListPage() {
                   </span>
                 </div>
                 <div>
+                  {interview.candidateName && (
+                    <div className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-0.5">
+                      {interview.candidateName}
+                    </div>
+                  )}
                   <div className="flex items-center gap-3 mb-1">
                     <h3 className="text-sm font-bold text-white">
                       {interview.title}
@@ -403,6 +408,24 @@ export default function InterviewsListPage() {
               {createStep === "info" ? (
                 <>
                   <div className="space-y-4 mb-6">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
+                        Candidate Name
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="e.g. John Doe"
+                        value={newInterview.candidateName}
+                        onChange={(e) =>
+                          setNewInterview({
+                            ...newInterview,
+                            candidateName: e.target.value,
+                          })
+                        }
+                        className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary"
+                      />
+                    </div>
+
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
@@ -462,26 +485,6 @@ export default function InterviewsListPage() {
                             {p.name}
                           </option>
                         ))}
-                      </select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest ml-1">
-                        Interview Mode
-                      </label>
-                      <select
-                        value={newInterview.mode}
-                        onChange={(e) =>
-                          setNewInterview({
-                            ...newInterview,
-                            mode: e.target.value as any,
-                          })
-                        }
-                        className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-3 px-4 focus:ring-primary focus:border-primary appearance-none"
-                      >
-                        <option value="INTERVIEW">Standard Interview</option>
-                        <option value="PRACTICE">Practice Session</option>
-                        <option value="TUTOR">Tutor Mode</option>
                       </select>
                     </div>
 

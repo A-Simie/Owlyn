@@ -16,10 +16,10 @@ const api = {
   },
   auth: {
     saveToken: (token: string): Promise<boolean> =>
-      ipcRenderer.invoke("auth:save-token", token),
+      ipcRenderer.invoke("auth:set-token", token),
     getToken: (): Promise<string | null> =>
       ipcRenderer.invoke("auth:get-token"),
-    clearToken: (): Promise<boolean> => ipcRenderer.invoke("auth:clear-token"),
+    clearToken: (): Promise<boolean> => ipcRenderer.invoke("auth:set-token", null),
   },
   lockdown: {
     toggle: (enabled: boolean): Promise<boolean> =>

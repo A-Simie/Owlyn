@@ -171,9 +171,9 @@ ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
   log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
 
   if (enabled) {
-    // mainWindow.setFullScreen(true);
-    // mainWindow.setAlwaysOnTop(true, "screen-saver");
-    // mainWindow.setContentProtection(true);
+    mainWindow.setFullScreen(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setContentProtection(true);
   } else {
     mainWindow.setFullScreen(false);
     mainWindow.setAlwaysOnTop(false);

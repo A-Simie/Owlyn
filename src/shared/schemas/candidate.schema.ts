@@ -28,6 +28,7 @@ export const ValidateCodeResponseSchema = z.object({
     interviewId: z.string(),
     title: z.string(),
     durationMinutes: z.number(),
+    candidateName: z.string().optional(),
     toolsEnabled: z.record(z.boolean()).optional(),
 })
 

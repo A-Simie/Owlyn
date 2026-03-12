@@ -2,47 +2,26 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { candidateApi } from "@/api";
+import { useCandidateStore } from "@/stores/candidate.store";
 
 export default function LobbyPage() {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
-  const [sessionInfo, setSessionInfo] = useState({
-    title: "",
-    duration: "",
-    id: "",
-    isPractice: false,
-  });
+  const { interviewTitle, isPracticeMode, accessCode, token, candidateName } = useCandidateStore();
 
   useEffect(() => {
     // 8. Pre-Flight Health Check
     candidateApi.healthCheck().catch((err) => {
       console.error("Health check failed:", err);
     });
-
-    const isPractice = localStorage.getItem("owlyn_practice_mode") === "true";
-    const title =
-      localStorage.getItem("owlyn_interview_title") ||
-      (isPractice ? "Practice Session" : "Technical Interview");
-    const id = localStorage.getItem("owlyn_access_code")
-      ? localStorage.getItem("owlyn_access_code")
-      : "GUEST";
-
-    setSessionInfo({
-      title,
-      duration: isPractice ? "No Limit" : "45 Minutes",
-      id: id || "",
-      isPractice,
-    });
   }, []);
 
   const handleStart = async () => {
     setIsStarting(true);
     try {
-      if (!sessionInfo.isPractice) {
-        const token = localStorage.getItem("owlyn_guest_token");
-        const code = localStorage.getItem("owlyn_access_code");
+      if (!isPracticeMode) {
         // 10. Start Interview Lockdown
-        await candidateApi.initiateLockdown(code!, token!);
+        await candidateApi.initiateLockdown(accessCode!, token!);
       }
       navigate("/interview");
     } catch (err) {
@@ -64,13 +43,23 @@ export default function LobbyPage() {
         </header>
 
         <div className="bg-[#111] border border-white/5 rounded-sm p-10 space-y-10">
+          {candidateName && (
+            <div className="text-center pb-4 border-b border-white/5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-primary mb-1">
+                Candidate
+              </p>
+              <h2 className="text-2xl font-black text-white uppercase italic">
+                {candidateName}
+              </h2>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-10">
             <div className="space-y-3">
               <p className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
                 Position
               </p>
               <p className="text-lg font-bold text-white uppercase tracking-tight">
-                {sessionInfo.title}
+                {interviewTitle}
               </p>
             </div>
             <div className="space-y-3 border-l border-white/5 pl-10">
@@ -78,7 +67,7 @@ export default function LobbyPage() {
                 Duration
               </p>
               <p className="text-lg font-bold text-primary uppercase tracking-tight">
-                {sessionInfo.duration}
+                {isPracticeMode ? "No Limit" : "45 Minutes"}
               </p>
             </div>
           </div>
@@ -88,7 +77,7 @@ export default function LobbyPage() {
               Access ID
             </span>
             <span className="text-[10px] font-mono font-bold text-white">
-              {sessionInfo.id}
+              {accessCode || "GUEST"}
             </span>
           </div>
 

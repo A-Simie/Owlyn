@@ -15,6 +15,11 @@ export function registerAuthGetToken(getTokenFn: () => string | null): void {
     authStoreGetTokenFn = getTokenFn
 }
 
+let candidateStoreGetTokenFn: (() => string | null) | null = null
+export function registerCandidateGetToken(getTokenFn: () => string | null): void {
+    candidateStoreGetTokenFn = getTokenFn
+}
+
 function createApiClient(): AxiosInstance {
     const client = axios.create({
         baseURL: BASE_URL,
@@ -39,7 +44,8 @@ function createApiClient(): AxiosInstance {
             const isPublicPath = publicPaths.some((path) => config.url?.startsWith(path))
 
             if (!isPublicPath) {
-                const token = authStoreGetTokenFn?.() || localStorage.getItem('owlyn_guest_token')
+                const token = authStoreGetTokenFn?.() || candidateStoreGetTokenFn?.()
+
                 if (token) {
                     config.headers.Authorization = `Bearer ${token}`
                 }

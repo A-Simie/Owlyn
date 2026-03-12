@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
 import { useSettingsStore } from "@/stores/settings.store";
 import { useMediaStore } from "@/stores/media.store";
 import { useAuthStore } from "@/stores/auth.store";
@@ -27,52 +26,15 @@ export default function SettingsPage() {
   const [wsLoading, setWsLoading] = useState(false);
   const [wsError, setWsError] = useState<string | null>(null);
   const {
-    selectedCameraId,
-    selectedMicId,
-    notificationsEnabled,
-    interviewReminders,
     autoRecordConsent,
     dataRetention,
-    setSelectedCameraId,
-    setSelectedMicId,
-    setNotificationsEnabled,
-    setInterviewReminders,
     setAutoRecordConsent,
     setDataRetention,
   } = useSettingsStore();
 
-  const { cameraOn, micOn, startCamera, stopCamera, startMic, stopMic } =
-    useMediaStore();
 
-  const [cameras, setCameras] = useState<DeviceEntry[]>([]);
-  const [mics, setMics] = useState<DeviceEntry[]>([]);
 
-  const enumerateDevices = useCallback(async () => {
-    try {
-      await navigator.mediaDevices
-        .getUserMedia({ video: true, audio: true })
-        .then((s) => s.getTracks().forEach((t) => t.stop()));
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      setCameras(
-        devices
-          .filter((d) => d.kind === "videoinput")
-          .map((d) => ({
-            deviceId: d.deviceId,
-            label: d.label || `Camera ${d.deviceId.slice(0, 6)}`,
-          })),
-      );
-      setMics(
-        devices
-          .filter((d) => d.kind === "audioinput")
-          .map((d) => ({
-            deviceId: d.deviceId,
-            label: d.label || `Mic ${d.deviceId.slice(0, 6)}`,
-          })),
-      );
-    } catch {
-      // permission denied
-    }
-  }, []);
+
 
   const fetchWorkspaceData = useCallback(async () => {
     if (!isAdmin) return;
@@ -92,25 +54,8 @@ export default function SettingsPage() {
   }, [isAdmin]);
 
   useEffect(() => {
-    enumerateDevices();
     fetchWorkspaceData();
-  }, [enumerateDevices, fetchWorkspaceData]);
-
-  const handleCameraToggle = useCallback(
-    async (on: boolean) => {
-      if (on) await startCamera(selectedCameraId ?? undefined);
-      else stopCamera();
-    },
-    [startCamera, stopCamera, selectedCameraId],
-  );
-
-  const handleMicToggle = useCallback(
-    async (on: boolean) => {
-      if (on) await startMic(selectedMicId ?? undefined);
-      else stopMic();
-    },
-    [startMic, stopMic, selectedMicId],
-  );
+  }, [fetchWorkspaceData]);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,121 +127,7 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen p-8 lg:p-12 max-w-4xl">
-      <h1 className="text-3xl font-bold text-white mb-1">Settings</h1>
-      <p className="text-slate-500 text-sm mb-10">
-        Manage your device preferences, notifications, and privacy.
-      </p>
-
-      {/* Device Controls */}
-      <section className="mb-10">
-        <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-6 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">devices</span>
-          Device Controls
-        </h2>
-        <div className="space-y-4">
-          {/* Camera */}
-          <div className="bg-[#0d0d0d] border border-primary/15 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">
-                  videocam
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white">Camera</p>
-                  <p className="text-xs text-slate-500">
-                    Enable camera for interviews
-                  </p>
-                </div>
-              </div>
-              <Toggle on={cameraOn} onChange={handleCameraToggle} />
-            </div>
-            {cameraOn && (
-              <select
-                value={selectedCameraId || ""}
-                onChange={(e) => setSelectedCameraId(e.target.value || null)}
-                className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-2.5 px-4 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Default Camera</option>
-                {cameras.map((c) => (
-                  <option key={c.deviceId} value={c.deviceId}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          {/* Mic */}
-          <div className="bg-[#0d0d0d] border border-primary/15 rounded-xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">
-                  mic
-                </span>
-                <div>
-                  <p className="text-sm font-semibold text-white">Microphone</p>
-                  <p className="text-xs text-slate-500">
-                    Enable microphone for interviews
-                  </p>
-                </div>
-              </div>
-              <Toggle on={micOn} onChange={handleMicToggle} />
-            </div>
-            {micOn && (
-              <select
-                value={selectedMicId || ""}
-                onChange={(e) => setSelectedMicId(e.target.value || null)}
-                className="w-full bg-[#1e1a14]/50 border border-primary/20 rounded-lg text-white text-sm py-2.5 px-4 focus:ring-primary focus:border-primary"
-              >
-                <option value="">Default Microphone</option>
-                {mics.map((m) => (
-                  <option key={m.deviceId} value={m.deviceId}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Notifications */}
-      <section className="mb-10">
-        <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-6 flex items-center gap-2">
-          <span className="material-symbols-outlined text-base">
-            notifications
-          </span>
-          Notifications
-        </h2>
-        <div className="bg-[#0d0d0d] border border-primary/15 rounded-xl divide-y divide-primary/10">
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="text-sm font-semibold text-white">
-                Email Notifications
-              </p>
-              <p className="text-xs text-slate-500">
-                Receive updates about interview results and feedback
-              </p>
-            </div>
-            <Toggle
-              on={notificationsEnabled}
-              onChange={setNotificationsEnabled}
-            />
-          </div>
-          <div className="flex items-center justify-between p-5">
-            <div>
-              <p className="text-sm font-semibold text-white">
-                Interview Reminders
-              </p>
-              <p className="text-xs text-slate-500">
-                Get notified 15 minutes before scheduled interviews
-              </p>
-            </div>
-            <Toggle on={interviewReminders} onChange={setInterviewReminders} />
-          </div>
-        </div>
-      </section>
-
+      <h1 className="text-3xl font-bold text-white mb-1">Settings</h1>   
       {isAdmin && (
         <section className="mb-10">
           <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-primary mb-6 flex items-center gap-2">

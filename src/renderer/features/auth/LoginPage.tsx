@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuthStore } from "@/stores/auth.store";
 import { authApi, candidateApi } from "@/api";
+import { useCandidateStore } from "@/stores/candidate.store";
 import { extractApiError } from "@/lib/api-error";
 import OtpInput from "./OtpInput";
 
@@ -92,12 +93,14 @@ export default function LoginPage() {
     setError(null);
     try {
       const res = await candidateApi.validateCode({ code });
-      localStorage.setItem("owlyn_guest_token", res.token);
-      localStorage.setItem("owlyn_livekit_token", res.livekitToken);
-      localStorage.setItem("owlyn_interview_id", res.interviewId);
-      localStorage.setItem("owlyn_access_code", code);
-      localStorage.setItem("owlyn_interview_title", res.title);
-      localStorage.removeItem("owlyn_practice_mode");
+      useCandidateStore.getState().setSession({
+        token: res.token,
+        livekitToken: res.livekitToken,
+        interviewId: res.interviewId,
+        accessCode: code,
+        title: res.title,
+        candidateName: res.candidateName
+      });
       setValidationSuccess(true);
       setTimeout(() => navigate("/calibration"), 1000);
     } catch (err) {
@@ -108,20 +111,15 @@ export default function LoginPage() {
   };
 
   const handlePracticeMode = () => {
-    localStorage.removeItem("owlyn_guest_token");
-    localStorage.removeItem("owlyn_access_code");
-    localStorage.removeItem("owlyn_interview_title");
-    localStorage.removeItem("owlyn_tutor_mode");
-    localStorage.setItem("owlyn_practice_mode", "true");
+    useCandidateStore.getState().setPracticeMode(true);
     navigate("/calibration");
   };
 
   const handleTutorMode = () => {
-    localStorage.removeItem("owlyn_guest_token");
-    localStorage.removeItem("owlyn_access_code");
-    localStorage.removeItem("owlyn_interview_title");
-    localStorage.removeItem("owlyn_practice_mode");
-    localStorage.setItem("owlyn_tutor_mode", "true");
+    useCandidateStore.getState().setPracticeMode(true);
+    // Custom note: tutor mode could be a separate flag in store if needed, 
+    // but current logic just sets practice mode.
+    localStorage.setItem("owlyn_tutor_mode", "true"); 
     navigate("/calibration");
   };
 
