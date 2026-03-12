@@ -149,12 +149,9 @@ export default function AgentCustomizationPage() {
       if (contextFiles.length > 0) fd.append("file", contextFiles[0]);
 
       await personasApi.createPersona(fd);
-      showStatus("Persona saved successfully.");
+      showStatus(selectedPersona ? "Persona updated successfully." : "Persona saved successfully.");
       fetchPersonas();
-      setName("");
-      setDescription("");
-      setAvatarFile(null);
-      setContextFiles([]);
+      resetForm();
     } catch (error) {
       showStatus(extractApiError(error).message, "error");
     } finally {
@@ -162,8 +159,39 @@ export default function AgentCustomizationPage() {
     }
   };
 
+  const resetForm = () => {
+    setName("");
+    setDescription("");
+    setAvatarFile(null);
+    setContextFiles([]);
+    setSelectedPersona(null);
+    setSliders({
+      strictness: 75,
+      analytical: 90,
+      collaborative: 60,
+    });
+    setSelectedTone("mentor");
+    setSelectedDomains(["Kubernetes", "Go Lang"]);
+  };
+
+  const handleEdit = (persona: Persona) => {
+    setSelectedPersona(persona);
+    setName(persona.name);
+    setDescription(persona.roleTitle || "");
+    setSliders({
+      strictness: 100 - (persona.empathyScore || 50),
+      analytical: persona.analyticalDepth || 90,
+      collaborative: 100 - (persona.directnessScore || 50),
+    });
+    setSelectedTone((persona.tone?.toLowerCase() as any) || "mentor");
+    setSelectedDomains(persona.domainExpertise || []);
+    setSelectedLanguage(persona.language || "English");
+    setIsAdaptive(persona.isAdaptive ?? true);
+    // Scroll to top to edit
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const handleDelete = async (id: string) => {
-    // If there's no custom modal system, we use confirm for high-stakes actions but defined in handler
     if (
       !window.confirm(
         "Are you sure you want to delete this persona? This action cannot be undone.",
@@ -229,8 +257,11 @@ export default function AgentCustomizationPage() {
               />
             </div>
             <div className="h-6 w-px bg-white/10 mx-2" />
-            <button className="px-4 py-2 text-muted hover:text-heading text-sm font-medium">
-              Discard
+            <button 
+              onClick={resetForm}
+              className="px-4 py-2 text-muted hover:text-heading text-sm font-medium"
+            >
+              Clear
             </button>
             <button
               onClick={handleSave}
@@ -240,7 +271,7 @@ export default function AgentCustomizationPage() {
               {isSaving && (
                 <div className="w-3 h-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
               )}
-              {isSaving ? "Processing..." : "Deploy Persona"}
+              {isSaving ? "Processing..." : selectedPersona ? "Update Persona" : "Deploy Persona"}
             </button>
           </div>
         </header>
@@ -583,49 +614,110 @@ export default function AgentCustomizationPage() {
               </div>
             </section>
 
-            {/* Active Intelligence Feedback */}
-            <section className="bg-primary/[0.03] border border-primary/10 rounded-2xl p-10 flex items-center justify-between group overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-700" />
-              <div className="flex items-center gap-8 relative z-10">
-                <div className="size-20 bg-[#0B0B0B] rounded-2xl flex items-center justify-center border border-primary/20 shadow-2xl group-hover:border-primary/50 transition-all">
-                  <div className="flex pb-1 gap-1">
-                    {[12, 18, 14, 22].map((h, i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 bg-primary rounded-full"
-                        animate={{ height: [h, h * 1.5, h] }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                          delay: i * 0.2,
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
+            {/* Persona Library */}
+            <section className="space-y-6 pt-12 border-t divider">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-lg font-bold text-white uppercase tracking-tight mb-1">
-                    Vocal Synthesis Interface
-                  </h4>
-                  <p className="text-[10px] text-slate-500 font-black uppercase tracking-widest">
-                    AI standard neutral masculina · dynamic range enabled
+                  <h3 className="text-heading font-black uppercase tracking-[0.2em] text-sm">
+                    Persona Library
+                  </h3>
+                  <p className="text-[10px] text-subtle uppercase tracking-widest mt-1">
+                    Manage your active AI interview identities
                   </p>
                 </div>
+                <div className="flex items-center gap-2 px-3 py-1 bg-primary/5 border border-primary/20 rounded-full">
+                  <span className="size-1.5 bg-primary rounded-full animate-pulse" />
+                  <span className="text-[9px] font-black text-primary uppercase tracking-widest">
+                    {personas.length} Active Personas
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-6 relative z-10">
-                <div className="text-right">
-                  <p className="text-[9px] font-black text-primary uppercase tracking-[0.3em] mb-1">
-                    Audio Status
-                  </p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase">
-                    Ready for broadcast
+
+              {loading ? (
+                <div className="py-20 flex flex-col items-center justify-center opacity-30">
+                  <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest">
+                    Loading Library...
                   </p>
                 </div>
-                <button className="px-8 py-3.5 bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-sm hover:bg-white/10 transition-all active:scale-95">
-                  Test Module
-                </button>
-              </div>
+              ) : personas.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {personas.map((persona) => (
+                    <div
+                      key={persona.id}
+                      className={`group relative glass-panel rounded-xl p-6 hover:border-primary/40 transition-all ${selectedPersona?.id === persona.id ? "border-primary ring-1 ring-primary/20" : ""}`}
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="size-12 rounded-full bg-primary/5 border border-primary/10 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-primary text-xl">
+                            {persona.tone === "MENTOR"
+                              ? "school"
+                              : persona.tone === "ARCHITECT"
+                                ? "architecture"
+                                : "search_insights"}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleEdit(persona)}
+                            className="p-2 text-subtle hover:text-primary hover:bg-primary/5 rounded-lg transition-all"
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              edit
+                            </span>
+                          </button>
+                          <button
+                            onClick={() => handleDelete(persona.id)}
+                            className="p-2 text-subtle hover:text-red-400 hover:bg-red-400/5 rounded-lg transition-all"
+                          >
+                            <span className="material-symbols-outlined text-lg">
+                              delete
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-bold text-heading mb-0.5">
+                          {persona.name}
+                        </h4>
+                        <p className="text-[10px] text-subtle uppercase tracking-widest font-medium mb-4">
+                          {persona.roleTitle || "Untitled Persona"}
+                        </p>
+                        
+                        <div className="flex flex-wrap gap-2">
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded text-[9px] font-bold text-muted uppercase tracking-tighter">
+                            {persona.tone}
+                          </span>
+                          <span className="px-2 py-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded text-[9px] font-bold text-muted uppercase tracking-tighter">
+                            {persona.language}
+                          </span>
+                          <span className={`px-2 py-0.5 border rounded text-[9px] font-bold uppercase tracking-tighter ${persona.isAdaptive ? "bg-primary/10 border-primary/20 text-primary" : "bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-muted"}`}>
+                            {persona.isAdaptive ? "Adaptive" : "Static"}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-primary/2 rounded-full blur-2xl group-hover:bg-primary/5 transition-all pointer-events-none" />
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-20 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-xl bg-white/[0.01]">
+                  <span className="material-symbols-outlined text-white/10 text-4xl mb-4">
+                    person_add
+                  </span>
+                  <p className="text-xs text-subtle font-bold uppercase tracking-widest">
+                    No personas created yet
+                  </p>
+                  <p className="text-[10px] text-slate-600 mt-2">
+                    Start by naming your first persona above
+                  </p>
+                </div>
+              )}
             </section>
+
+        
           </div>
         </div>
       </main>
