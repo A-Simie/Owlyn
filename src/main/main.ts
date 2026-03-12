@@ -182,6 +182,31 @@ ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
   return true;
 });
 
+ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
+  if (!mainWindow) return false;
+
+  if (enabled) {
+    // Widget Mode: Small, Always on Top, Bottom-Right
+    const { screen } = require("electron");
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    
+    mainWindow.setSize(380, 520, true);
+    mainWindow.setPosition(width - 400, height - 540, true);
+    mainWindow.setAlwaysOnTop(true, "floating");
+    mainWindow.setResizable(false);
+    mainWindow.setMinimizable(false);
+  } else {
+    // Restore: Large, Center
+    mainWindow.setResizable(true);
+    mainWindow.setMinimizable(true);
+    mainWindow.setSize(1440, 900, true);
+    mainWindow.center();
+    mainWindow.setAlwaysOnTop(false);
+  }
+  return true;
+});
+
 ipcMain.handle("desktop:sources", async () => {
   const { desktopCapturer } = require("electron");
   const sources = await desktopCapturer.getSources({

@@ -117,10 +117,7 @@ export default function LoginPage() {
   };
 
   const handleTutorMode = () => {
-    useCandidateStore.getState().setPracticeMode(true);
-    // Custom note: tutor mode could be a separate flag in store if needed, 
-    // but current logic just sets practice mode.
-    localStorage.setItem("owlyn_tutor_mode", "true"); 
+    useCandidateStore.getState().setPracticeMode(true, true);
     navigate("/calibration");
   };
 

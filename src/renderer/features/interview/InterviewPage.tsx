@@ -5,18 +5,17 @@ import {
   LiveKitRoom,
   useLocalParticipant,
   useRoomContext,
-  VideoConference,
-  TrackReference,
   VideoTrack,
   useTracks,
 } from "@livekit/components-react";
-import { RoomEvent, DataPacket_Kind, Track } from "livekit-client";
+import { RoomEvent, Track } from "livekit-client";
 import "@livekit/components-styles";
 
 import { useSessionStore } from "@/stores/session.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
 import { candidateApi } from "@/api";
+import { useCandidateStore } from "@/stores/candidate.store";
 
 // Components
 import CodeEditor from "./components/CodeEditor";
@@ -28,7 +27,7 @@ type Tab = "code" | "whiteboard" | "notes";
 
 export default function InterviewPage() {
   const navigate = useNavigate();
-  const livekitToken = localStorage.getItem("owlyn_livekit_token");
+  const { livekitToken, isTutorMode } = useCandidateStore();
   const livekitUrl = import.meta.env.VITE_LIVEKIT_URL;
 
   if (!livekitToken) {
@@ -54,7 +53,8 @@ function InterviewInterface() {
   const navigate = useNavigate();
   const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
   const { elapsedSeconds, tick } = useSessionStore();
-  const { transcript, addTranscript, setCurrentQuestion } = useInterviewStore();
+  const { transcript, addTranscript, setCurrentQuestion, reset: resetInterview } = useInterviewStore();
+  const { clearSession } = useCandidateStore();
   const { stopAll } = useMediaStore();
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
@@ -64,12 +64,23 @@ function InterviewInterface() {
   // State
   const [activeTab, setActiveTab] = useState<Tab>("code");
   const [isConnected, setIsConnected] = useState(false);
+  const [isWidget, setIsWidget] = useState(false);
   const [code, setCode] = useState(
     "// Solution implementation\nfunction solve() {\n\n}",
   );
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [isCopilotLoading, setIsCopilotLoading] = useState(false);
+
+  const { isTutorMode } = useCandidateStore();
+
+  const toggleWidget = async () => {
+    const nextState = !isWidget;
+    setIsWidget(nextState);
+    if (window.owlyn?.window?.setWidgetMode) {
+      await window.owlyn.window.setWidgetMode(nextState);
+    }
+  };
 
   // 13. Listen for AI Commands (LiveKit Data Channels)
   useEffect(() => {
@@ -158,8 +169,10 @@ function InterviewInterface() {
     room?.disconnect();
     stopAll();
     candidateApi.releaseLockdown();
+    resetInterview();
+    clearSession();
     navigate("/analysis");
-  }, [navigate, stopAll, room]);
+  }, [navigate, stopAll, room, resetInterview, clearSession]);
 
   const handleRunReview = async () => {
     setLoading(true);
@@ -221,6 +234,17 @@ function InterviewInterface() {
         </div>
 
         <div className="flex items-center gap-10">
+          {isTutorMode && (
+             <button
+              onClick={toggleWidget}
+              className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 text-primary text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-primary hover:text-black transition-all"
+            >
+              <span className="material-symbols-outlined text-sm">
+                {isWidget ? "open_in_full" : "pip"}
+              </span>
+              {isWidget ? "Maximize" : "Toggle Widget"}
+            </button>
+          )}
           <div className="flex flex-col items-center">
             <span className={`text-[9px] uppercase font-black tracking-widest mb-1 ${isCritical ? "text-red-500 animate-pulse" : isWarning ? "text-[#c59f59]" : "text-primary"}`}>
               {isCritical ? "Critical" : isWarning ? "Remaining" : "Time"}
@@ -239,87 +263,89 @@ function InterviewInterface() {
       </header>
 
       <div className="flex-1 flex min-h-0 bg-[#0B0B0B]">
-        <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
-          <div className="flex items-center px-6 gap-2 border-b border-white/5 h-14 bg-black/20">
-            <TabButton
-              active={activeTab === "code"}
-              onClick={() => setActiveTab("code")}
-              label="Code"
-              icon="code"
-            />
-            <TabButton
-              active={activeTab === "whiteboard"}
-              onClick={() => setActiveTab("whiteboard")}
-              label="Whiteboard"
-              icon="draw"
-            />
-            <TabButton
-              active={activeTab === "notes"}
-              onClick={() => setActiveTab("notes")}
-              label="Notes"
-              icon="description"
-            />
+        {!isWidget && (
+          <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+            <div className="flex items-center px-6 gap-2 border-b border-white/5 h-14 bg-black/20">
+              <TabButton
+                active={activeTab === "code"}
+                onClick={() => setActiveTab("code")}
+                label="Code"
+                icon="code"
+              />
+              <TabButton
+                active={activeTab === "whiteboard"}
+                onClick={() => setActiveTab("whiteboard")}
+                label="Whiteboard"
+                icon="draw"
+              />
+              <TabButton
+                active={activeTab === "notes"}
+                onClick={() => setActiveTab("notes")}
+                label="Notes"
+                icon="description"
+              />
 
-            <div className="ml-auto flex items-center gap-3">
-              {isCopilotLoading && (
-                <span className="text-[10px] text-primary animate-pulse font-bold uppercase tracking-widest">
-                  Copilot thinking...
-                </span>
-              )}
-              <button
-                onClick={handleRunReview}
-                disabled={loading}
-                className="flex items-center gap-3 px-6 py-2.5 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 disabled:opacity-50"
-              >
-                {loading ? (
-                  <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                ) : (
-                  "Run Code"
+              <div className="ml-auto flex items-center gap-3">
+                {isCopilotLoading && (
+                  <span className="text-[10px] text-primary animate-pulse font-bold uppercase tracking-widest">
+                    Copilot thinking...
+                  </span>
                 )}
-              </button>
+                <button
+                  onClick={handleRunReview}
+                  disabled={loading}
+                  className="flex items-center gap-3 px-6 py-2.5 bg-primary text-black text-[10px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 disabled:opacity-50"
+                >
+                  {loading ? (
+                    <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                  ) : (
+                    "Run Code"
+                  )}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 min-h-0 relative">
+              <AnimatePresence mode="wait">
+                {activeTab === "code" && (
+                  <motion.div
+                    key="code"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0"
+                  >
+                    <CodeEditor value={code} onChange={setCode} />
+                  </motion.div>
+                )}
+                {activeTab === "whiteboard" && (
+                  <motion.div
+                    key="whiteboard"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0"
+                  >
+                    <Whiteboard ref={whiteboardRef} />
+                  </motion.div>
+                )}
+                {activeTab === "notes" && (
+                  <motion.div
+                    key="notes"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0"
+                  >
+                    <Notes />
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
+        )}
 
-          <div className="flex-1 min-h-0 relative">
-            <AnimatePresence mode="wait">
-              {activeTab === "code" && (
-                <motion.div
-                  key="code"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0"
-                >
-                  <CodeEditor value={code} onChange={setCode} />
-                </motion.div>
-              )}
-              {activeTab === "whiteboard" && (
-                <motion.div
-                  key="whiteboard"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0"
-                >
-                  <Whiteboard ref={whiteboardRef} />
-                </motion.div>
-              )}
-              {activeTab === "notes" && (
-                <motion.div
-                  key="notes"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0"
-                >
-                  <Notes />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
-        <div className="w-[420px] bg-[#0D0D0D] flex flex-col shrink-0 min-h-0">
+        <div className={`${isWidget ? "flex-1" : "w-[420px]"} bg-[#0D0D0D] flex flex-col shrink-0 min-h-0`}>
           <div className="p-8 space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -339,14 +365,16 @@ function InterviewInterface() {
               </div>
             </div>
 
-            <FaceTracker
-              onWarning={(msg) => {
-                if (msg) {
-                  setProctorWarning(msg);
-                  setTimeout(() => setProctorWarning(null), 5000);
-                }
-              }}
-            />
+            {!isWidget && (
+              <FaceTracker
+                onWarning={(msg) => {
+                  if (msg) {
+                    setProctorWarning(msg);
+                    setTimeout(() => setProctorWarning(null), 5000);
+                  }
+                }}
+              />
+            )}
 
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">

@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import { candidateApi } from "@/api";
 import { useCandidateStore } from "@/stores/candidate.store";
 
 export default function LobbyPage() {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { interviewTitle, isPracticeMode, accessCode, token, candidateName } = useCandidateStore();
 
   useEffect(() => {
-    // 8. Pre-Flight Health Check
+    // Pre-Flight Health Check
     candidateApi.healthCheck().catch((err) => {
       console.error("Health check failed:", err);
     });
@@ -20,12 +20,13 @@ export default function LobbyPage() {
     setIsStarting(true);
     try {
       if (!isPracticeMode) {
-        // 10. Start Interview Lockdown
+        // Start Interview Lockdown
         await candidateApi.initiateLockdown(accessCode!, token!);
       }
       navigate("/interview");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to start session:", err);
+      setError(err?.response?.data?.message || "This interview session is inactive or already completed. Please contact your recruiter.");
       setIsStarting(false);
     }
   };
@@ -81,7 +82,12 @@ export default function LobbyPage() {
             </span>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-4">
+            {error && (
+              <p className="text-[10px] text-red-500 font-bold uppercase tracking-widest text-center animate-pulse">
+                {error}
+              </p>
+            )}
             <button
               onClick={handleStart}
               disabled={isStarting}

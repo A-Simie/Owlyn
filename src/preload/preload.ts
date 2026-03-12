@@ -13,6 +13,8 @@ const api = {
     minimize: (): Promise<void> => ipcRenderer.invoke("window:minimize"),
     maximize: (): Promise<void> => ipcRenderer.invoke("window:maximize"),
     close: (): Promise<void> => ipcRenderer.invoke("window:close"),
+    setWidgetMode: (enabled: boolean): Promise<boolean> =>
+      ipcRenderer.invoke("window:set-widget-mode", enabled),
   },
   auth: {
     saveToken: (token: string): Promise<boolean> =>

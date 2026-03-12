@@ -24,7 +24,6 @@ Granular split between persona configuration (JSON) and training data (File).
     ```json
     {
       "name": "string",
-      "roleTitle": "string",
       "tone": "MENTOR | ARCHITECT | INQUISITOR",
       "empathyScore": 30, // Integer 0-100
       "analyticalDepth": 90, // Integer 0-100
@@ -84,13 +83,3 @@ Exact JSON packets for the Python Data Plane -> Electron UI.
 
 ---
 
-### ⏳ BRUTAL STATUS CHECK: THE ROAD TO MAR 16
-| Module | Hackathon Spec | Implementation Status |
-|:---|:---:|:---:|
-| **Auth/Admin** | `doc-2.md` Phase 1/2 | ✅ **100% Solid** |
-| **Workspace Profile** | `doc-2.md` Phase 2.2 | ✅ **95% Solid** (Multipart fix implemented) |
-| **Persona Library** | `doc-2.md` Phase 2.4 | ✅ **95% Solid** (Multipart logic ready) |
-| **Candidate Lobby** | `doc-2.md` Phase 3 | ✅ **100% Solid** |
-| **Live Interview** | `doc-2.md` Phase 4/5 | ⚠️ **60% Solid** (Room connection works; Telemetry UI needs end-to-end test with Python) |
-| **Tutor Mode** | `doc-2.md` Phase 7 | ⚠️ **40% Solid** (API endpoints ready, UI specialized view pending) |
-| **JSON Reports** | `doc-2.md` Phase 6 | ⚠️ **30% Solid** (UI list done, generation logic still in backend) |

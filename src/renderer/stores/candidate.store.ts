@@ -10,6 +10,7 @@ interface CandidateState {
     candidateName: string | null
     personaName: string | null
     isPracticeMode: boolean
+    isTutorMode: boolean
     hydrated: boolean
     
     setSession: (params: {
@@ -21,7 +22,7 @@ interface CandidateState {
         candidateName?: string
         personaName?: string
     }) => void
-    setPracticeMode: (enabled: boolean) => void
+    setPracticeMode: (enabled: boolean, isTutor?: boolean) => void
     clearSession: () => void
     hydrate: () => Promise<void>
 }
@@ -35,6 +36,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
     candidateName: null,
     personaName: null,
     isPracticeMode: false,
+    isTutorMode: false,
     hydrated: false,
 
     setSession: async (params) => {
@@ -46,7 +48,8 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             interviewTitle: params.title,
             candidateName: params.candidateName || null,
             personaName: params.personaName || null,
-            isPracticeMode: false
+            isPracticeMode: false,
+            isTutorMode: false
         })
         // Save sensitive token securely
         try {
@@ -56,9 +59,10 @@ export const useCandidateStore = create<CandidateState>((set) => ({
         }
     },
 
-    setPracticeMode: (enabled) => {
+    setPracticeMode: (enabled, isTutor = false) => {
         set({ 
             isPracticeMode: enabled,
+            isTutorMode: isTutor,
             token: null,
             accessCode: null,
             interviewTitle: enabled ? 'Practice Session' : null
@@ -74,7 +78,8 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             interviewTitle: null,
             candidateName: null,
             personaName: null,
-            isPracticeMode: false
+            isPracticeMode: false,
+            isTutorMode: false
         })
         try {
             await window.owlyn.auth.clearToken()

@@ -17,7 +17,7 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     let retryCount = 0;
-    // Heuristic: If there is no authenticated user, we are likely in a public learning mode (Practice/Tutor)
+   //public mode
     const isPublicMode = !user;
 
     const fetchReport = async () => {
@@ -40,15 +40,34 @@ export default function AnalysisPage() {
         setLoading(false);
       } catch (err: any) {
         // AI grading might take time; retry every 3 seconds for up to 45 seconds (15 attempts)
-        if ((err.status === 400 || err.status === 404) && retryCount < 15) {
+        const canRetry = (err.status === 400 || err.status === 404) && retryCount < 15;
+        
+        if (canRetry) {
           retryCount++;
           setTimeout(fetchReport, 3000);
-        } else {
-          setError(
-            err.message || "The AI is takes longer than expected to grade the session. Please refresh in a moment.",
-          );
-          setLoading(false);
+          return;
         }
+
+        // Offline Fallback for public modes
+        if (isPublicMode) {
+          const cached = localStorage.getItem(`owlyn_ephemeral_${interviewId}`);
+          if (cached) {
+            try {
+              const data = JSON.parse(cached);
+              setReport(data);
+              setError(null);
+              setLoading(false);
+              return;
+            } catch (e) {
+               console.warn("Failed to parse cached report");
+            }
+          }
+        }
+
+        setError(
+          err.message || "The AI is taking longer than expected to grade the session. Please refresh in a moment.",
+        );
+        setLoading(false);
       }
     };
     fetchReport();
