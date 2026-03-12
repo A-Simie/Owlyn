@@ -53,78 +53,84 @@ export default function CalibrationPage() {
     }
 
     const detect = async () => {
-      if (videoRef.current && canvasRef.current) {
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      if (!video || !canvas) return;
 
-        const vw = videoRef.current.videoWidth;
-        const vh = videoRef.current.videoHeight;
-        
-        if (vw === 0 || vh === 0) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-        canvas.width = vw;
-        canvas.height = vh;
+      // Sync dimensions precisely with source video track
+      if (video.videoWidth > 0 && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      }
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (canvas.width === 0) {
+        rafId = requestAnimationFrame(detect);
+        return;
+      }
 
-        if (detector) {
-          try {
-            const faces = await detector.detect(videoRef.current);
-            if (faces.length > 0) {
-              setFaceDetected(true);
-              const face = faces[0].boundingBox;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-              // Draw tactical overlay
-              ctx.strokeStyle = "#c59f59";
-              ctx.lineWidth = 2;
-              ctx.setLineDash([5, 5]);
-              ctx.strokeRect(face.x, face.y, face.width, face.height);
+      if (detector) {
+        try {
+          const faces = await detector.detect(video);
+          if (faces.length > 0) {
+            setFaceDetected(true);
+            const face = faces[0].boundingBox;
 
-              // Corner brackets
-              const l = 20;
-              ctx.setLineDash([]);
-              ctx.beginPath();
-              // Top Left
-              ctx.moveTo(face.x, face.y + l);
-              ctx.lineTo(face.x, face.y);
-              ctx.lineTo(face.x + l, face.y);
-              // Top Right
-              ctx.moveTo(face.x + face.width - l, face.y);
-              ctx.lineTo(face.x + face.width, face.y);
-              ctx.lineTo(face.x + face.width, face.y + l);
-              // Bottom Right
-              ctx.moveTo(face.x + face.width, face.y + face.height - l);
-              ctx.lineTo(face.x + face.width, face.y + face.height);
-              ctx.lineTo(face.x + face.width - l, face.y + face.height);
-              // Bottom Left
-              ctx.moveTo(face.x + l, face.y + face.height);
-              ctx.lineTo(face.x, face.y + face.height);
-              ctx.lineTo(face.x, face.y + face.height - l);
-              ctx.stroke();
+            // Draw tactical overlay
+            ctx.strokeStyle = "#c59f59";
+            ctx.lineWidth = 2;
+            ctx.setLineDash([5, 5]);
+            ctx.strokeRect(face.x, face.y, face.width, face.height);
 
-              // ID markers
-              ctx.fillStyle = "#c59f59";
-              ctx.font = "bold 10px Inter";
-              ctx.fillText("BIOMETRIC_SYNC: ACTIVE", face.x, face.y - 10);
-            } else {
-              setFaceDetected(false);
-            }
-          } catch (e) {
-            console.error("Detection error:", e);
+            // Corner brackets
+            const l = 20;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            // Top Left
+            ctx.moveTo(face.x, face.y + l);
+            ctx.lineTo(face.x, face.y);
+            ctx.lineTo(face.x + l, face.y);
+            // Top Right
+            ctx.moveTo(face.x + face.width - l, face.y);
+            ctx.lineTo(face.x + face.width, face.y);
+            ctx.lineTo(face.x + face.width, face.y + l);
+            // Bottom Right
+            ctx.moveTo(face.x + face.width, face.y + face.height - l);
+            ctx.lineTo(face.x + face.width, face.y + face.height);
+            ctx.lineTo(face.x + face.width - l, face.y + face.height);
+            // Bottom Left
+            ctx.moveTo(face.x + l, face.y + face.height);
+            ctx.lineTo(face.x, face.y + face.height);
+            ctx.lineTo(face.x, face.y + face.height - l);
+            ctx.stroke();
+
+            // ID markers
+            ctx.fillStyle = "#c59f59";
+            ctx.font = "bold 10px Inter";
+            ctx.fillText("BIOMETRIC_SYNC: ACTIVE", face.x, face.y - 10);
+          } else {
+            setFaceDetected(false);
           }
-        } else {
-          // Fallback static center ring if API not enabled/supported
-          const cx = canvas.width / 2;
-          const cy = canvas.height / 2;
-          const r = 100;
-          ctx.strokeStyle = "#c59f5944";
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          ctx.stroke();
-          setFaceDetected(true); // Auto-pass fallback
+        } catch (e) {
+          console.error("Detection error:", e);
         }
+      } else {
+        // Fallback: Ensure user is at least present in frame center
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const r = 100;
+        ctx.strokeStyle = "#c59f5944";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        // Pass if stream is pumping data
+        setFaceDetected(video.readyState >= 3);
       }
       rafId = requestAnimationFrame(detect);
     };

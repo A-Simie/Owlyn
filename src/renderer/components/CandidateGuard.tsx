@@ -10,16 +10,18 @@ export default function CandidateGuard({ children }: { children: ReactNode }) {
   const { token, accessCode, isPracticeMode, hydrated, hydrate } = useCandidateStore();
 
   useEffect(() => {
-    if (!hydrated) {
-      hydrate().finally(() => setStatus("checking"));
-      return;
-    }
+    async function checkSecurity() {
+      // Ensure store is hydrated from safeStorage before routing
+      if (!hydrated) {
+        await hydrate();
+        return;
+      }
 
-    if (isPracticeMode || (token && accessCode)) {
-      setStatus("authorized");
-    } else {
-      setStatus("unauthorized");
+      const isAuthorized = isPracticeMode || (!!token && !!accessCode);
+      setStatus(isAuthorized ? "authorized" : "unauthorized");
     }
+    
+    checkSecurity();
   }, [location.pathname, token, accessCode, isPracticeMode, hydrated, hydrate]);
 
   if (status === "checking") {

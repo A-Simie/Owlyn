@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMediaStore } from "@/stores/media.store";
+import { candidateApi } from "@/api/candidate.api";
 
 export default function HardwarePage() {
   const navigate = useNavigate();
@@ -39,23 +40,31 @@ export default function HardwarePage() {
   }, [cameraStream]);
 
   useEffect(() => {
-    setChecks((prev) => ({ ...prev, camera: cameraOn, mic: micOn }));
-  }, [cameraOn, micOn]);
+    // A simple boolean check for stream existence and audio oscillation
+    const videoActive = cameraOn && !!cameraStream && videoRef.current?.videoWidth !== 0;
+    const micActive = micOn && audioLevel > 0.01;
+    setChecks((prev) => ({ 
+      ...prev, 
+      camera: videoActive, 
+      mic: micActive 
+    }));
+  }, [cameraOn, micOn, cameraStream, audioLevel]);
 
   const runNetworkTest = useCallback(async () => {
     setIsChecking(true);
     const start = performance.now();
     try {
-      await fetch("/api/health");
+      await candidateApi.healthCheck();
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
-      setChecks((prev) => ({ ...prev, network: latency < 2000 }));
+      // Gated at 500ms for acceptable real-time audio/video performance
+      setChecks((prev) => ({ ...prev, network: latency < 500 }));
     } catch (err) {
-      const mockLatency = Math.round(15 + Math.random() * 45);
-      setNetworkLatency(mockLatency);
-      setChecks((prev) => ({ ...prev, network: true }));
+      console.error("Network check failed:", err);
+      setNetworkLatency(null);
+      setChecks((prev) => ({ ...prev, network: false }));
     } finally {
-      setTimeout(() => setIsChecking(false), 800);
+      setIsChecking(false);
     }
   }, []);
 

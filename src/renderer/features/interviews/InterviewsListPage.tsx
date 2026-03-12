@@ -44,7 +44,7 @@ export default function InterviewsListPage() {
   const location = useLocation();
   const [interviews, setInterviews] = useState<InterviewListItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<"info" | "questions">("info");
@@ -66,7 +66,6 @@ export default function InterviewsListPage() {
     null,
   );
   const [justCopied, setJustCopied] = useState(false);
-  const [topPerformer, setTopPerformer] = useState<Report | null>(null);
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -83,7 +82,6 @@ export default function InterviewsListPage() {
   useEffect(() => {
     fetchInterviews();
     personasApi.getPersonas().then(setPersonas).catch(console.error);
-    reportsApi.getTopPerformer().then(setTopPerformer).catch(() => setTopPerformer(null));
   }, [fetchInterviews]);
 
   useEffect(() => {
