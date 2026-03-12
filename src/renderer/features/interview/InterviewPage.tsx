@@ -168,24 +168,40 @@ function InterviewInterface() {
 
       // 2. Camera (For Proctoring)
       try {
-        await localParticipant.setCameraEnabled(true, {
-          resolution: { width: 640, height: 480 },
-          // Using a standard framerate and letting the AI filter it is safer than 1FPS at driver level
-          facingMode: "user"
-        });
+        console.log("Attempting camera capture...");
+        // Request without strict resolution first to avoid "NotSupportedError" on incompatible devices
+        await localParticipant.setCameraEnabled(true);
         console.log("Camera published");
       } catch (err) {
         console.warn("Camera capture rejected:", err);
       }
 
       // 3. Screen Share (For Code Analysis)
-      // Note: In some browsers/Electron environments, this MUST be triggered by a click.
-      // We attempt it here, but also ensure the UI allows manual retry if needed.
       try {
-        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+        console.log("Attempting screen share capture...");
+        let sourceId: string | undefined;
+        
+        // In Electron, we often need a sourceId from desktopCapturer
+        if (window.owlyn?.desktop?.getSources) {
+          try {
+            const sources = await window.owlyn.desktop.getSources();
+            // Try to find an "Entire Screen" or just pick the first available
+            const source = sources.find(s => s.name.toLowerCase().includes("screen")) || sources[0];
+            sourceId = source?.id;
+            console.log("Found Electron screen source:", source?.name);
+          } catch (e) {
+            console.warn("Failed to get desktop sources:", e);
+          }
+        }
+
+        await localParticipant.setScreenShareEnabled(true, { 
+          contentHint: "text",
+          // @ts-ignore - sourceId is supported in Electron builds of LiveKit
+          deviceId: sourceId 
+        });
         console.log("Screen share published");
       } catch (err) {
-        console.warn("Screen share capture rejected (NotSupportedError is common without user gesture or in Electron without source selection):", err);
+        console.warn("Screen share capture rejected:", err);
       }
     };
 

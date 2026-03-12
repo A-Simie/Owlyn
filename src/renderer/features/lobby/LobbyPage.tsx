@@ -68,7 +68,7 @@ export default function LobbyPage() {
                 Interviewer
               </p>
               <p className="text-lg font-bold text-primary uppercase tracking-tight">
-                {isPracticeMode ? "AI Tutor" : (useCandidateStore.getState().personaName || "Owlyn 4")}
+                {isPracticeMode ? "AI Tutor" : (useCandidateStore.getState().personaName || "Owlyn")}
               </p>
             </div>
           </div>
