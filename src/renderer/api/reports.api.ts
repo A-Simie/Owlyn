@@ -25,6 +25,12 @@ export const reportsApi = {
     const { data } = await apiClient.get<Report>(`/api/reports/${interviewId}`);
     return data;
   },
+  
+  // Public endpoint for ephemeral learning reports (Practice/Tutor)
+  getPublicReport: async (interviewId: string) => {
+    const { data } = await apiClient.get<Report>(`/api/public/reports/${interviewId}`);
+    return data;
+  },
 
   // Talent Pool: calls GET /api/reports
   getAllReports: async () => {

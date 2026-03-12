@@ -19,21 +19,33 @@ export default function CodeEditor({
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
 
-    // Phase 4.2: Register Inline Completions Provider (Real API)
+    let lastCallId = 0;
+
     monaco.languages.registerInlineCompletionsProvider(language, {
-      provideInlineCompletions: async (model: any, position: any) => {
+      provideInlineCompletions: async (model: any, position: any, _context: any, token: any) => {
+        const callId = ++lastCallId;
+        
+        // Wait for 1.5s pause in typing
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // If a new request came in or it was cancelled, abort
+        if (callId !== lastCallId || token.isCancellationRequested) {
+          return { items: [] };
+        }
+
         const code = model.getValue();
         const cursorPosition = model.getOffsetAt(position);
 
         try {
-          //debounce every 1.5 seconds
           const { suggestion } = await candidateApi.getCopilotSuggestion(
             code,
             language,
             cursorPosition,
           );
 
-          if (!suggestion) return { items: [] };
+          if (!suggestion || callId !== lastCallId || token.isCancellationRequested) {
+            return { items: [] };
+          }
 
           return {
             items: [
@@ -53,7 +65,6 @@ export default function CodeEditor({
           return { items: [] };
         }
       },
-      freeInlineCompletions: () => {},
       disposeInlineCompletions: () => {},
     });
   };

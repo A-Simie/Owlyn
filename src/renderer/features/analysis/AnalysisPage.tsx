@@ -17,29 +17,42 @@ export default function AnalysisPage() {
 
   useEffect(() => {
     let retryCount = 0;
+    // Heuristic: If there is no authenticated user, we are likely in a public learning mode (Practice/Tutor)
+    const isPublicMode = !user;
+
     const fetchReport = async () => {
       if (!interviewId) return;
       try {
-        const data = await reportsApi.getReport(interviewId);
+        const data = isPublicMode 
+          ? await reportsApi.getPublicReport(interviewId)
+          : await reportsApi.getReport(interviewId);
+          
         setReport(data);
         if (data.finalDecision) setDecision(data.finalDecision);
         if (data.humanFeedback) setNotes(data.humanFeedback);
+
+        // Architectural requirement: Save ephemeral learning reports to localStorage
+        if (isPublicMode) {
+          localStorage.setItem(`owlyn_ephemeral_${interviewId}`, JSON.stringify(data));
+        }
+
         setError(null);
         setLoading(false);
       } catch (err: any) {
-        if ((err.status === 400 || err.status === 404) && retryCount < 10) {
+        // AI grading might take time; retry every 3 seconds for up to 45 seconds (15 attempts)
+        if ((err.status === 400 || err.status === 404) && retryCount < 15) {
           retryCount++;
           setTimeout(fetchReport, 3000);
         } else {
           setError(
-            err.message || "Failed to retrieve session analysis report.",
+            err.message || "The AI is takes longer than expected to grade the session. Please refresh in a moment.",
           );
           setLoading(false);
         }
       }
     };
     fetchReport();
-  }, [interviewId]);
+  }, [interviewId, user]);
 
   const handleFinalize = async () => {
     if (!interviewId || !decision) return;
