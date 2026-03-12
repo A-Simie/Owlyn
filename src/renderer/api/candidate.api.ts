@@ -28,9 +28,9 @@ export const candidateApi = {
       { headers: { Authorization: `Bearer ${guestToken}` } },
     );
     // 2. Tell Electron to enable local restrictions
-    if (window.owlyn?.lockdown) {
-      await window.owlyn.lockdown.toggle(true);
-    }
+    // if (window.owlyn?.lockdown) {
+    //   await window.owlyn.lockdown.toggle(true);
+    // }
     return data;
   },
 

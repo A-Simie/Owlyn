@@ -191,17 +191,17 @@ function InterviewInterface() {
     if (isConnected) {
       startPublishing();
       // Lockdown Activation (Only if NOT tutor mode)
-      if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
-        window.owlyn.lockdown.toggle(true);
-      }
+      // if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
+      //   window.owlyn.lockdown.toggle(true);
+      // }
     }
 
     return () => {
       clearInterval(timer);
       stopAll();
-      if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
-        window.owlyn.lockdown.toggle(false);
-      }
+      // if (!isTutorMode && window.owlyn?.lockdown?.toggle) {
+      //   window.owlyn.lockdown.toggle(false);
+      // }
     };
   }, [tick, stopAll, localParticipant, isConnected, isTutorMode]);
 

@@ -49,6 +49,7 @@ Used for company branding.
     "notes": true
   }
 }
+
 ```
 
 **B. Candidate Validation** (POST `/api/interviews/validate-code`)
@@ -99,3 +100,15 @@ Exact JSON packets for the Python Data Plane -> Electron UI.
 - **Proctoring**: `{"type": "PROCTOR_WARNING", "message": "Look at the camera"}`
 - **Monaco Interaction**: `{"type": "TOOL_HIGHLIGHT", "line": 42}`
 - **Transcript Sync**: `{"type": "transcript", "speaker": "ai|candidate", "text": "..."}`
+
+
+other things to note
+
+if a candidate quits the session, the backend should set the status to "completed", 
+
+currently when a candidate quits the session, the code is unable to be used again(correct).
+
+however the app is in a limbo state as it shows that the interview islive for admin but user cannot join.
+
+now add a flow so when we click on end session, it should set the status to "completed".add an api endpoint for that.
+
