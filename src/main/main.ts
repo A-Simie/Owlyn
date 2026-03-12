@@ -6,6 +6,7 @@ import {
   Menu,
   safeStorage,
   clipboard,
+  desktopCapturer,
 } from "electron";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
@@ -222,13 +223,12 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
 
 ipcMain.handle("desktop:sources", async () => {
   try {
-    const { desktopCapturer } = require("electron");
     const sources = await desktopCapturer.getSources({
       types: ["window", "screen"],
       thumbnailSize: { width: 400, height: 250 },
       fetchWindowIcons: false
     });
-    return sources.map((s: any) => ({
+    return sources.map((s) => ({
       id: s.id,
       name: s.name,
       thumbnail: s.thumbnail.toDataURL(),

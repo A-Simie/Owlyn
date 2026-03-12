@@ -41,6 +41,7 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
   // Start webcam
   useEffect(() => {
     if (!modelsLoaded) return;
+    if (stream === null) return; // Wait for external stream
     if (stream) {
       if (videoRef.current) {
         videoRef.current.srcObject = stream;

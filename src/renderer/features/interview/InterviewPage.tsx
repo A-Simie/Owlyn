@@ -158,6 +158,7 @@ function InterviewInterface() {
   }, [activeTab, localParticipant, isConnected]);
 
   useEffect(() => {
+    useSessionStore.getState().reset(); // Reset timer on start
     const timer = setInterval(tick, 1000);
     return () => {
       clearInterval(timer);
@@ -189,7 +190,10 @@ function InterviewInterface() {
       if (window.owlyn?.desktop?.getSources) {
         try {
           const sources = await window.owlyn.desktop.getSources();
-          const source = sources.find(s => s.name.toLowerCase().includes("screen")) || sources[0];
+          // Prioritize screens, then windows, then any other source
+          const screenSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("screen"));
+          const windowSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("window"));
+          const source = screenSources[0] || windowSources[0] || sources[0];
           sourceId = source?.id;
         } catch (e) {
           console.warn("Failed to get desktop sources:", e);
@@ -276,7 +280,7 @@ function InterviewInterface() {
 
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-center">
-              <span className="text-[8px] uppercase font-black tracking-widest text-primary/60 mb-1">
+              <span className="text-[9px] uppercase font-black tracking-widest text-primary/60 mb-1">
                 Remaining
               </span>
               <span className="text-lg font-mono text-white tracking-widest">
@@ -402,9 +406,9 @@ function InterviewInterface() {
                 </span>
               </div>
               <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
-                <FaceTracker 
+                 <FaceTracker 
                   onWarning={setProctorWarning} 
-                  stream={(localCameraTrack?.publication?.track as any)?.mediaStream} 
+                  stream={(localCameraTrack?.publication?.track as any)?.mediaStream ?? null} 
                 />
               </div>
             </div>
