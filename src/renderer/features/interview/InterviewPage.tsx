@@ -72,7 +72,7 @@ function InterviewInterface() {
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
-  const [aiStatus, setAiStatus] = useState<string>("Ready");
+  const [aiStatus, setAiStatus] = useState<string>("Standby");
 
   const toggleWidget = async () => {
     const nextState = !isWidget;
@@ -188,7 +188,7 @@ function InterviewInterface() {
   };
 
   const handleEndSession = async () => {
-    if (confirm("End session and generate final report?")) {
+    if (confirm("End session")) {
       room?.disconnect();
       stopAll();
       await candidateApi.releaseLockdown();
@@ -206,17 +206,28 @@ function InterviewInterface() {
   };
 
   return (
-    <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}>
+    <div
+      className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}
+    >
       {!isWidget && (
         <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-8 bg-[#0D0D0D] z-50">
           <div className="flex items-center gap-4">
             <div className="size-8 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-primary text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>owl</span>
+              <span
+                className="material-symbols-outlined text-primary text-xl"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
+                owl
+              </span>
             </div>
             <div className="flex flex-col">
-              <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">Active Session</span>
+              <span className="text-[9px] uppercase font-black text-slate-500 tracking-[0.2em]">
+                Active Session
+              </span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <div className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+                <div
+                  className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                />
                 <span className="text-[8px] font-black uppercase tracking-widest text-slate-400">
                   {isConnected ? "Live" : "Disconnected"}
                 </span>
@@ -226,10 +237,17 @@ function InterviewInterface() {
 
           <div className="flex items-center gap-8">
             <div className="flex flex-col items-center">
-              <span className="text-[8px] uppercase font-black tracking-widest text-primary/60 mb-1">Remaining</span>
-              <span className="text-lg font-mono text-white tracking-widest">{formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}</span>
+              <span className="text-[8px] uppercase font-black tracking-widest text-primary/60 mb-1">
+                Remaining
+              </span>
+              <span className="text-lg font-mono text-white tracking-widest">
+                {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
+              </span>
             </div>
-            <button onClick={handleEndSession} className="px-6 py-2 bg-red-600/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all">
+            <button
+              onClick={handleEndSession}
+              className="px-6 py-2 bg-red-600/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all"
+            >
               End Session
             </button>
           </div>
@@ -240,14 +258,37 @@ function InterviewInterface() {
         {!isWidget && (
           <div className="flex-1 flex flex-col min-w-0 border-r border-white/5 relative">
             <div className="flex items-center px-4 gap-1 border-b border-white/5 h-12 bg-black/40">
-              <TabButton active={activeTab === "code"} onClick={() => setActiveTab("code")} label="Code Editor" icon="code" />
-              <TabButton active={activeTab === "whiteboard"} onClick={() => setActiveTab("whiteboard")} label="Whiteboard" icon="draw" />
-              <TabButton active={activeTab === "notes"} onClick={() => setActiveTab("notes")} label="Scratchpad" icon="description" />
-              
+              <TabButton
+                active={activeTab === "code"}
+                onClick={() => setActiveTab("code")}
+                label="Code Editor"
+                icon="code"
+              />
+              <TabButton
+                active={activeTab === "whiteboard"}
+                onClick={() => setActiveTab("whiteboard")}
+                label="Whiteboard"
+                icon="draw"
+              />
+              <TabButton
+                active={activeTab === "notes"}
+                onClick={() => setActiveTab("notes")}
+                label="Scratchpad"
+                icon="description"
+              />
+
               {activeTab === "code" && (
                 <div className="ml-auto flex items-center gap-4">
-                  <button onClick={handleRunCode} disabled={isProcessing} className="flex items-center gap-2 px-4 py-1.5 bg-primary text-black text-[9px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50">
-                    {isProcessing ? <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" /> : "Run Code"}
+                  <button
+                    onClick={handleRunCode}
+                    disabled={isProcessing}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-black text-[9px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                  >
+                    {isProcessing ? (
+                      <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                    ) : (
+                      "Run Code"
+                    )}
                   </button>
                 </div>
               )}
@@ -255,9 +296,23 @@ function InterviewInterface() {
 
             <div className="flex-1 min-h-0 relative">
               <AnimatePresence mode="wait">
-                <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-                  {activeTab === "code" && <CodeEditor value={code} onChange={setCode} highlightedLine={highlightedLine} />}
-                  {activeTab === "whiteboard" && <Whiteboard ref={whiteboardRef} />}
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0"
+                >
+                  {activeTab === "code" && (
+                    <CodeEditor
+                      value={code}
+                      onChange={setCode}
+                      highlightedLine={highlightedLine}
+                    />
+                  )}
+                  {activeTab === "whiteboard" && (
+                    <Whiteboard ref={whiteboardRef} />
+                  )}
                   {activeTab === "notes" && <Notes />}
                 </motion.div>
               </AnimatePresence>
@@ -265,11 +320,15 @@ function InterviewInterface() {
           </div>
         )}
 
-        <div className={`${isWidget ? "flex-1" : "w-[360px]"} bg-[#0D0D0D] flex flex-col shrink-0 min-h-0 overflow-y-auto custom-scrollbar border-l border-white/5 z-40`}>
+        <div
+          className={`${isWidget ? "flex-1" : "w-[360px]"} bg-[#0D0D0D] flex flex-col shrink-0 min-h-0 overflow-y-auto custom-scrollbar border-l border-white/5 z-40`}
+        >
           <div className="p-6 space-y-8">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Candidate Feed</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Candidate Feed
+                </span>
               </div>
               <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
                 <FaceTracker onWarning={setProctorWarning} />
@@ -277,11 +336,11 @@ function InterviewInterface() {
             </div>
 
             <div className="space-y-4">
-              <div className="bg-white/[0.02] border border-white/5 rounded-xl p-6 flex flex-col items-center gap-4">
+              <div className="bg-white/[0.02] border border-primary/20 rounded-xl p-6 flex flex-col items-center gap-4">
                 <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
                 <div className="text-center">
-                  <p className="text-[10px] text-primary font-bold uppercase tracking-widest animate-pulse">
-                    {isAiSpeaking ? "Speaking..." : (aiStatus || "Ready")}
+                  <p className={`text-[10px] text-primary font-black uppercase tracking-[0.4em] ${isAiSpeaking ? "animate-pulse" : ""}`}>
+                    {isAiSpeaking ? "Owlyn Speaking" : (aiStatus || "Standby")}
                   </p>
                 </div>
               </div>
@@ -289,7 +348,9 @@ function InterviewInterface() {
 
             {!isWidget && (
               <div className="space-y-4">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">Live Transcript</span>
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Live Transcript
+                </span>
                 <div className="h-[300px] border border-white/5 rounded-lg bg-black/20 overflow-hidden">
                   <TranscriptSidebar />
                 </div>
@@ -297,7 +358,10 @@ function InterviewInterface() {
             )}
 
             {isTutorMode && (
-              <button onClick={toggleWidget} className="w-full py-3 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+              <button
+                onClick={toggleWidget}
+                className="w-full py-3 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+              >
                 <span className="material-symbols-outlined text-sm">pip</span>
                 Toggle Widget
               </button>
@@ -308,15 +372,21 @@ function InterviewInterface() {
 
       <AnimatePresence>
         {proctorWarning && (
-          <motion.div 
-            initial={{ opacity: 0, y: -100 }} 
-            animate={{ opacity: 1, y: 0 }} 
-            exit={{ opacity: 0, y: -100 }} 
-            className="fixed top-0 left-0 right-0 z-[200] bg-red-600 text-white h-12 flex items-center justify-center gap-4 shadow-2xl border-b border-white/20 pointer-events-none"
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-0 left-0 right-0 z-[200] bg-red-600 text-white h-12 flex items-center justify-center gap-4 shadow-2xl pointer-events-none"
           >
-            <span className="material-symbols-outlined animate-pulse text-xl">warning</span>
-            <span className="text-[9px] font-black uppercase tracking-[0.3em]">Security Alert: {proctorWarning}</span>
-            <span className="material-symbols-outlined animate-pulse text-xl">warning</span>
+            <span className="material-symbols-outlined text-xl animate-pulse">
+              warning
+            </span>
+            <span className="text-[11px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
+              {proctorWarning}
+            </span>
+            <span className="material-symbols-outlined text-xl animate-pulse">
+              warning
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
