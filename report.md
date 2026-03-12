@@ -99,6 +99,3 @@ Exact JSON packets for the Python Data Plane -> Electron UI.
 - **Proctoring**: `{"type": "PROCTOR_WARNING", "message": "Look at the camera"}`
 - **Monaco Interaction**: `{"type": "TOOL_HIGHLIGHT", "line": 42}`
 - **Transcript Sync**: `{"type": "transcript", "speaker": "ai|candidate", "text": "..."}`
-
----
-

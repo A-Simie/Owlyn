@@ -142,18 +142,17 @@ function InterviewInterface() {
       if (!localParticipant) return;
 
       try {
-        // 1. Screen Share @ 1FPS
+        // 1. Screen Share @ 1FPS (Doc 2 requirement)
         await localParticipant.setScreenShareEnabled(true, {
-          contentHint: 'text',
+          contentHint: "text",
         });
-        
-        // Note: LiveKit doesn't easily allow capping published FPS via setScreenShareEnabled options directly in all versions, 
-        // but we set it up to signal the intent. The AI worker handles the actual sampling.
-        
-        // 2. Camera @ 1FPS (Proctoring)
-        // We use setVideoEnabled with constraints if possible, or publish manually
-        await localParticipant.setCameraEnabled(true);
-        
+
+        // 2. Camera @ 1FPS (Proctoring requirement)
+        await localParticipant.setCameraEnabled(true, {
+          resolution: { width: 640, height: 480 },
+          frameRate: 1,
+        });
+
       } catch (err) {
         console.warn("Failed to publish tracks:", err);
       }
@@ -180,8 +179,12 @@ function InterviewInterface() {
     room?.disconnect();
     stopAll();
     candidateApi.releaseLockdown();
+    
+   //clean store
     resetInterview();
+    useSessionStore.getState().reset();
     clearSession();
+    
     navigate("/analysis");
   }, [navigate, stopAll, room, resetInterview, clearSession]);
 
