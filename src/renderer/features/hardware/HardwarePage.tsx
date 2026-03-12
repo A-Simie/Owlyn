@@ -63,7 +63,7 @@ export default function HardwarePage() {
       }
       const latency = Math.round(performance.now() - start);
       setNetworkLatency(latency);
-      setChecks((prev) => ({ ...prev, network: latency < 1000 })); // Relaxed latency check
+      setChecks((prev) => ({ ...prev, network: latency < 5000 }));
     } catch (err) {
       console.error("Network check failed:", err);
       setNetworkLatency(null);
@@ -208,7 +208,7 @@ export default function HardwarePage() {
                       ? "Pinging..."
                       : checks.network
                         ? `${networkLatency}ms latency`
-                        : "Link error"
+                        : "Network error"
                   }
                   icon="language"
                   loading={isChecking}
