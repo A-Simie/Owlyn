@@ -35,9 +35,14 @@ function createApiClient(): AxiosInstance {
 
     client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
-            const token = authStoreGetTokenFn?.() || localStorage.getItem('owlyn_guest_token')
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`
+            const publicPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/verify-login', '/api/auth/verify-signup']
+            const isPublicPath = publicPaths.some((path) => config.url?.startsWith(path))
+
+            if (!isPublicPath) {
+                const token = authStoreGetTokenFn?.() || localStorage.getItem('owlyn_guest_token')
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`
+                }
             }
             return config
         },

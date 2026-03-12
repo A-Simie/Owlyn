@@ -22,6 +22,7 @@ import { candidateApi } from "@/api";
 import CodeEditor from "./components/CodeEditor";
 import Whiteboard from "./components/Whiteboard";
 import Notes from "./components/Notes";
+import FaceTracker from "./components/FaceTracker";
 
 type Tab = "code" | "whiteboard" | "notes";
 
@@ -323,6 +324,15 @@ function InterviewInterface() {
                  </div>
               </div>
             </div>
+
+            <FaceTracker
+              onWarning={(msg) => {
+                if (msg) {
+                  setProctorWarning(msg);
+                  setTimeout(() => setProctorWarning(null), 5000);
+                }
+              }}
+            />
 
             <div className="space-y-4">
               <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
