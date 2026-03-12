@@ -96,6 +96,19 @@ app.whenReady().then(() => {
     },
   );
 
+  // Handle Display Media (Screen Selection)
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    const { desktopCapturer } = require("electron");
+    desktopCapturer.getSources({ types: ["screen", "window"] }).then((sources: any[]) => {
+  
+      if (sources.length > 0) {
+        callback({ video: sources[0] });
+      } else {
+        callback({});
+      }
+    });
+  });
+
   if (!IS_DEV) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({

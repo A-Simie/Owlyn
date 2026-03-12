@@ -277,7 +277,6 @@ export default function FaceTracker({ onWarning }: FaceTrackerProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
-        <span>Candidate Camera</span>
         <span
           className={`${status === "valid" ? "text-green-500" : "text-red-500"} animate-pulse`}
         >
@@ -312,14 +311,6 @@ export default function FaceTracker({ onWarning }: FaceTrackerProps) {
           className="absolute inset-0 w-full h-full pointer-events-none z-10"
           style={{ transform: "scaleX(-1)" }}
         />
-        <div className="absolute bottom-2 left-2 flex items-center gap-1.5 z-20">
-          <div
-            className={`size-1.5 rounded-full ${status === "valid" ? "bg-green-500" : "bg-red-500"} animate-pulse`}
-          />
-          <span className="text-[7px] font-bold text-white/60 uppercase tracking-widest">
-            Face ID
-          </span>
-        </div>
       </div>
     </div>
   );

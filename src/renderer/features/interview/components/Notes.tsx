@@ -11,7 +11,7 @@ export default function Notes() {
             edit_note
           </span>
           <h3 className="text-sm font-bold uppercase tracking-[0.2em] text-white">
-            Scratchpad
+            Notes
           </h3>
         </div>
         <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">

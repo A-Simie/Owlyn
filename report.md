@@ -112,3 +112,5 @@ however the app is in a limbo state as it shows that the interview islive for ad
 
 now add a flow so when we click on end session, it should set the status to "completed".add an api endpoint for that.
 
+also I set an interview for 10 minutes. qwhy does it come back as 45 minutes
+
