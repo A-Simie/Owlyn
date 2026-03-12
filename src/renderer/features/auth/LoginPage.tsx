@@ -99,6 +99,7 @@ export default function LoginPage() {
         interviewId: res.interviewId,
         accessCode: code,
         title: res.title,
+        durationMinutes: res.durationMinutes,
         candidateName: res.candidateName,
         personaName: res.personaName
       });
@@ -126,6 +127,7 @@ export default function LoginPage() {
         interviewId: res.interviewId,
         accessCode: "PRACTICE",
         title: "Mock Interview",
+        durationMinutes: 45,
         candidateName: "Guest Candidate"
       });
       useCandidateStore.getState().setPracticeMode(true);
@@ -148,6 +150,7 @@ export default function LoginPage() {
         interviewId: res.interviewId,
         accessCode: "TUTOR",
         title: "AI Tutor Session",
+        durationMinutes: 60,
         candidateName: "Guest Candidate"
       });
       useCandidateStore.getState().setPracticeMode(true, true);

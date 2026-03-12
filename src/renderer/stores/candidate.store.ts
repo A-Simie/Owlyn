@@ -11,6 +11,7 @@ interface CandidateState {
     personaName: string | null
     isPracticeMode: boolean
     isTutorMode: boolean
+    durationMinutes: number
     hydrated: boolean
     
     setSession: (params: {
@@ -19,6 +20,7 @@ interface CandidateState {
         interviewId: string
         accessCode: string
         title: string
+        durationMinutes: number
         candidateName?: string
         personaName?: string
     }) => void
@@ -37,6 +39,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
     personaName: null,
     isPracticeMode: false,
     isTutorMode: false,
+    durationMinutes: 45,
     hydrated: false,
 
     setSession: async (params) => {
@@ -46,6 +49,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             interviewId: params.interviewId,
             accessCode: params.accessCode,
             interviewTitle: params.title,
+            durationMinutes: params.durationMinutes,
             candidateName: params.candidateName || null,
             personaName: params.personaName || null,
         })

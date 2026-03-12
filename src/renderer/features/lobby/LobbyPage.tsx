@@ -7,7 +7,7 @@ export default function LobbyPage() {
   const navigate = useNavigate();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { interviewTitle, isPracticeMode, accessCode, token, candidateName } = useCandidateStore();
+  const { interviewTitle, isPracticeMode, accessCode, token, candidateName, durationMinutes } = useCandidateStore();
 
   useEffect(() => {
     // Pre-Flight Health Check
@@ -73,13 +73,23 @@ export default function LobbyPage() {
             </div>
           </div>
 
-          <div className="p-5 bg-black/40 border border-white/5 rounded-sm flex justify-between items-center">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
-              Access ID
-            </span>
-            <span className="text-[10px] font-mono font-bold text-white">
-              {accessCode || "GUEST"}
-            </span>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 bg-black/40 border border-white/5 rounded-sm flex justify-between items-center">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                Access ID
+              </span>
+              <span className="text-[9px] font-mono font-bold text-white">
+                {accessCode || "GUEST"}
+              </span>
+            </div>
+            <div className="p-4 bg-black/40 border border-white/5 rounded-sm flex justify-between items-center">
+              <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                Duration
+              </span>
+              <span className="text-[9px] font-mono font-bold text-primary">
+                {durationMinutes || 45} MIN
+              </span>
+            </div>
           </div>
 
           <div className="pt-4 space-y-4">

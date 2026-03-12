@@ -221,22 +221,22 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
 });
 
 ipcMain.handle("desktop:sources", async () => {
-  const { desktopCapturer } = require("electron");
-  const sources = await desktopCapturer.getSources({
-    types: ["window", "screen"],
-    thumbnailSize: { width: 300, height: 200 },
-  });
-  return sources.map(
-    (s: {
-      id: string;
-      name: string;
-      thumbnail: { toDataURL: () => string };
-    }) => ({
+  try {
+    const { desktopCapturer } = require("electron");
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: { width: 400, height: 250 },
+      fetchWindowIcons: false
+    });
+    return sources.map((s: any) => ({
       id: s.id,
       name: s.name,
       thumbnail: s.thumbnail.toDataURL(),
-    }),
-  );
+    }));
+  } catch (err) {
+    console.error("Failed to get desktop sources:", err);
+    return [];
+  }
 });
 
 ipcMain.on("clipboard:write", (_event, text: string) => {

@@ -6,9 +6,10 @@ const MODEL_URL =
 
 interface FaceTrackerProps {
   onWarning?: (message: string | null) => void;
+  stream?: MediaStream | null;
 }
 
-export default function FaceTracker({ onWarning }: FaceTrackerProps) {
+export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -40,15 +41,23 @@ export default function FaceTracker({ onWarning }: FaceTrackerProps) {
   // Start webcam
   useEffect(() => {
     if (!modelsLoaded) return;
-    let stream: MediaStream | null = null;
+    if (stream) {
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().then(() => setCameraReady(true)).catch(console.error);
+      }
+      return;
+    }
+
+    let localStream: MediaStream | null = null;
     (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
+        localStream = await navigator.mediaDevices.getUserMedia({
           video: { width: 320, height: 240, facingMode: "user" },
           audio: false,
         });
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = localStream;
           await videoRef.current.play();
           setCameraReady(true);
         }
@@ -57,9 +66,9 @@ export default function FaceTracker({ onWarning }: FaceTrackerProps) {
       }
     })();
     return () => {
-      stream?.getTracks().forEach((t) => t.stop());
+      localStream?.getTracks().forEach((t) => t.stop());
     };
-  }, [modelsLoaded]);
+  }, [modelsLoaded, stream]);
 
   const emitWarning = useCallback(
     (msg: string | null) => {

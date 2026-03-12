@@ -62,6 +62,8 @@ function InterviewInterface() {
   
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
+  const cameraTracks = useTracks([Track.Source.Camera], { room }).filter((t) => t.participant === localParticipant);
+  const localCameraTrack = cameraTracks[0];
 
   const [activeTab, setActiveTab] = useState<Tab>("code");
   const [isConnected, setIsConnected] = useState(false);
@@ -72,6 +74,8 @@ function InterviewInterface() {
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
   const [aiStatus, setAiStatus] = useState<string>("Standby");
   const [showCompletion, setShowCompletion] = useState(false);
+  const [isMediaReady, setIsMediaReady] = useState(false);
+  const { durationMinutes } = useCandidateStore();
 
   const toggleWidget = async () => {
     const nextState = !isWidget;
@@ -155,63 +159,52 @@ function InterviewInterface() {
 
   useEffect(() => {
     const timer = setInterval(tick, 1000);
-    const startPublishing = async () => {
-      if (!localParticipant) return;
-      
-      // 1. Microphone (Crucial for AI communication)
-      try {
-        await localParticipant.setMicrophoneEnabled(true);
-        console.log("Microphone published");
-      } catch (err) {
-        console.error("Microphone capture failed:", err);
-      }
-
-      // 2. Camera (For Proctoring)
-      try {
-        console.log("Attempting camera capture...");
-        // Request without strict resolution first to avoid "NotSupportedError" on incompatible devices
-        await localParticipant.setCameraEnabled(true);
-        console.log("Camera published");
-      } catch (err) {
-        console.warn("Camera capture rejected:", err);
-      }
-
-      // 3. Screen Share (For Code Analysis)
-      try {
-        console.log("Attempting screen share capture...");
-        let sourceId: string | undefined;
-        
-        // In Electron, we often need a sourceId from desktopCapturer
-        if (window.owlyn?.desktop?.getSources) {
-          try {
-            const sources = await window.owlyn.desktop.getSources();
-            // Try to find an "Entire Screen" or just pick the first available
-            const source = sources.find(s => s.name.toLowerCase().includes("screen")) || sources[0];
-            sourceId = source?.id;
-            console.log("Found Electron screen source:", source?.name);
-          } catch (e) {
-            console.warn("Failed to get desktop sources:", e);
-          }
-        }
-
-        await localParticipant.setScreenShareEnabled(true, { 
-          contentHint: "text",
-          // @ts-ignore - sourceId is supported in Electron builds of LiveKit
-          deviceId: sourceId 
-        });
-        console.log("Screen share published");
-      } catch (err) {
-        console.warn("Screen share capture rejected:", err);
-      }
-    };
-
-    if (isConnected) startPublishing();
-
     return () => {
       clearInterval(timer);
       stopAll();
     };
   }, [isConnected, localParticipant]);
+
+  const publishMedia = async () => {
+    if (!localParticipant) return;
+    setIsMediaReady(true);
+    
+    // 1. Microphone
+    try {
+      await localParticipant.setMicrophoneEnabled(true);
+    } catch (err) {
+      console.error("Microphone capture failed:", err);
+    }
+
+    // 2. Camera
+    try {
+      await localParticipant.setCameraEnabled(true);
+    } catch (err) {
+      console.warn("Camera capture rejected:", err);
+    }
+
+    // 3. Screen Share
+    try {
+      let sourceId: string | undefined;
+      if (window.owlyn?.desktop?.getSources) {
+        try {
+          const sources = await window.owlyn.desktop.getSources();
+          const source = sources.find(s => s.name.toLowerCase().includes("screen")) || sources[0];
+          sourceId = source?.id;
+        } catch (e) {
+          console.warn("Failed to get desktop sources:", e);
+        }
+      }
+
+      await localParticipant.setScreenShareEnabled(true, { 
+        contentHint: "text",
+        // @ts-ignore
+        deviceId: sourceId 
+      });
+    } catch (err) {
+      console.warn("Screen share capture rejected:", err);
+    }
+  };
 
   const handleRunCode = async () => {
     setIsProcessing(true);
@@ -220,7 +213,7 @@ function InterviewInterface() {
       const data = encoder.encode(JSON.stringify({ event: "RUN_CODE" }));
       await localParticipant.publishData(data, { reliable: true });
     }
-    setTimeout(() => setIsProcessing(false), 2000);
+    setTimeout(() => setIsProcessing(false), 3000);
   };
 
   const finalizeExit = () => {
@@ -287,18 +280,47 @@ function InterviewInterface() {
                 Remaining
               </span>
               <span className="text-lg font-mono text-white tracking-widest">
-                {formatTime(Math.max(0, 45 * 60 - elapsedSeconds))}
+                {formatTime(Math.max(0, (durationMinutes || 45) * 60 - elapsedSeconds))}
               </span>
             </div>
             <button
               onClick={handleEndSession}
-              className="px-6 py-2 bg-red-600/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all"
+              className="px-6 py-2 bg-red-600/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all shadow-lg active:scale-95"
             >
               End Session
             </button>
           </div>
         </header>
       )}
+
+      <AnimatePresence>
+        {!isMediaReady && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md"
+          >
+            <div className="max-w-md w-full p-12 text-center space-y-8 bg-[#0D0D0D] border border-white/5 rounded-3xl">
+              <div className="size-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                <span className="material-symbols-outlined text-4xl text-primary animate-pulse">lock_open</span>
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight">System Initialization</h2>
+                <p className="text-slate-500 text-xs font-light leading-relaxed">
+                  To ensure a secure and fair interview environment, please authorize microphone and screen share access.
+                </p>
+              </div>
+              <button 
+                onClick={publishMedia}
+                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/10"
+              >
+                Start Secure Session
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 flex min-h-0">
         {!isWidget && (
@@ -328,13 +350,16 @@ function InterviewInterface() {
                   <button
                     onClick={handleRunCode}
                     disabled={isProcessing}
-                    className="flex items-center gap-2 px-4 py-3 bg-primary text-black text-[9px] font-black uppercase tracking-widest rounded-sm transition-all hover:brightness-110 active:scale-95 disabled:opacity-50"
+                    className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${
+                      isProcessing 
+                        ? "bg-primary/20 text-primary animate-pulse cursor-wait" 
+                        : "bg-primary text-black hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
+                    }`}
                   >
-                    {isProcessing ? (
-                      <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                    ) : (
-                      "Run Code"
-                    )}
+                    <span className="material-symbols-outlined text-sm">
+                      {isProcessing ? "cognition" : "play_arrow"}
+                    </span>
+                    {isProcessing ? "AI Reviewing..." : "Run Code"}
                   </button>
                 </div>
               )}
@@ -377,7 +402,10 @@ function InterviewInterface() {
                 </span>
               </div>
               <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
-                <FaceTracker onWarning={setProctorWarning} />
+                <FaceTracker 
+                  onWarning={setProctorWarning} 
+                  stream={(localCameraTrack?.publication?.track as any)?.mediaStream} 
+                />
               </div>
             </div>
 
