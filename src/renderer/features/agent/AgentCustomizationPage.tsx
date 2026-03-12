@@ -270,12 +270,12 @@ export default function AgentCustomizationPage() {
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-12">
               <div className="lg:col-span-1 space-y-8">
                 {/* Visual Preview */}
-                <div className="glass-panel rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden group border border-white/5">
+                <div className="glass-panel rounded-2xl p-8 flex flex-col items-center justify-center relative overflow-hidden group border border-white/5 bg-white/[0.02]">
                   <div className="relative z-10 py-4">
-                    <div className="size-32 rounded-full bg-black/40 border border-primary/10 flex items-center justify-center relative">
-                      <div className="size-20 rounded-full border border-primary/20 flex items-center justify-center bg-primary/5">
+                    <div className="size-40 rounded-full bg-black/40 border border-primary/10 flex items-center justify-center relative shadow-2xl">
+                      <div className="size-28 rounded-full border border-primary/20 flex items-center justify-center bg-primary/5 animate-pulse-slow">
                         <span 
-                          className="material-symbols-outlined text-3xl text-primary drop-shadow-[0_0_10px_rgba(var(--primary-rgb),0.5)]"
+                          className="material-symbols-outlined text-5xl text-primary drop-shadow-[0_0_15px_rgba(var(--primary-rgb),0.5)]"
                           style={{ fontVariationSettings: "'FILL' 1" }}
                         >
                           owl
@@ -283,55 +283,73 @@ export default function AgentCustomizationPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="text-center z-10">
-                    <h4 className="text-xs font-black text-white uppercase tracking-[0.2em]">{name || "Unnamed"}</h4>
+                  <div className="text-center z-10 mt-4">
+                    <h4 className="text-xs font-black text-white uppercase tracking-[0.3em]">{name || "Unnamed"}</h4>
+                    <p className="text-[10px] text-primary/40 font-bold uppercase tracking-widest mt-1">{roleTitle || "AI Agent"}</p>
                   </div>
                   <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent pointer-events-none" />
-                </div>
-
-                {/* Identity Inputs */}
-                <div className="space-y-6">
-                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-1">Persona Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Master Mentor"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl py-3.5 px-5 text-sm font-bold text-white focus:border-primary/50 outline-none transition-all placeholder:text-white/10"
-                    />
-                  </div>
-                </div>
-
-                {/* Form Selects */}
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-1">Language</label>
-                    <div className="relative group h-[54px]">
-                      <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-lg text-primary/50 group-focus-within:text-primary transition-colors pointer-events-none">expand_more</span>
-                      <select
-                        value={selectedLanguage}
-                        onChange={(e) => setSelectedLanguage(e.target.value)}
-                        className="w-full h-full bg-white/5 border border-white/10 rounded-xl px-5 text-[11px] font-black text-white uppercase tracking-widest focus:border-primary/50 outline-none appearance-none cursor-pointer hover:bg-white/10 transition-all"
-                      >
-                        {LANGUAGES.map(lang => <option key={lang} value={lang} className="bg-obsidian text-white">{lang.toUpperCase()}</option>)}
-                      </select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-primary uppercase tracking-[0.2em] ml-1">Behavior</label>
-                    <button
-                      onClick={() => setIsAdaptive(!isAdaptive)}
-                      className={`w-full h-[54px] px-5 rounded-xl border transition-all flex items-center justify-between group ${isAdaptive ? "bg-primary/10 border-primary/40 text-primary" : "bg-white/5 border-white/10 text-slate-500 hover:border-white/20"}`}
-                    >
-                      <span className="text-[11px] font-black uppercase tracking-widest">{isAdaptive ? "Adaptive" : "Static"}</span>
-                      <span className={`material-symbols-outlined text-lg ${isAdaptive ? "text-primary" : "text-slate-600"}`}>{isAdaptive ? "psychology" : "psychology_alt"}</span>
-                    </button>
-                  </div>
                 </div>
               </div>
 
               <div className="lg:col-span-2 space-y-10">
+                {/* Core Identity */}
+                <div className="glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
+                   <div className="flex items-center gap-3 mb-10">
+                      <span className="material-symbols-outlined text-primary text-xl">fingerprint</span>
+                      <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Identity & Behavior</h3>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Persona Name</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Master Mentor"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-5 text-sm font-bold text-white focus:border-primary/40 outline-none transition-all"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Role Title</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Lead System Evaluator"
+                            value={roleTitle}
+                            onChange={(e) => setRoleTitle(e.target.value)}
+                            className="w-full bg-white/5 border border-white/5 rounded-xl py-3 px-5 text-sm font-bold text-white focus:border-primary/40 outline-none transition-all"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Native Language</label>
+                          <div className="relative group">
+                            <select
+                              value={selectedLanguage}
+                              onChange={(e) => setSelectedLanguage(e.target.value)}
+                              className="w-full h-[46px] bg-white/5 border border-white/5 rounded-xl px-5 text-[11px] font-black text-white uppercase tracking-widest focus:border-primary/40 outline-none appearance-none cursor-pointer hover:bg-white/10 transition-all"
+                            >
+                              {LANGUAGES.map(lang => <option key={lang} value={lang} className="bg-obsidian text-white">{lang.toUpperCase()}</option>)}
+                            </select>
+                            <span className="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-lg text-primary/30 pointer-events-none group-hover:text-primary transition-colors">expand_more</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em] ml-1">Processing Mode</label>
+                          <button
+                            onClick={() => setIsAdaptive(!isAdaptive)}
+                            className={`w-full h-[46px] px-5 rounded-xl border transition-all flex items-center justify-between group ${isAdaptive ? "bg-primary/5 border-primary/20 text-primary" : "bg-white/5 border-white/5 text-slate-500"}`}
+                          >
+                            <span className="text-[11px] font-black uppercase tracking-widest">{isAdaptive ? "Adaptive AI" : "Fixed Logic"}</span>
+                            <span className={`material-symbols-outlined text-lg ${isAdaptive ? "text-primary" : "text-slate-600"} group-hover:scale-110 transition-transform`}>{isAdaptive ? "psychology" : "psychology_alt"}</span>
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+                </div>
                 {/* Personality Sliders */}
                 <div className="glass-panel rounded-2xl p-8 border border-white/5">
                    <div className="flex items-center justify-between mb-10">

@@ -1,67 +1,96 @@
-#  owls eyes: project owlyn sync notes
+# 🦉 OWLYN SYSTEM: GRANULAR INTEGRATION SPEC
 
-here's the raw details on what we've implemented and what the backend needs to handle. keeping it short.
+This is the definitive technical handshake. No fluff, just exact keys, types, and multipart structures.
 
-### 1. the interview creation
-When a recruiter sets up a session, they pick a persona.
-- **POST** `/api/interviews`
-- **Body**: 
-  ```json
-  {
-    "title": "Role Name",
-    "candidateName": "Canny Date",
-    "personaId": "uuid", // MUST link to our persona lib
-    "durationMinutes": 45,
-    "toolsEnabled": { "codeEditor": true, "whiteboard": true }
+### 1. Workspace Profile Updates
+Used for company branding.
+- **ENDPOINT**: `PUT /api/workspace`
+- **CONTENT-TYPE**: `multipart/form-data`
+- **PAYLOAD DETAILS**:
+  - `name`: `String` (Optional) - The display name of the workspace.
+  - `logo`: `File` (Optional, Binary, Max 7MB) - The workspace logo image file.
+- **BEHAVIOR**: 
+  - If `logo` is omitted, the backend MUST NOT clear the existing logo.
+  - Only updates fields provided in the `FormData`.
+
+---
+
+### 2. AI Persona Management
+Granular split between persona configuration (JSON) and training data (File).
+- **ENDPOINT**: `POST /api/personas` or `PUT /api/personas/{id}`
+- **CONTENT-TYPE**: `multipart/form-data`
+- **PAYLOAD DETAILS**:
+  - `persona`: `Blob/String` (Required) - A JSON string with the following exact keys:
+    ```json
+    {
+      "name": "string",
+      "roleTitle": "string",
+      "tone": "MENTOR | ARCHITECT | INQUISITOR",
+      "empathyScore": 30, // Integer 0-100
+      "analyticalDepth": 90, // Integer 0-100
+      "directnessScore": 10, // Integer 0-100 (Logic: 100 - Collaborative)
+      "language": "string",
+      "isAdaptive": true, // Boolean
+      "domainExpertise": ["React", "Python", "Cloud"] // Array of strings
+    }
+    ```
+  - `file`: `File` (Optional) - Training PDF or DOCX file for RAG.
+
+---
+
+### 3. Interview Session Lifecycle
+**A. Creation** (POST `/api/interviews`)
+```json
+{
+  "title": "string",
+  "candidateName": "string",
+  "personaId": "uuid",
+  "durationMinutes": 45,
+  "toolsEnabled": {
+    "codeEditor": true,
+    "whiteboard": true,
+    "notes": true
   }
-  ```
-- **Returns**: `accessCode` (6-digits).
+}
+```
 
-### 2. ai persona customization (multipart)
-We send the config as a JSON blob inside a multipart form, plus the context doc.
-- **POST/PUT** `/api/personas` (or `/api/personas/{id}`)
-- **Format**: `multipart/form-data`
-- **Key `persona`**: 
-  ```json
-  {
-    "name": "The Architect",
-    "roleTitle": "Lead Tech",
-    "tone": "ARCHITECT",
-    "analyticalDepth": 90,
-    "empathyScore": 30, // 0-100 logic
-    "language": "English",
-    "isAdaptive": true
+**B. Candidate Validation** (POST `/api/interviews/validate-code`)
+- **PAYLOAD**: `{"code": "123456"}` (Exact 6-digit numeric string)
+- **GRANULAR RESPONSE**:
+```json
+{
+  "token": "string (Candidate Scope JWT)",
+  "livekitToken": "string (WebRTC Room Token)",
+  "candidateName": "string (The name provided during creation)",
+  "personaName": "string (REQUIRED: The name of the AI persona)",
+  "title": "string (The interview title)",
+  "config": {
+    "toolsEnabled": {
+       "codeEditor": "boolean",
+       "whiteboard": "boolean",
+       "notes": "boolean"
+    }
   }
-  ```
-- **Key `file`**: PDF/DOCX context.
-- **Frontend catch**: If 400 on delete, it means it's linked to an interview - we show a block alert.
+}
+```
 
-### 3. workspace & logo flow
-Admin updates the company profile.
-- **PUT** `/api/workspace`
-- **Format**: `multipart/form-data`
-- **Payload**:
-  - `name`: String
-  - `logo`: File (Max 7MB)
-- **UI Fallback**: If `logoUrl` comes back empty/null, we generate initials (e.g., "Google" -> "GO").
+---
 
-### 4. candidate handshake
-Davids entry point.
-- **POST** `/api/interviews/validate-code`
-- **Payload**: `{"code": "123456"}`
-- **Response**: needs to include `personaName` so we can show "Interviewer: [Name]" in the lobby.
-- **Lockdown**: the moment they hit "Enter Interview", we call **PUT** `/api/interviews/{code}/status/active`.
+### 4. Real-time LiveKit Data Channels
+Exact JSON packets for the Python Data Plane -> Electron UI.
+- **Proctoring**: `{"type": "PROCTOR_WARNING", "message": "Look at the camera"}`
+- **Monaco Interaction**: `{"type": "TOOL_HIGHLIGHT", "line": 42}`
+- **Transcript Sync**: `{"type": "transcript", "speaker": "ai|candidate", "text": "..."}`
 
-### 5. reports & the decision
-After the session, the recruiter reviews the AI scorecard.
-- **GET** `/api/reports` -> list all.
-- **GET** `/api/reports/top` -> get the best one instantly for the spotlight.
-- **Decision Flow**: **POST** `/api/reports/{id}/feedback`
-  - **Body**: `{"humanFeedback": "...", "decision": "HIRE" | "DECLINE" | "PENDING"}`
-  - Updates the `finalDecision` field which we use to color the talent pool list (Green/Red/Yellow).
+---
 
-### 6. educational modes (ephemeral)
-Practice/Tutor shortcuts.
-- **POST** `/api/public/sessions/practice` or `/api/public/sessions/tutor`
-- **Returns**: Tokens for LiveKit.
-- **Note**: Python AI skips the proctor for these.
+### ⏳ BRUTAL STATUS CHECK: THE ROAD TO MAR 16
+| Module | Hackathon Spec | Implementation Status |
+|:---|:---:|:---:|
+| **Auth/Admin** | `doc-2.md` Phase 1/2 | ✅ **100% Solid** |
+| **Workspace Profile** | `doc-2.md` Phase 2.2 | ✅ **95% Solid** (Multipart fix implemented) |
+| **Persona Library** | `doc-2.md` Phase 2.4 | ✅ **95% Solid** (Multipart logic ready) |
+| **Candidate Lobby** | `doc-2.md` Phase 3 | ✅ **100% Solid** |
+| **Live Interview** | `doc-2.md` Phase 4/5 | ⚠️ **60% Solid** (Room connection works; Telemetry UI needs end-to-end test with Python) |
+| **Tutor Mode** | `doc-2.md` Phase 7 | ⚠️ **40% Solid** (API endpoints ready, UI specialized view pending) |
+| **JSON Reports** | `doc-2.md` Phase 6 | ⚠️ **30% Solid** (UI list done, generation logic still in backend) |

@@ -1,23 +1,22 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useSettingsStore } from "@/stores/settings.store";
-import { useMediaStore } from "@/stores/media.store";
+import { useWorkspaceStore } from "@/stores/workspace.store";
+import { workspaceApi } from "@/api/workspace.api";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNavigate } from "react-router-dom";
-import { workspaceApi } from "@/api/workspace.api";
 import type {
   Workspace,
   WorkspaceMember,
 } from "@shared/schemas/workspace.schema";
 import { extractApiError } from "@/lib/api-error";
 
-type DeviceEntry = { deviceId: string; label: string };
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { user, clearAuth } = useAuthStore();
+  const { workspace, fetchWorkspace, setWorkspace } = useWorkspaceStore();
   const isAdmin = user?.role === "ADMIN";
 
-  const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [members, setMembers] = useState<WorkspaceMember[]>([]);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -29,17 +28,15 @@ export default function SettingsPage() {
   const [wsName, setWsName] = useState("");
   const [wsLogoFile, setWsLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
   const {
     autoRecordConsent,
     dataRetention,
     setAutoRecordConsent,
     setDataRetention,
   } = useSettingsStore();
-
-
-
-
 
   const fetchWorkspaceData = useCallback(async () => {
     if (!isAdmin) return;
@@ -56,7 +53,7 @@ export default function SettingsPage() {
     } finally {
       setWsLoading(false);
     }
-  }, [isAdmin]);
+  }, [isAdmin, setWorkspace]);
 
   useEffect(() => {
     fetchWorkspaceData();
@@ -66,6 +63,7 @@ export default function SettingsPage() {
     if (workspace) {
       setWsName(workspace.name);
       setLogoPreview(workspace.logoUrl || null);
+      setImageError(false);
     }
   }, [workspace]);
 
@@ -112,10 +110,10 @@ export default function SettingsPage() {
   const handleUpdateWorkspace = async () => {
     setWsUpdating(true);
     try {
-      const updated = await workspaceApi.updateWorkspace({
-        name: wsName,
-        logo: wsLogoFile || undefined,
-      });
+      const payload: { name: string; logo?: File } = { name: wsName };
+      if (wsLogoFile) payload.logo = wsLogoFile;
+
+      const updated = await workspaceApi.updateWorkspace(payload);
       setWorkspace(updated);
       setWsLogoFile(null);
       alert("Workspace updated successfully!");
@@ -134,6 +132,7 @@ export default function SettingsPage() {
         return;
       }
       setWsLogoFile(file);
+      setImageError(false);
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result as string);
@@ -202,18 +201,25 @@ export default function SettingsPage() {
               <div className="flex gap-8 items-start">
                 <div className="flex flex-col items-center gap-3">
                   <div 
-                    className="size-24 rounded-2xl bg-white/5 border border-primary/10 flex items-center justify-center overflow-hidden shrink-0 shadow-2xl relative group"
+                    className="size-24 rounded-2xl bg-white/5 border border-primary/10 flex items-center justify-center overflow-hidden shrink-0 shadow-2xl relative"
                   >
-                    {logoPreview ? (
+                    {logoPreview && !imageError ? (
                       <img
+                        key={logoPreview}
                         src={logoPreview}
-                        alt="Logo"
+                        alt="Workspace Logo"
+                        onError={(e) => {
+                          console.error("Image load failed", e);
+                          setImageError(true);
+                        }}
                         className="w-full h-full object-cover"
                       />
                     ) : (
-                      <span className="text-3xl font-black text-primary tracking-tighter">
-                        {wsName ? getInitials(wsName) : "OW"}
-                      </span>
+                      <div className="flex flex-col items-center justify-center bg-primary/10 w-full h-full">
+                        <span className="text-3xl font-black text-primary tracking-tighter drop-shadow-sm">
+                          {wsName ? getInitials(wsName) : "OW"}
+                        </span>
+                      </div>
                     )}
                   </div>
                   <button
