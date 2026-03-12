@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { interviewsApi } from "@/api/interviews.api";
 import { personasApi } from "@/api/personas.api";
-import { reportsApi, type Report } from "@/api/reports.api";
 import { extractApiError } from "@/lib/api-error";
+import Pagination from "@/components/shared/Pagination";
 import type { Persona } from "@shared/schemas/persona.schema";
 import type { InterviewListItem } from "@shared/schemas/interview.schema";
 
@@ -45,6 +45,8 @@ export default function InterviewsListPage() {
   const [interviews, setInterviews] = useState<InterviewListItem[]>([]);
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [_loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createStep, setCreateStep] = useState<"info" | "questions">("info");
@@ -95,10 +97,17 @@ export default function InterviewsListPage() {
     }
   }, [location, navigate]);
 
-  const filtered =
-    activeTab === "all"
+  const filtered = useMemo(() => {
+    setCurrentPage(1); // Reset page on tab change
+    return activeTab === "all"
       ? interviews
       : interviews.filter((i) => i.status === activeTab);
+  }, [interviews, activeTab]);
+
+  const pagedInterviews = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage]);
 
   const upcoming = interviews.filter((i) => i.status === "UPCOMING");
   const completed = interviews.filter((i) => i.status === "COMPLETED");
@@ -306,7 +315,7 @@ export default function InterviewsListPage() {
             </p>
           </div>
         )}
-        {filtered.map((interview) => {
+        {pagedInterviews.map((interview) => {
           const cfg =
             STATUS_CONFIG[interview.status] || STATUS_CONFIG["UPCOMING"];
           return (
@@ -392,6 +401,13 @@ export default function InterviewsListPage() {
             </div>
           );
         })}
+
+        <Pagination
+          currentPage={currentPage}
+          totalItems={filtered.length}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {showCreateModal && (

@@ -75,6 +75,8 @@ function InterviewInterface() {
   const [aiStatus, setAiStatus] = useState<string>("Standby");
   const [showCompletion, setShowCompletion] = useState(false);
   const [isMediaReady, setIsMediaReady] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+  const [isEnding, setIsEnding] = useState(false);
   const { durationMinutes } = useCandidateStore();
 
   const toggleWidget = async () => {
@@ -83,6 +85,10 @@ function InterviewInterface() {
     if (window.owlyn?.window?.setWidgetMode) {
       await window.owlyn.window.setWidgetMode(nextState);
     }
+    // 2. Tell Electron to enable local restrictions
+    // if (window.owlyn?.lockdown) {
+    //   await window.owlyn.lockdown.toggle(true); // RE-ENABLE THIS FOR FULLSCREEN LOCKDOWN
+    // }
   };
 
   useEffect(() => {
@@ -168,6 +174,22 @@ function InterviewInterface() {
 
   const publishMedia = async () => {
     if (!localParticipant) return;
+    setMediaError(null);
+
+    // 0. Lockdown Check: Multi-monitor 
+    if (window.owlyn?.platform?.getDisplayCount) {
+      try {
+        const count = await window.owlyn.platform.getDisplayCount();
+        if (count > 1) {
+          // setMediaError("Multiple monitors detected. Please disconnect extra displays to proceed.");
+          // return; 
+          console.warn("Multiple monitors detected during debug mode.");
+        }
+      } catch (e) {
+        console.warn("Display count check failed", e);
+      }
+    }
+    
     setIsMediaReady(true);
     
     // 1. Microphone
@@ -175,6 +197,9 @@ function InterviewInterface() {
       await localParticipant.setMicrophoneEnabled(true);
     } catch (err) {
       console.error("Microphone capture failed:", err);
+      setMediaError("Microphone access denied. Please check your browser permissions.");
+      setIsMediaReady(false);
+      return;
     }
 
     // 2. Camera
@@ -182,6 +207,9 @@ function InterviewInterface() {
       await localParticipant.setCameraEnabled(true);
     } catch (err) {
       console.warn("Camera capture rejected:", err);
+      // setMediaError("Camera access denied. Face proctoring is required.");
+      // setIsMediaReady(false);
+      // return; // TO RE-ENABLE HARD GATE: Uncomment the three lines above
     }
 
     // 3. Screen Share
@@ -190,7 +218,6 @@ function InterviewInterface() {
       if (window.owlyn?.desktop?.getSources) {
         try {
           const sources = await window.owlyn.desktop.getSources();
-          // Prioritize screens, then windows, then any other source
           const screenSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("screen"));
           const windowSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("window"));
           const source = screenSources[0] || windowSources[0] || sources[0];
@@ -207,6 +234,9 @@ function InterviewInterface() {
       });
     } catch (err) {
       console.warn("Screen share capture rejected:", err);
+      // setMediaError("Full screen sharing is required for proctoring.");
+      // setIsMediaReady(false);
+      // return; // TO RE-ENABLE HARD GATE: Uncomment the three lines above
     }
   };
 
@@ -227,8 +257,10 @@ function InterviewInterface() {
     navigate("/analysis");
   };
 
-  const handleEndSession = async () => {
-    if (confirm("Are you sure you want to end your interview session?")) {
+  const handleEndSession = async (force: boolean = false) => {
+    if (isEnding) return;
+    if (force || confirm("Are you sure you want to end your interview session?")) {
+      setIsEnding(true);
       await room?.disconnect();
       stopAll();
       await candidateApi.releaseLockdown();
@@ -241,6 +273,13 @@ function InterviewInterface() {
       }
     }
   };
+
+  useEffect(() => {
+    const remaining = (durationMinutes || 45) * 60 - elapsedSeconds;
+    if (remaining <= 0 && isConnected && isMediaReady && !isEnding) {
+      handleEndSession(true); // Auto-close when timer hits zero
+    }
+  }, [elapsedSeconds, durationMinutes, isConnected, isMediaReady, isEnding]);
 
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
@@ -279,6 +318,22 @@ function InterviewInterface() {
           </div>
 
           <div className="flex items-center gap-8">
+            {isProcessing && (
+              <AnimatePresence>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-x-8 top-20 z-[60] py-2 px-4 bg-primary/20 border border-primary/30 rounded-full backdrop-blur-md flex items-center justify-center gap-3 shadow-2xl shadow-primary/20 pointer-events-none"
+                >
+                  <div className="size-2 bg-primary rounded-full animate-ping" />
+                  <span className="text-[10px] font-black text-primary uppercase tracking-[0.3em]">
+                    Owlyn is Reviewing your code...
+                  </span>
+                  <div className="size-2 bg-primary rounded-full animate-ping" />
+                </motion.div>
+              </AnimatePresence>
+            )}
             <div className="flex flex-col items-center">
               <span className="text-[9px] uppercase font-black tracking-widest text-primary/60 mb-1">
                 Remaining
@@ -288,7 +343,7 @@ function InterviewInterface() {
               </span>
             </div>
             <button
-              onClick={handleEndSession}
+              onClick={() => handleEndSession()}
               className="px-6 py-2 bg-red-600/10 border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-red-600 hover:text-white transition-all shadow-lg active:scale-95"
             >
               End Session
@@ -309,11 +364,22 @@ function InterviewInterface() {
               <div className="size-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
                 <span className="material-symbols-outlined text-4xl text-primary animate-pulse">lock_open</span>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <h2 className="text-2xl font-black text-white uppercase tracking-tight">System Initialization</h2>
                 <p className="text-slate-500 text-xs font-light leading-relaxed">
                   To ensure a secure and fair interview environment, please authorize microphone and screen share access.
                 </p>
+                {mediaError && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
+                  >
+                    <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-relaxed">
+                      {mediaError}
+                    </p>
+                  </motion.div>
+                )}
               </div>
               <button 
                 onClick={publishMedia}
@@ -354,16 +420,16 @@ function InterviewInterface() {
                   <button
                     onClick={handleRunCode}
                     disabled={isProcessing}
-                    className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${
+                     className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${
                       isProcessing 
-                        ? "bg-primary/20 text-primary animate-pulse cursor-wait" 
+                        ? "bg-primary/30 text-primary border border-primary/50 animate-pulse cursor-wait shadow-[0_0_20px_rgba(197,159,89,0.3)]" 
                         : "bg-primary text-black hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
                     }`}
                   >
                     <span className="material-symbols-outlined text-sm">
                       {isProcessing ? "cognition" : "play_arrow"}
                     </span>
-                    {isProcessing ? "AI Reviewing..." : "Run Code"}
+                    {isProcessing ? "AI Reviewing Session..." : "Run Code"}
                   </button>
                 </div>
               )}
@@ -379,11 +445,13 @@ function InterviewInterface() {
                   className="absolute inset-0"
                 >
                   {activeTab === "code" && (
-                    <CodeEditor
-                      value={code}
-                      onChange={setCode}
-                      highlightedLine={highlightedLine}
-                    />
+                    <div className={isProcessing ? "opacity-40 grayscale-[0.5] transition-all duration-700 blur-[1px]" : "transition-all duration-700"}>
+                      <CodeEditor
+                        value={code}
+                        onChange={setCode}
+                        highlightedLine={highlightedLine}
+                      />
+                    </div>
                   )}
                   {activeTab === "whiteboard" && (
                     <Whiteboard ref={whiteboardRef} />

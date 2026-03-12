@@ -118,4 +118,31 @@ running code in session does nothing
 
 session doesnt work as intended, run locally to debug.
 
-check candidate.api.ts to set fullscreen, no screen capture mode, remove the comment.
+
+## setting fullscreen and no screencapture (frontend note)
+
+To toggle between **Debug Mode** (current) and **Production Secure Mode** (Hard Gate), follow these steps:
+
+### 1. Enable Fullscreen Lockdown
+- **File**: `src/renderer/api/candidate.api.ts`
+- **Action**: Locate `initiateLockdown` and uncomment:
+  ```typescript
+  if (window.owlyn?.lockdown) {
+    await window.owlyn.lockdown.toggle(true);
+  }
+  ```
+
+### 2. Enable Multi-Monitor Restriction
+- **File**: `src/renderer/features/interview/InterviewPage.tsx`
+- **Action**: In `publishMedia`, uncomment the `return` statement in the `getDisplayCount` check:
+  ```typescript
+  if (count > 1) {
+    setMediaError("Multiple monitors detected...");
+    return; // <--- Uncomment this
+  }
+  ```
+
+### 3. Require Camera & Screen Share (Strict Proctoring)
+- **File**: `src/renderer/features/interview/InterviewPage.tsx`
+- **Action**: In `publishMedia`, uncomment the `return` and `setIsMediaReady(false)` lines in both the **Camera** and **Screen Share** catch blocks.
+  - This prevents the "Start Secure Session" overlay from closing unless both tracks are successfully captured.

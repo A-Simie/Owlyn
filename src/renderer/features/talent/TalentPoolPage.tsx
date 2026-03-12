@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { reportsApi } from "@/api/reports.api";
 import type { Report } from "@/api/reports.api";
+import Pagination from "@/components/shared/Pagination";
 
 export default function TalentPoolPage() {
   const navigate = useNavigate();
@@ -12,6 +13,8 @@ export default function TalentPoolPage() {
   const [minScore, setMinScore] = useState(85);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [topPerformer, setTopPerformer] = useState<Report | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const circumference = 2 * Math.PI * 18;
 
@@ -59,6 +62,7 @@ export default function TalentPoolPage() {
   }, [reports, topPerformer]);
 
   const filteredCandidates = useMemo(() => {
+    setCurrentPage(1); // Reset page on filter change
     return candidates.filter((c) => {
       const matchesSearch = c.name
         .toLowerCase()
@@ -69,6 +73,11 @@ export default function TalentPoolPage() {
       return matchesSearch && matchesRole && matchesScore && matchesStatus;
     });
   }, [candidates, searchQuery, roleFilter, minScore, statusFilter]);
+
+  const pagedCandidates = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredCandidates.slice(start, start + itemsPerPage);
+  }, [filteredCandidates, currentPage]);
 
   const spotlightCandidate = useMemo(() => {
     if (!topPerformer) return null;
@@ -301,7 +310,7 @@ export default function TalentPoolPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-primary/5">
-                    {filteredCandidates.map((c) => {
+                    {pagedCandidates.map((c) => {
                       const dashoffset =
                         circumference - (c.score / 100) * circumference;
                       return (
@@ -410,6 +419,13 @@ export default function TalentPoolPage() {
                 </table>
               </div>
             </div>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={filteredCandidates.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+            />
           </div>
         </section>
 

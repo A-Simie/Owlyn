@@ -259,7 +259,7 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
       }
 
       if (running) {
-        await new Promise((r) => setTimeout(r, 120)); // ~8fps detection
+        await new Promise((r) => setTimeout(r, 250)); // ~4fps detection for performance
         animFrameRef.current = requestAnimationFrame(detect);
       }
     };

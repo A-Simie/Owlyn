@@ -7,6 +7,7 @@ import {
   safeStorage,
   clipboard,
   desktopCapturer,
+  screen,
 } from "electron";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
@@ -136,9 +137,14 @@ app.on("window-all-closed", function () {
 
 // IPC Handlers
 ipcMain.handle("platform:info", () => ({
-  isMac: process.platform === "darwin",
+  platform: process.platform,
+  arch: process.arch,
   version: app.getVersion(),
 }));
+
+ipcMain.handle("platform:display-count", () => {
+  return screen.getAllDisplays().length;
+});
 
 ipcMain.handle("session:generate-id", () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();

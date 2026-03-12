@@ -29,7 +29,7 @@ export const candidateApi = {
     );
     // 2. Tell Electron to enable local restrictions
     // if (window.owlyn?.lockdown) {
-    //   await window.owlyn.lockdown.toggle(true);
+    //   await window.owlyn.lockdown.toggle(true); // RE-ENABLE THIS FOR FULLSCREEN LOCKDOWN
     // }
     return data;
   },
@@ -50,9 +50,16 @@ export const candidateApi = {
     );
     return data;
   },
-  
-  startPracticeSession: async (payload: { topic: string; difficulty: string; durationMinutes: number }) => {
-    const { data } = await apiClient.post<any>("/api/public/sessions/practice", payload);
+
+  startPracticeSession: async (payload: {
+    topic: string;
+    difficulty: string;
+    durationMinutes: number;
+  }) => {
+    const { data } = await apiClient.post<any>(
+      "/api/public/sessions/practice",
+      payload,
+    );
     return data;
   },
 

@@ -4,6 +4,8 @@ const api = {
   platform: {
     getInfo: (): Promise<{ platform: string; arch: string; version: string }> =>
       ipcRenderer.invoke("platform:info"),
+    getDisplayCount: (): Promise<number> =>
+      ipcRenderer.invoke("platform:display-count"),
   },
   session: {
     generateId: (): Promise<string> =>
