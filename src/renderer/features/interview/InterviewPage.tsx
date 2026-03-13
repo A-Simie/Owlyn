@@ -57,7 +57,7 @@ function InterviewInterface() {
     isAiSpeaking, 
     setAiSpeaking 
   } = useInterviewStore();
-  const { clearSession, isTutorMode } = useCandidateStore();
+  const { clearSession, isTutorMode, accessCode, token } = useCandidateStore();
   const { stopAll } = useMediaStore();
   
   const room = useRoomContext();
@@ -90,6 +90,22 @@ function InterviewInterface() {
     //   await window.owlyn.lockdown.toggle(true); // RE-ENABLE THIS FOR FULLSCREEN LOCKDOWN
     // }
   };
+
+  useEffect(() => {
+    const syncWidgetMode = async () => {
+      if (!window.owlyn?.window?.setWidgetMode) return;
+
+      if (isTutorMode) {
+        setIsWidget(true);
+        await window.owlyn.window.setWidgetMode(true);
+      } else {
+        setIsWidget(false);
+        await window.owlyn.window.setWidgetMode(false);
+      }
+    };
+
+    syncWidgetMode();
+  }, [isTutorMode]);
 
   useEffect(() => {
     if (!room) return;
@@ -259,16 +275,29 @@ function InterviewInterface() {
   };
 
   const handleRunCode = async () => {
+    if (!room || !localParticipant || room.state !== ConnectionState.Connected) {
+      setMediaError("Session connection is not ready yet. Please wait and try Run Code again.");
+      return;
+    }
+
     setIsProcessing(true);
-    if (room && localParticipant) {
+    try {
       const encoder = new TextEncoder();
       const data = encoder.encode(JSON.stringify({ event: "RUN_CODE" }));
       await localParticipant.publishData(data, { reliable: true });
+    } catch (err) {
+      console.warn("Run Code publish failed:", err);
+      setMediaError("Unable to send Run Code signal. Please retry.");
+      setIsProcessing(false);
+      return;
     }
     setTimeout(() => setIsProcessing(false), 3000);
   };
 
   const finalizeExit = () => {
+    if (window.owlyn?.window?.setWidgetMode) {
+      window.owlyn.window.setWidgetMode(false);
+    }
     resetInterview();
     useSessionStore.getState().reset();
     clearSession();
@@ -279,6 +308,15 @@ function InterviewInterface() {
     if (isEnding) return;
     if (force || confirm("Are you sure you want to end your interview session?")) {
       setIsEnding(true);
+
+      if (accessCode && token) {
+        try {
+          await candidateApi.completeInterview(accessCode, token);
+        } catch (err) {
+          console.warn("Failed to mark interview as completed:", err);
+        }
+      }
+
       await room?.disconnect();
       stopAll();
       await candidateApi.releaseLockdown();

@@ -34,6 +34,15 @@ export const candidateApi = {
     return data;
   },
 
+  completeInterview: async (accessCode: string, guestToken: string) => {
+    const { data } = await apiClient.put<{ message: string }>(
+      `/api/interviews/${accessCode}/status/completed`,
+      null,
+      { headers: { Authorization: `Bearer ${guestToken}` } },
+    );
+    return data;
+  },
+
   releaseLockdown: async () => {
     if (window.owlyn?.lockdown) {
       await window.owlyn.lockdown.toggle(false);
@@ -56,7 +65,7 @@ export const candidateApi = {
     difficulty: string;
     durationMinutes: number;
   }) => {
-    const { data } = await apiClient.post<any>(
+    const { data } = await apiClient.post<ValidateCodeResponse>(
       "/api/public/sessions/practice",
       payload,
     );
@@ -64,7 +73,7 @@ export const candidateApi = {
   },
 
   startTutorSession: async () => {
-    const { data } = await apiClient.post<any>("/api/public/sessions/tutor");
+    const { data } = await apiClient.post<ValidateCodeResponse>("/api/public/sessions/tutor");
     return data;
   },
 };

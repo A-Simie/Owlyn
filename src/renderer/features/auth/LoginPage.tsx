@@ -126,9 +126,10 @@ export default function LoginPage() {
         livekitToken: res.livekitToken,
         interviewId: res.interviewId,
         accessCode: "PRACTICE",
-        title: "Mock Interview",
-        durationMinutes: 45,
-        candidateName: "Guest Candidate"
+        title: res.title,
+        durationMinutes: res.durationMinutes,
+        candidateName: res.candidateName,
+        personaName: res.personaName
       });
       useCandidateStore.getState().setPracticeMode(true);
       navigate("/calibration");
@@ -149,9 +150,10 @@ export default function LoginPage() {
         livekitToken: res.livekitToken,
         interviewId: res.interviewId,
         accessCode: "TUTOR",
-        title: "AI Tutor Session",
-        durationMinutes: 60,
-        candidateName: "Guest Candidate"
+        title: res.title,
+        durationMinutes: res.durationMinutes,
+        candidateName: res.candidateName,
+        personaName: res.personaName
       });
       useCandidateStore.getState().setPracticeMode(true, true);
       navigate("/calibration");

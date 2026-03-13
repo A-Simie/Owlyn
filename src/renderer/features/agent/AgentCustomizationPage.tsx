@@ -134,6 +134,12 @@ export default function AgentCustomizationPage() {
     setSliders((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleKnowledgeFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setContextFiles([file]);
+  };
+
   const handleEdit = (persona: Persona) => {
     setSelectedPersona(persona);
     setName(persona.name);
@@ -349,6 +355,37 @@ export default function AgentCustomizationPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+              </section>
+
+              <section className="glass-panel rounded-2xl p-8 border border-white/5 bg-white/[0.01]">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <span className="material-symbols-outlined text-primary text-xl">upload_file</span>
+                    <h3 className="text-white font-black uppercase tracking-[0.2em] text-sm">Knowledge Base</h3>
+                  </div>
+                  <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest">Optional</span>
+                </div>
+
+                <div className="flex flex-col md:flex-row md:items-center gap-4">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-white/10 bg-white/5 text-[10px] font-black uppercase tracking-widest text-slate-200 cursor-pointer hover:border-primary/30 transition-all">
+                    <span className="material-symbols-outlined text-sm">attach_file</span>
+                    {contextFiles.length > 0 ? "Replace File" : "Upload File"}
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.txt"
+                      onChange={handleKnowledgeFileChange}
+                      className="hidden"
+                    />
+                  </label>
+
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate">
+                    {contextFiles.length > 0
+                      ? contextFiles[0].name
+                      : selectedPersona?.hasKnowledgeBase
+                        ? "Existing knowledge base attached"
+                        : "No file selected"}
+                  </span>
                 </div>
               </section>
 
