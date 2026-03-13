@@ -16,16 +16,19 @@ export default function AnalysisPage() {
   const [isFinalizing, setIsFinalizing] = useState(false);
 
   useEffect(() => {
-    let retryCount = 0;
-   //public mode
+    let isCancelled = false;
+
+    // public mode
     const isPublicMode = !user;
 
     const fetchReport = async () => {
-      if (!interviewId) return;
+      if (!interviewId || isCancelled) return;
       try {
         const data = isPublicMode 
           ? await reportsApi.getPublicReport(interviewId)
           : await reportsApi.getReport(interviewId);
+
+        if (isCancelled) return;
           
         setReport(data);
         if (data.finalDecision) setDecision(data.finalDecision);
@@ -39,14 +42,7 @@ export default function AnalysisPage() {
         setError(null);
         setLoading(false);
       } catch (err: any) {
-        // AI grading might take time; retry every 3 seconds for up to 45 seconds (15 attempts)
-        const canRetry = (err.status === 400 || err.status === 404) && retryCount < 15;
-        
-        if (canRetry) {
-          retryCount++;
-          setTimeout(fetchReport, 3000);
-          return;
-        }
+        if (isCancelled) return;
 
         // Offline Fallback for public modes
         if (isPublicMode) {
@@ -64,13 +60,24 @@ export default function AnalysisPage() {
           }
         }
 
+        const backendMessage =
+          (typeof err?.response?.data === "string" && err.response.data) ||
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message;
+
         setError(
-          err.message || "The AI is taking longer than expected to grade the session. Please refresh in a moment.",
+          backendMessage || "Report not ready yet.",
         );
         setLoading(false);
       }
     };
-    fetchReport();
+
+    void fetchReport();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [interviewId, user]);
 
   const handleFinalize = async () => {

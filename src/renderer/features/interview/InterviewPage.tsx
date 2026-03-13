@@ -49,6 +49,7 @@ export default function InterviewPage() {
 function InterviewInterface() {
   const navigate = useNavigate();
   const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
+  const forcedEndHandledRef = useRef(false);
   const { elapsedSeconds, tick } = useSessionStore();
   const { 
     addTranscript, 
@@ -139,6 +140,15 @@ function InterviewInterface() {
           case "AI_SPEAKING":
             setAiSpeaking(msg.active);
             break;
+          case "END_INTERVIEW":
+            if (forcedEndHandledRef.current) break;
+            forcedEndHandledRef.current = true;
+            setProctorWarning(msg.message || "Interview terminated by interviewer.");
+            setTimeout(() => setProctorWarning(null), 5000);
+            setTimeout(() => {
+              void handleEndSession(true);
+            }, 300);
+            break;
         }
       } catch (err) {
         console.warn("AI command error:", err);
@@ -191,6 +201,27 @@ function InterviewInterface() {
     };
   }, []);
 
+  const hasPublishedScreenShareTrack = () => {
+    if (!localParticipant) return false;
+    const publications = Array.from(localParticipant.trackPublications.values());
+    return publications.some(
+      (publication) =>
+        publication.source === Track.Source.ScreenShare &&
+        !!publication.track,
+    );
+  };
+
+  const waitForScreenSharePublication = async (timeoutMs = 3500) => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      if (hasPublishedScreenShareTrack()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    return false;
+  };
+
   const publishMedia = async () => {
     if (!localParticipant) return;
     setMediaError(null);
@@ -215,8 +246,9 @@ function InterviewInterface() {
       }
     }
     
-    setIsMediaReady(true);
-    
+    let cameraEnabled = false;
+    let screenShareEnabled = false;
+
     // 1. Microphone
     try {
       await localParticipant.setMicrophoneEnabled(true);
@@ -239,11 +271,9 @@ function InterviewInterface() {
     // 2. Camera
     try {
       await localParticipant.setCameraEnabled(true);
+      cameraEnabled = true;
     } catch (err) {
       console.warn("Camera capture rejected:", err);
-      // setMediaError("Camera access denied. Face proctoring is required.");
-      // setIsMediaReady(false);
-      // return; // TO RE-ENABLE HARD GATE: Uncomment the three lines above
     }
 
     // 3. Screen Share
@@ -266,12 +296,31 @@ function InterviewInterface() {
         // @ts-ignore
         deviceId: sourceId 
       });
+      screenShareEnabled = await waitForScreenSharePublication();
+      if (!screenShareEnabled) {
+        const publicationSources = Array.from(localParticipant.trackPublications.values())
+          .map((publication) => String(publication.source))
+          .join(", ");
+        console.warn(`Screen share requested but no published screen track detected. sources=[${publicationSources}]`);
+      }
     } catch (err) {
       console.warn("Screen share capture rejected:", err);
-      // setMediaError("Full screen sharing is required for proctoring.");
-      // setIsMediaReady(false);
-      // return; // TO RE-ENABLE HARD GATE: Uncomment the three lines above
+      setMediaError("Full screen sharing is required for monitoring. Please allow screen share and retry.");
+      setIsMediaReady(false);
+      return;
     }
+
+    if (!screenShareEnabled) {
+      setMediaError("Screen share is not active. Please start screen share to continue.");
+      setIsMediaReady(false);
+      return;
+    }
+
+    if (!cameraEnabled) {
+      console.warn("Camera is not active; continuing with screen-share-only session.");
+    }
+
+    setIsMediaReady(true);
   };
 
   const handleRunCode = async () => {
@@ -501,7 +550,13 @@ function InterviewInterface() {
                   className="absolute inset-0"
                 >
                   {activeTab === "code" && (
-                    <div className={isProcessing ? "opacity-40 grayscale-[0.5] transition-all duration-700 blur-[1px]" : "transition-all duration-700"}>
+                    <div
+                      className={`h-full w-full ${
+                        isProcessing
+                          ? "opacity-40 grayscale-[0.5] transition-all duration-700 blur-[1px]"
+                          : "transition-all duration-700"
+                      }`}
+                    >
                       <CodeEditor
                         value={code}
                         onChange={setCode}

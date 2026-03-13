@@ -103,6 +103,7 @@ export default function LoginPage() {
         candidateName: res.candidateName,
         personaName: res.personaName
       });
+      useCandidateStore.getState().setPracticeMode(false, false);
       setValidationSuccess(true);
       setTimeout(() => navigate("/calibration"), 1000);
     } catch (err) {

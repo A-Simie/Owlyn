@@ -22,13 +22,17 @@ export type Report = z.infer<typeof ReportSchema>;
 
 export const reportsApi = {
   getReport: async (interviewId: string) => {
-    const { data } = await apiClient.get<Report>(`/api/reports/${interviewId}`);
+    const { data } = await apiClient.get<Report>(`/api/reports/${interviewId}`, {
+      'axios-retry': { retries: 0 },
+    } as any);
     return data;
   },
   
   // Public endpoint for ephemeral learning reports (Practice/Tutor)
   getPublicReport: async (interviewId: string) => {
-    const { data } = await apiClient.get<Report>(`/api/public/reports/${interviewId}`);
+    const { data } = await apiClient.get<Report>(`/api/public/reports/${interviewId}`, {
+      'axios-retry': { retries: 0 },
+    } as any);
     return data;
   },
 

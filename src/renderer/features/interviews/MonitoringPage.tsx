@@ -85,12 +85,50 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
   const [alerts, setAlerts] = useState<any[]>([]);
 
   const tracks = useTracks(
-    [Track.Source.ScreenShare, Track.Source.Camera],
-    { onlySubscribed: true }
+    [Track.Source.ScreenShare, Track.Source.Camera, Track.Source.Unknown],
+    { onlySubscribed: false }
   );
 
-  const screenShareTrack = tracks.find((t) => t.source === Track.Source.ScreenShare);
-  const cameraTrack = tracks.find((t) => t.source === Track.Source.Camera);
+  const remoteTracks = tracks.filter((trackRef) => {
+    const localIdentity = room?.localParticipant?.identity;
+    return !localIdentity || trackRef.participant.identity !== localIdentity;
+  });
+
+  const getTrackSource = (trackRef: any) => {
+    return trackRef?.publication?.source ?? trackRef?.source;
+  };
+
+  const isVideoTrackRef = (trackRef: any) => {
+    const publicationKind = trackRef?.publication?.kind;
+    const mediaKind = trackRef?.track?.mediaStreamTrack?.kind;
+    return publicationKind === Track.Kind.Video || mediaKind === "video";
+  };
+
+  const explicitScreenShareTrack = remoteTracks.find(
+    (trackRef) =>
+      isVideoTrackRef(trackRef) &&
+      getTrackSource(trackRef) === Track.Source.ScreenShare,
+  );
+  const fallbackWorkspaceTrack = remoteTracks.find(
+    (trackRef) =>
+      isVideoTrackRef(trackRef) &&
+      getTrackSource(trackRef) !== Track.Source.Camera,
+  );
+
+  const screenShareTrack = explicitScreenShareTrack ?? fallbackWorkspaceTrack;
+
+  const cameraTrack = remoteTracks.find(
+    (trackRef) =>
+      isVideoTrackRef(trackRef) &&
+      getTrackSource(trackRef) === Track.Source.Camera,
+  );
+
+  const trackSourcesText = remoteTracks
+    .map((trackRef) => String(getTrackSource(trackRef)))
+    .join(", ");
+
+  const remoteParticipantsCount = room?.remoteParticipants?.size ?? 0;
+  const remoteTracksCount = remoteTracks.length;
 
   useEffect(() => {
     if (!room) return;
@@ -151,6 +189,10 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
            <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-sm">
             <div className="size-1.5 rounded-full bg-primary animate-pulse" />
             <span className="text-[10px] font-bold text-primary uppercase tracking-widest">Live Stream Active</span>
+          </div>
+          <div className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-sm text-[8px] uppercase tracking-widest text-slate-400">
+            Participants {remoteParticipantsCount} · Tracks {remoteTracksCount}
+            {trackSourcesText ? ` · ${trackSourcesText}` : ""}
           </div>
           <button
             onClick={onExit}
