@@ -43,6 +43,19 @@ export const candidateApi = {
     return data;
   },
 
+  notifySessionEnded: async (
+    accessCode: string,
+    guestToken: string,
+    reason: string,
+  ) => {
+    const { data } = await apiClient.post<{ message: string; reason: string }>(
+      `/api/interviews/${accessCode}/session-ended`,
+      { reason },
+      { headers: { Authorization: `Bearer ${guestToken}` } },
+    );
+    return data;
+  },
+
   releaseLockdown: async () => {
     if (window.owlyn?.lockdown) {
       await window.owlyn.lockdown.toggle(false);
@@ -64,6 +77,7 @@ export const candidateApi = {
     topic: string;
     difficulty: string;
     durationMinutes: number;
+    language: string;
   }) => {
     const { data } = await apiClient.post<ValidateCodeResponse>(
       "/api/public/sessions/practice",

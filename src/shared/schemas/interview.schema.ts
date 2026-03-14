@@ -14,7 +14,7 @@ export const ToolsEnabledSchema = z.object({
 
 export const CreateInterviewPayloadSchema = z.object({
   title: z.string().min(3, "Title is too short"),
-  durationMinutes: z.number().int().min(5).max(180).default(45),
+  durationMinutes: z.number().int().min(5).max(30).default(30),
   toolsEnabled: ToolsEnabledSchema.optional(),
   aiInstructions: z.string().optional(),
   generatedQuestions: z.string().optional(),

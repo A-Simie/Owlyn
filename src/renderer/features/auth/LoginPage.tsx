@@ -16,6 +16,22 @@ type LoginStep =
   | "otp";
 type Role = "ADMIN" | "RECRUITER" | "CANDIDATE";
 
+const PRACTICE_LANGUAGES = [
+  "English",
+  "Spanish",
+  "French",
+  "German",
+  "Italian",
+  "Portuguese",
+  "Dutch",
+  "Russian",
+  "Japanese",
+  "Korean",
+  "Chinese",
+  "Arabic",
+  "Hindi",
+];
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,7 +51,8 @@ export default function LoginPage() {
     "General Software Engineering",
   );
   const [practiceDifficulty, setPracticeDifficulty] = useState("MEDIUM");
-  const [practiceDuration, setPracticeDuration] = useState(45);
+  const [practiceDuration, setPracticeDuration] = useState(30);
+  const [practiceLanguage, setPracticeLanguage] = useState("English");
 
   // Deep Link Handling
   useEffect(() => {
@@ -109,6 +126,7 @@ export default function LoginPage() {
         durationMinutes: res.durationMinutes,
         candidateName: res.candidateName,
         personaName: res.personaName,
+        toolsEnabled: res.toolsEnabled ?? res.config?.toolsEnabled,
       });
       useCandidateStore.getState().setPracticeMode(false);
       setValidationSuccess(true);
@@ -128,6 +146,7 @@ export default function LoginPage() {
         topic: practiceTopic,
         difficulty: practiceDifficulty,
         durationMinutes: practiceDuration,
+        language: practiceLanguage,
       });
       useCandidateStore.getState().setSession({
         token: res.token,
@@ -138,6 +157,7 @@ export default function LoginPage() {
         durationMinutes: res.durationMinutes,
         candidateName: res.candidateName,
         personaName: res.personaName,
+        toolsEnabled: res.toolsEnabled ?? res.config?.toolsEnabled,
       });
       useCandidateStore.getState().setPracticeMode(true);
       navigate("/calibration");
@@ -358,10 +378,25 @@ export default function LoginPage() {
                     >
                       <option value={15}>15 Minutes</option>
                       <option value={30}>30 Minutes</option>
-                      <option value={45}>45 Minutes</option>
-                      <option value={60}>60 Minutes</option>
                     </select>
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">
+                    Interview Language
+                  </label>
+                  <select
+                    value={practiceLanguage}
+                    onChange={(e) => setPracticeLanguage(e.target.value)}
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-primary/50 transition-all text-sm appearance-none cursor-pointer"
+                  >
+                    {PRACTICE_LANGUAGES.map((language) => (
+                      <option key={language} value={language}>
+                        {language}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {error && (

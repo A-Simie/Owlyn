@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   LiveKitRoom, 
@@ -24,6 +24,13 @@ import AudioWaveform from "./components/AudioWaveform";
 import InterviewCompletionModal from "./components/InterviewCompletionModal";
 
 type Tab = "code" | "whiteboard" | "notes";
+
+type ActivityEvent = {
+  id: string;
+  source: "proctor" | "workspace" | "local";
+  message: string;
+  timestamp: string;
+};
 
 export default function InterviewPage() {
   const { livekitToken } = useCandidateStore();
@@ -62,7 +69,7 @@ function InterviewInterface() {
   const remoteParticipants = useRemoteParticipants();
   const isAiSpeakingLive = remoteParticipants.some(p => p.isSpeaking);
   const isSpeaking = isAiSpeakingStore || isAiSpeakingLive;
-  const { clearSession, isAssistantMode, accessCode, token } = useCandidateStore();
+  const { clearSession, isAssistantMode, accessCode, token, durationMinutes, toolsEnabled } = useCandidateStore();
   const { stopAll } = useMediaStore();
   
   const room = useRoomContext();
@@ -70,19 +77,57 @@ function InterviewInterface() {
   const cameraTracks = useTracks([Track.Source.Camera], { room }).filter((t) => t.participant === localParticipant);
   const localCameraTrack = cameraTracks[0];
 
+  const availableTabs = useMemo<Tab[]>(() => {
+    const tabs: Tab[] = [];
+    if (toolsEnabled.codeEditor) tabs.push("code");
+    if (toolsEnabled.whiteboard) tabs.push("whiteboard");
+    if (toolsEnabled.notes) tabs.push("notes");
+    return tabs;
+  }, [toolsEnabled]);
+
   const [activeTab, setActiveTab] = useState<Tab>("code");
   const [isConnected, setIsConnected] = useState(false);
   const [isWidget, setIsWidget] = useState(false);
   const [code, setCode] = useState("// Solution implementation\nfunction solve() {\n\n}");
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
+  const [localFaceWarning, setLocalFaceWarning] = useState<string | null>(null);
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
+  const [sessionEnded, setSessionEnded] = useState(false);
 
   const [showCompletion, setShowCompletion] = useState(false);
   const [isMediaReady, setIsMediaReady] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
-  const { durationMinutes } = useCandidateStore();
+
+  useEffect(() => {
+    if (availableTabs.length === 0) {
+      return;
+    }
+
+    if (!availableTabs.includes(activeTab)) {
+      setActiveTab(availableTabs[0]);
+    }
+  }, [availableTabs, activeTab]);
+
+  const pushActivityEvent = (source: ActivityEvent["source"], message: string) => {
+    const cleanMessage = (message || "").trim();
+    if (!cleanMessage) return;
+
+    setActivityEvents((current) => {
+      const next: ActivityEvent[] = [
+        {
+          id: `${source}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          source,
+          message: cleanMessage,
+          timestamp: new Date().toISOString(),
+        },
+        ...current,
+      ];
+      return next.slice(0, 10);
+    });
+  };
 
   const toggleWidget = async () => {
     const nextState = !isWidget;
@@ -156,7 +201,14 @@ function InterviewInterface() {
             break;
           case "PROCTOR_WARNING":
             setProctorWarning(msg.message);
+            pushActivityEvent("proctor", msg.message || "Proctor warning detected");
             setTimeout(() => setProctorWarning(null), 5000);
+            break;
+          case "PROCTOR_ACTIVITY":
+            pushActivityEvent("proctor", msg.message || "Proctor activity detected");
+            break;
+          case "WORKSPACE_ALERT":
+            pushActivityEvent("workspace", msg.message || "Workspace activity detected");
             break;
           case "TOOL_HIGHLIGHT":
             setHighlightedLine(msg.line);
@@ -168,6 +220,7 @@ function InterviewInterface() {
           case "END_INTERVIEW":
             if (forcedEndHandledRef.current) break;
             forcedEndHandledRef.current = true;
+            setSessionEnded(true);
             setProctorWarning(msg.message || "Interview terminated by interviewer.");
             setTimeout(() => setProctorWarning(null), 5000);
             setTimeout(() => {
@@ -371,6 +424,10 @@ function InterviewInterface() {
   };
 
   const handleRunCode = async () => {
+    if (isEnding || sessionEnded) {
+      return;
+    }
+
     if (!room || !localParticipant || room.state !== ConnectionState.Connected) {
       setMediaError("Session connection is not ready yet. Please wait and try Run Code again.");
       return;
@@ -405,12 +462,19 @@ function InterviewInterface() {
     }
   };
 
-  const handleEndSession = async (force: boolean = false) => {
+  const handleEndSession = async (force: boolean = false, reason: string = "USER_ENDED") => {
     if (isEnding) return;
     if (force || confirm("Are you sure you want to end your interview session?")) {
       setIsEnding(true);
+      setSessionEnded(true);
 
       if (accessCode && token) {
+        try {
+          await candidateApi.notifySessionEnded(accessCode, token, reason);
+        } catch (err) {
+          console.warn("Failed to notify session end:", err);
+        }
+
         try {
           await candidateApi.completeInterview(accessCode, token);
         } catch (err) {
@@ -432,13 +496,6 @@ function InterviewInterface() {
     }
   };
 
-  useEffect(() => {
-    const remaining = (durationMinutes || 45) * 60 - elapsedSeconds;
-    if (remaining <= 0 && isConnected && isMediaReady && !isEnding) {
-      handleEndSession(true); // Auto-close when timer hits zero
-    }
-  }, [elapsedSeconds, durationMinutes, isConnected, isMediaReady, isEnding]);
-
   const formatTime = (s: number) => {
     const mins = Math.floor(s / 60);
     const secs = s % 60;
@@ -447,7 +504,7 @@ function InterviewInterface() {
 
   return (
     <div
-      className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}
+      className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning || localFaceWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}
     >
       {!isWidget && (
         <header className="h-16 shrink-0 border-b border-white/5 flex items-center justify-between px-8 bg-[#0D0D0D] z-50">
@@ -497,7 +554,7 @@ function InterviewInterface() {
                 Remaining
               </span>
               <span className="text-lg font-mono text-white tracking-widest">
-                {formatTime(Math.max(0, (durationMinutes || 45) * 60 - elapsedSeconds))}
+                {formatTime(Math.max(0, (durationMinutes || 30) * 60 - elapsedSeconds))}
               </span>
             </div>
             <button
@@ -549,43 +606,49 @@ function InterviewInterface() {
       </AnimatePresence>
 
       <div className="flex-1 flex min-h-0">
-        {!isWidget && (
+        {!isWidget && availableTabs.length > 0 && (
           <div className="flex-1 flex flex-col min-w-0 border-r border-white/5 relative">
             <div className="flex items-center px-4 gap-1 border-b border-white/5 h-12 bg-black/40">
-              <TabButton
-                active={activeTab === "code"}
-                onClick={() => setActiveTab("code")}
-                label="Code Editor"
-                icon="code"
-              />
-              <TabButton
-                active={activeTab === "whiteboard"}
-                onClick={() => setActiveTab("whiteboard")}
-                label="Whiteboard"
-                icon="draw"
-              />
-              <TabButton
-                active={activeTab === "notes"}
-                onClick={() => setActiveTab("notes")}
-                label="Scratchpad"
-                icon="description"
-              />
+              {toolsEnabled.codeEditor && (
+                <TabButton
+                  active={activeTab === "code"}
+                  onClick={() => setActiveTab("code")}
+                  label="Code Editor"
+                  icon="code"
+                />
+              )}
+              {toolsEnabled.whiteboard && (
+                <TabButton
+                  active={activeTab === "whiteboard"}
+                  onClick={() => setActiveTab("whiteboard")}
+                  label="Whiteboard"
+                  icon="draw"
+                />
+              )}
+              {toolsEnabled.notes && (
+                <TabButton
+                  active={activeTab === "notes"}
+                  onClick={() => setActiveTab("notes")}
+                  label="Scratchpad"
+                  icon="description"
+                />
+              )}
 
-              {activeTab === "code" && (
+              {toolsEnabled.codeEditor && activeTab === "code" && (
                 <div className="ml-auto flex items-center gap-4">
                   <button
                     onClick={handleRunCode}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isEnding || sessionEnded}
                      className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${
-                      isProcessing 
+                      isProcessing || isEnding || sessionEnded
                         ? "bg-primary/30 text-primary border border-primary/50 animate-pulse cursor-wait shadow-[0_0_20px_rgba(197,159,89,0.3)]" 
                         : "bg-primary text-black hover:brightness-110 active:scale-95 shadow-lg shadow-primary/10"
                     }`}
                   >
                     <span className="material-symbols-outlined text-sm">
-                      {isProcessing ? "cognition" : "play_arrow"}
+                      {isProcessing ? "cognition" : sessionEnded ? "block" : "play_arrow"}
                     </span>
-                    {isProcessing ? "AI Reviewing Session..." : "Run Code"}
+                    {isProcessing ? "AI Reviewing Session..." : sessionEnded ? "Session Ended" : "Run Code"}
                   </button>
                 </div>
               )}
@@ -600,7 +663,7 @@ function InterviewInterface() {
                   exit={{ opacity: 0 }}
                   className="absolute inset-0"
                 >
-                  {activeTab === "code" && (
+                  {toolsEnabled.codeEditor && activeTab === "code" && (
                     <div
                       className={`h-full w-full ${
                         isProcessing
@@ -615,10 +678,10 @@ function InterviewInterface() {
                       />
                     </div>
                   )}
-                  {activeTab === "whiteboard" && (
+                  {toolsEnabled.whiteboard && activeTab === "whiteboard" && (
                     <Whiteboard ref={whiteboardRef} />
                   )}
-                  {activeTab === "notes" && <Notes />}
+                  {toolsEnabled.notes && activeTab === "notes" && <Notes />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -638,12 +701,55 @@ function InterviewInterface() {
               <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
                 {!isEnding && (
                   <FaceTracker 
-                    onWarning={setProctorWarning} 
+                    onWarning={(message) => {
+                      setLocalFaceWarning(message);
+                      if (message) {
+                        pushActivityEvent("local", message);
+                      }
+                    }} 
                     stream={(localCameraTrack?.publication?.track as any)?.mediaStream ?? null} 
                   />
                 )}
               </div>
             </div>
+
+            {!isWidget && (
+              <div className="space-y-3">
+                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
+                  Activity Detection
+                </span>
+                <div className="max-h-[170px] overflow-y-auto border border-white/5 rounded-lg bg-black/20 p-3 space-y-2 custom-scrollbar">
+                  {activityEvents.length === 0 ? (
+                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest text-center py-3">
+                      No activity alerts yet
+                    </p>
+                  ) : (
+                    activityEvents.map((event) => (
+                      <div
+                        key={event.id}
+                        className="p-2 rounded border border-white/10 bg-white/[0.02]"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[8px] font-black uppercase tracking-widest text-primary">
+                            {event.source}
+                          </span>
+                          <span className="text-[8px] text-slate-500 font-mono">
+                            {new Date(event.timestamp).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                              second: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-300 leading-relaxed">
+                          {event.message}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-4">
               <div className="bg-white/[0.02] border border-primary/20 rounded-xl p-6 flex flex-col items-center gap-4">
@@ -691,7 +797,7 @@ function InterviewInterface() {
       </div>
 
       <AnimatePresence>
-        {proctorWarning && (
+        {(proctorWarning || localFaceWarning) && (
           <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -702,7 +808,7 @@ function InterviewInterface() {
               warning
             </span>
             <span className="text-[11px] font-black uppercase tracking-[0.4em] whitespace-nowrap">
-              {proctorWarning}
+              {proctorWarning || localFaceWarning}
             </span>
             <span className="material-symbols-outlined text-xl animate-pulse">
               warning

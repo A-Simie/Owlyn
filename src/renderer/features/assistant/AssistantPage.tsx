@@ -7,7 +7,7 @@ import {
   useRemoteParticipants,
   RoomAudioRenderer,
 } from "@livekit/components-react";
-import { RoomEvent, ConnectionState } from "livekit-client";
+import { RoomEvent, ConnectionState, Track } from "livekit-client";
 import { motion } from "framer-motion";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useInterviewStore } from "@/stores/interview.store";
@@ -60,6 +60,7 @@ function AssistantInterface() {
   const [isConnected, setIsConnected] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
   
   // Track window size for adaptive UI
   const [isLarge, setIsLarge] = useState(false);
@@ -73,19 +74,58 @@ function AssistantInterface() {
     return () => window.removeEventListener('resize', checkSize);
   }, []);
 
-  useEffect(() => {
+  const hasPublishedScreenShareTrack = () => {
+    if (!localParticipant) return false;
+    const publications = Array.from(localParticipant.trackPublications.values());
+    return publications.some(
+      (publication) =>
+        publication.source === Track.Source.ScreenShare &&
+        !!publication.track,
+    );
+  };
+
+  const waitForScreenSharePublication = async (timeoutMs = 3500) => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      if (hasPublishedScreenShareTrack()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+    return false;
+  };
+
+  const enableAssistantMedia = async () => {
     if (!localParticipant || room.state !== ConnectionState.Connected) return;
 
-    const autoStart = async () => {
-      try {
-        await localParticipant.setMicrophoneEnabled(true);
-      } catch (err) {
-        console.warn("Microphone access failed", err);
-        setError("Microphone required");
-      }
-    };
+    setError(null);
+    try {
+      await localParticipant.setMicrophoneEnabled(true);
+    } catch (err) {
+      console.warn("Microphone access failed", err);
+      setError("Microphone access is required for assistant mode.");
+      return;
+    }
 
-    autoStart();
+    try {
+      await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+      const published = await waitForScreenSharePublication();
+      if (!published) {
+        setError("Screen sharing is required. Please enable full screen sharing.");
+        setIsSharingScreen(false);
+        return;
+      }
+      setIsSharingScreen(true);
+    } catch (err) {
+      console.warn("Screen share access failed", err);
+      setError("Screen sharing is required for assistant mode.");
+      setIsSharingScreen(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!localParticipant || room.state !== ConnectionState.Connected) return;
+    enableAssistantMedia();
   }, [localParticipant, room.state]);
 
   useEffect(() => {
@@ -241,6 +281,26 @@ function AssistantInterface() {
                </motion.div>
              )}
           </div>
+
+          {!isSharingScreen && (
+            <div className="mt-3 text-center space-y-2">
+              <p className="text-[9px] text-amber-400 font-black uppercase tracking-[0.2em]">
+                Screen Share Required
+              </p>
+              <button
+                onClick={enableAssistantMedia}
+                className="px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.2em] rounded border border-primary/30 text-primary hover:bg-primary/10 transition-all"
+              >
+                Enable Screen Share
+              </button>
+            </div>
+          )}
+
+          {error && (
+            <p className="mt-2 text-[8px] text-red-400 font-bold uppercase tracking-[0.12em] text-center max-w-[220px]">
+              {error}
+            </p>
+          )}
         </div>
         
         {isLarge && (

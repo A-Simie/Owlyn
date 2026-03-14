@@ -85,8 +85,7 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
   const [alerts, setAlerts] = useState<any[]>([]);
 
   const tracks = useTracks(
-    [Track.Source.ScreenShare, Track.Source.Camera, Track.Source.Unknown],
-    { onlySubscribed: false }
+    [Track.Source.ScreenShare, Track.Source.Camera, Track.Source.Unknown]
   );
 
   const remoteTracks = tracks.filter((trackRef) => {
@@ -101,7 +100,8 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
   const isVideoTrackRef = (trackRef: any) => {
     const publicationKind = trackRef?.publication?.kind;
     const mediaKind = trackRef?.track?.mediaStreamTrack?.kind;
-    return publicationKind === Track.Kind.Video || mediaKind === "video";
+    const hasSubscribedTrack = !!trackRef?.publication?.track || !!trackRef?.track;
+    return hasSubscribedTrack && (publicationKind === Track.Kind.Video || mediaKind === "video");
   };
 
   const explicitScreenShareTrack = remoteTracks.find(
@@ -123,6 +123,14 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
       getTrackSource(trackRef) === Track.Source.Camera,
   );
 
+  const fallbackCameraTrack = remoteTracks.find(
+    (trackRef) =>
+      isVideoTrackRef(trackRef) &&
+      trackRef !== screenShareTrack,
+  );
+
+  const resolvedCameraTrack = cameraTrack ?? fallbackCameraTrack;
+
   const trackSourcesText = remoteTracks
     .map((trackRef) => String(getTrackSource(trackRef)))
     .join(", ");
@@ -137,9 +145,10 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
       try {
         const decoder = new TextDecoder();
         const data = JSON.parse(decoder.decode(payload));
+        const type = data.type || data.event;
 
-        if (data.type === "PROCTOR_WARNING") {
-          addAlert(data.message);
+        if (type === "PROCTOR_WARNING" || type === "PROCTOR_ACTIVITY" || type === "WORKSPACE_ALERT") {
+          addAlert(data.message || "Activity detected");
         }
       } catch (err) {
         console.warn("Failed to parse monitoring data");
@@ -223,8 +232,8 @@ function MonitoringInterface({ interview, onExit }: { interview: any; onExit: ()
 
               {/* Webcam View */}
               <div className="size-56 bg-black rounded-lg border border-white/10 overflow-hidden shadow-2xl relative">
-                {cameraTrack ? (
-                  <VideoTrack trackRef={cameraTrack} className="w-full h-full object-cover" />
+                {resolvedCameraTrack ? (
+                  <VideoTrack trackRef={resolvedCameraTrack} className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-[#111]">
                     <span className="material-symbols-outlined text-white/10">videocam_off</span>

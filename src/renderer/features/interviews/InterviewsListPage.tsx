@@ -59,7 +59,7 @@ export default function InterviewsListPage() {
     personaId: "",
     candidateName: "",
     candidateEmail: "",
-    durationMinutes: 45,
+    durationMinutes: 30,
     toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
   });
   const [draftedQuestions, setDraftedQuestions] = useState("");
@@ -165,7 +165,7 @@ export default function InterviewsListPage() {
         personaId: "",
         candidateName: "",
         candidateEmail: "",
-        durationMinutes: 45,
+        durationMinutes: 30,
         toolsEnabled: { codeEditor: true, whiteboard: false, notes: true },
       });
       setDraftedQuestions("");
@@ -494,7 +494,7 @@ export default function InterviewsListPage() {
                         <input
                           type="number"
                           min={5}
-                          max={180}
+                          max={30}
                           value={newInterview.durationMinutes || ""}
                           onChange={(e) => {
                             const v = e.target.value;

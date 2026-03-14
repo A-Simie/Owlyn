@@ -22,7 +22,8 @@ export default function AssistantLoadingPage() {
           title: res.title,
           durationMinutes: res.durationMinutes,
           candidateName: res.candidateName,
-          personaName: res.personaName
+          personaName: res.personaName,
+          toolsEnabled: res.toolsEnabled ?? res.config?.toolsEnabled,
         });
         useCandidateStore.getState().setAssistantMode(true);
         

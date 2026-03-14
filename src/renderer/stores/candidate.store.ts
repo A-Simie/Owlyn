@@ -1,6 +1,27 @@
 import { create } from 'zustand'
 import { registerCandidateGetToken } from '@/lib/api-client'
 
+type CandidateToolsEnabled = {
+    codeEditor: boolean
+    whiteboard: boolean
+    notes: boolean
+}
+
+const DEFAULT_TOOLS_ENABLED: CandidateToolsEnabled = {
+    codeEditor: true,
+    whiteboard: true,
+    notes: true,
+}
+
+function normalizeToolsEnabled(
+    toolsEnabled?: Partial<CandidateToolsEnabled> | null,
+): CandidateToolsEnabled {
+    return {
+        ...DEFAULT_TOOLS_ENABLED,
+        ...(toolsEnabled ?? {}),
+    }
+}
+
 interface CandidateState {
     token: string | null
     livekitToken: string | null
@@ -12,6 +33,7 @@ interface CandidateState {
     isPracticeMode: boolean
     isAssistantMode: boolean
     durationMinutes: number
+    toolsEnabled: CandidateToolsEnabled
     hydrated: boolean
     
     setSession: (params: {
@@ -23,6 +45,7 @@ interface CandidateState {
         durationMinutes: number
         candidateName?: string
         personaName?: string
+        toolsEnabled?: Partial<CandidateToolsEnabled>
     }) => void
     setPracticeMode: (enabled: boolean) => void
     setAssistantMode: (enabled: boolean) => void
@@ -40,7 +63,8 @@ export const useCandidateStore = create<CandidateState>((set) => ({
     personaName: null,
     isPracticeMode: false,
     isAssistantMode: false,
-    durationMinutes: 45,
+    durationMinutes: 30,
+    toolsEnabled: DEFAULT_TOOLS_ENABLED,
     hydrated: false,
 
     setSession: async (params) => {
@@ -53,6 +77,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             durationMinutes: params.durationMinutes,
             candidateName: params.candidateName || null,
             personaName: params.personaName || null,
+            toolsEnabled: normalizeToolsEnabled(params.toolsEnabled),
         })
         // Save sensitive token securely
         try {
@@ -80,7 +105,8 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             candidateName: null,
             personaName: null,
             isPracticeMode: false,
-            isAssistantMode: false
+            isAssistantMode: false,
+            toolsEnabled: DEFAULT_TOOLS_ENABLED,
         })
         try {
             await window.owlyn.auth.clearToken()

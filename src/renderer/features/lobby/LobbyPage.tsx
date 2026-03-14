@@ -87,7 +87,7 @@ export default function LobbyPage() {
                 Duration
               </span>
               <span className="text-[9px] font-mono font-bold text-primary">
-                {durationMinutes || 45} MIN
+                {durationMinutes || 30} MIN
               </span>
             </div>
           </div>
