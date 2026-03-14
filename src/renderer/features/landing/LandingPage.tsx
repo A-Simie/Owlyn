@@ -65,7 +65,7 @@ export default function LandingPage() {
             </span>
           </motion.div>
           <nav className="hidden md:flex items-center gap-10">
-            {["Platform", "Excellence", "Enterprise"].map((item) => (
+            {["About", "Pricing", "Contact"].map((item) => (
               <motion.a
                 key={item}
                 whileHover={{ y: -1 }}
@@ -76,18 +76,13 @@ export default function LandingPage() {
             ))}
           </nav>
           <div className="flex items-center gap-6">
-            <button
-              onClick={() => navigate("/auth")}
-              className="text-sm font-medium text-body hover:text-primary transition-colors"
-            >
-              Sign In
-            </button>
             <motion.button
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
+              onClick={() => navigate("/auth")}
               className="bg-primary text-black px-6 py-2.5 text-sm font-bold rounded-sm hover:brightness-110 transition-all uppercase tracking-widest"
             >
-              Request Access
+              Sign In
             </motion.button>
           </div>
         </div>
@@ -167,9 +162,10 @@ export default function LandingPage() {
                   boxShadow: "0 0 60px -10px rgba(197,159,89,0.5)",
                 }}
                 whileTap={{ scale: 0.97 }}
+                onClick={() => navigate("/auth")}
                 className="w-full sm:w-auto bg-primary text-black px-10 py-4 text-base font-bold rounded-sm transition-all uppercase tracking-widest aion-glow"
               >
-                Request Acess
+                Sign In
               </motion.button>
               <motion.button
                 whileHover={{
@@ -414,41 +410,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* CTA */}
-        <section className="py-32 px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="max-w-5xl mx-auto bg-gradient-to-b from-slate-100 dark:from-charcoal to-white dark:to-background-dark border border-slate-200 dark:border-primary/20 p-12 md:p-24 rounded-sm text-center relative overflow-hidden"
-          >
-            <motion.div
-              className="absolute top-0 right-0 w-64 h-64 bg-primary/10 blur-[100px] -mr-32 -mt-32"
-              animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <div className="relative z-10">
-              <h2 className="text-4xl md:text-5xl font-bold text-heading mb-8 tracking-tight">
-                The waitlist is now open.
-              </h2>
-              <p className="text-muted mb-12 max-w-xl mx-auto font-light">
-                Join 500+ global enterprises redefining their hiring process and
-                technical vetting with multimodal intelligence.
-              </p>
-              <motion.button
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 0 80px -15px rgba(197,159,89,0.5)",
-                }}
-                whileTap={{ scale: 0.97 }}
-                className="bg-primary text-black px-12 py-5 text-lg font-bold rounded-sm transition-all uppercase tracking-[0.2em]"
-              >
-                Apply for Access
-              </motion.button>
-            </div>
-          </motion.div>
-        </section>
+   
       </main>
 
       <footer className="py-12 px-6 border-t divider">
@@ -465,7 +427,7 @@ export default function LandingPage() {
             </span>
           </div>
           <div className="flex gap-10 text-[11px] uppercase tracking-widest font-bold text-subtle">
-            {["Platform", "Privacy", "Terms", "Contact"].map((link) => (
+            {["About", "Privacy", "Terms", "Contact"].map((link) => (
               <a
                 key={link}
                 className="hover:text-primary transition-colors cursor-pointer"
