@@ -6,13 +6,14 @@ import { InterviewsStats } from "./components/InterviewsStats";
 import { InterviewsTable } from "./components/InterviewsTable";
 import { CreateInterviewModal } from "./components/CreateInterviewModal";
 import Pagination from "@/components/shared/Pagination";
+import { useClipboard } from "@/hooks/useClipboard";
 
 export default function InterviewsListPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createdAccessCode, setCreatedAccessCode] = useState<string | null>(null);
-  const [justCopied, setJustCopied] = useState(false);
+  const { copy, hasCopied: justCopied } = useClipboard();
 
   const {
     interviews, activeTab, setActiveTab, currentPage, setCurrentPage,
@@ -88,7 +89,10 @@ export default function InterviewsListPage() {
             <p className="text-xs text-slate-500 mb-6 uppercase tracking-widest">Copy the access code and send it to the candidate</p>
             <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6">
               <p className="text-4xl font-bold text-primary font-mono tracking-[0.5em]">{createdAccessCode}</p>
-              <button onClick={async () => { await navigator.clipboard.writeText(createdAccessCode); setJustCopied(true); setTimeout(() => setJustCopied(false), 2000); }} className="mt-4 flex items-center gap-2 mx-auto text-primary/60 hover:text-primary transition-colors">
+              <button 
+                onClick={() => createdAccessCode && copy(createdAccessCode)} 
+                className="mt-4 flex items-center gap-2 mx-auto text-primary/60 hover:text-primary transition-colors"
+              >
                 <span className="material-symbols-outlined text-sm">{justCopied ? "check_circle" : "content_copy"}</span>
                 <span className="text-[10px] font-bold uppercase tracking-widest">{justCopied ? "Copied!" : "Copy Code"}</span>
               </button>

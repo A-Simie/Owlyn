@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useClipboard } from "@/hooks/useClipboard";
 
 interface InviteSuccessModalProps {
   message: string;
@@ -6,17 +7,11 @@ interface InviteSuccessModalProps {
 }
 
 export function InviteSuccessModal({ message, onClose }: InviteSuccessModalProps) {
-  const [justCopied, setJustCopied] = useState(false);
+  const { copy, hasCopied: justCopied } = useClipboard();
   const password = message.split(":").pop()?.trim() || "";
 
   const handleCopy = () => {
-    if (window.owlyn?.clipboard) {
-      window.owlyn.clipboard.writeText(password);
-    } else {
-      navigator.clipboard.writeText(password);
-    }
-    setJustCopied(true);
-    setTimeout(() => setJustCopied(false), 2000);
+    copy(password);
   };
 
   return (

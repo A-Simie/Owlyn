@@ -119,7 +119,7 @@ export function CalibrationCamera({ cameraStream, cameraOn, onFaceStatusChange }
               <span className="material-symbols-outlined text-4xl text-primary animate-pulse">face</span>
             </div>
             <h3 className="text-lg font-bold text-white uppercase tracking-tight mb-2">Face Not Detected</h3>
-            <p className="text-xs text-slate-300 max-w-xs uppercase font-bold tracking-widest leading-loose">Position your head within the camera's view to initiate the session.</p>
+            <p className="text-xs text-slate-300 max-w-xs uppercase font-bold tracking-widest leading-loose">Position your head within the camera's view to initiate the liveness check.</p>
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import type { InterviewListItem } from "@shared/schemas/interview.schema";
+import { useClipboard } from "@/hooks/useClipboard";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   UPCOMING: { label: "Upcoming", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
@@ -16,14 +17,13 @@ interface InterviewsTableProps {
 export function InterviewsTable({ interviews }: InterviewsTableProps) {
   const navigate = useNavigate();
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const { copy } = useClipboard();
 
-  const handleCopyCode = async (id: string, code: string) => {
-    try {
-      await navigator.clipboard.writeText(code);
+  const handleCopy = async (id: string, code: string) => {
+    const success = await copy(code);
+    if (success) {
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Copy failed", err);
     }
   };
 
@@ -53,7 +53,7 @@ export function InterviewsTable({ interviews }: InterviewsTableProps) {
                   <span className="flex items-center gap-1 font-mono group/code cursor-pointer relative">
                     <span className="material-symbols-outlined text-xs">tag</span>
                     {interview.accessCode}
-                    <button onClick={() => handleCopyCode(interview.interviewId, interview.accessCode)} className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded flex items-center gap-1.5">
+                    <button onClick={() => handleCopy(interview.interviewId, interview.accessCode)} className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded flex items-center gap-1.5">
                       {copiedId === interview.interviewId && <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest">Copied!</span>}
                       <span className="material-symbols-outlined text-xs">{copiedId === interview.interviewId ? "check_circle" : "content_copy"}</span>
                     </button>

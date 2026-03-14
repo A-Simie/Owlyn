@@ -59,7 +59,6 @@ export default function Sidebar() {
             src={workspace.logoUrl} 
             alt="Logo" 
             onError={() => {
-              console.log("Sidebar logo load error");
               setImageError(true);
             }}
             className="w-10 h-10 rounded-lg object-cover border border-primary/20 shadow-lg"

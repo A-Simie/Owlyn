@@ -64,6 +64,14 @@ export function useAssistantSession() {
 
     try {
       await localParticipant.setMicrophoneEnabled(true);
+      
+      // Signal again after media is enabled to ensure the agent knows we are ready
+      const encoder = new TextEncoder();
+      localParticipant.publishData(
+        encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
+        { reliable: true }
+      );
+      console.log("Assistant: Re-signaled USER_JOINED after media enablement");
     } catch (err) {
       console.warn("Microphone access failed", err);
       setError("Microphone access is required for assistant mode.");
@@ -94,6 +102,8 @@ export function useAssistantSession() {
 
         const type = msg.type || msg.event;
         const text = msg.text || msg.content || msg.message || msg.transcript;
+        
+        console.log("Assistant: Data message received", type, !!text);
 
         switch (type) {
           case "transcript":
@@ -113,6 +123,8 @@ export function useAssistantSession() {
           case "AI_SPEAKING":
             setAiSpeaking(msg.active);
             break;
+          default:
+            console.log("Assistant: Unhandled message type", msg);
         }
       } catch (err) {
         console.warn("AI command error:", err);
@@ -120,6 +132,7 @@ export function useAssistantSession() {
     };
 
     const handleTranscription = (transcription: any) => {
+      console.log("Assistant: Transcription received", transcription.participantIdentity);
       transcription.segments.forEach((segment: any) => {
         if (segment.text.trim()) {
           const isLocal = transcription.participantIdentity === room.localParticipant.identity;
@@ -136,29 +149,49 @@ export function useAssistantSession() {
     };
 
     const checkAndSignal = () => {
+      console.log("Assistant: Room state is", room.state);
       if (room.state === ConnectionState.Connected) {
-        const participant = room.localParticipant;
-        const encoder = new TextEncoder();
-        participant.publishData(
-          encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
-          { reliable: true }
-        );
         setIsConnected(true);
+        console.log("Assistant: Connected to room, waiting for media to signal USER_JOINED");
       }
+    };
+
+    const handleParticipantJoined = (p: any) => {
+      console.log("Assistant: Participant joined", p.identity, p.metadata);
+    };
+
+    const handleParticipantDisconnected = (p: any) => {
+      console.log("Assistant: Participant disconnected", p.identity);
     };
 
     room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
     room.on(RoomEvent.Connected, checkAndSignal);
     room.on(RoomEvent.Disconnected, () => setIsConnected(false));
+    room.on(RoomEvent.ParticipantConnected, handleParticipantJoined);
+    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+
+    // Monitor local tracks to detect when screen share stops
+    const handleTrackUnpublished = (publication: any) => {
+      if (publication.source === Track.Source.ScreenShare) {
+        console.log("Assistant: Screen share unpublished, ending session...");
+        setIsSharingScreen(false);
+        handleEnd();
+      }
+    };
+    localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
+
     if (room.state === ConnectionState.Connected) checkAndSignal();
 
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.TranscriptionReceived, handleTranscription);
       room.off(RoomEvent.Connected, checkAndSignal);
+      room.off(RoomEvent.ParticipantConnected, handleParticipantJoined);
+      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+      localParticipant?.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
     };
-  }, [room, addTranscript, setCurrentQuestion, setAiSpeaking]);
+  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, isEnding]);
 
   const handleEnd = async () => {
     if (isEnding) return;
