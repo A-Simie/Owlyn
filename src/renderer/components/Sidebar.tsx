@@ -119,7 +119,7 @@ export default function Sidebar() {
       <div className="p-4 space-y-2">
         <button
           onClick={() => navigate("/interviews?create=true")}
-          className="w-full flex items-center justify-center gap-2 bg-primary text-black py-3 rounded-lg font-bold text-sm uppercase tracking-wider shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
+          className="w-full flex items-center justify-center gap-2 bg-primary text-black py-3 rounded-xl font-bold text-sm uppercase tracking-wider shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           New Interview

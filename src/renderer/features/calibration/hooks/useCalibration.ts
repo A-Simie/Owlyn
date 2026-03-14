@@ -4,14 +4,14 @@ export function useCalibration(faceDetected: boolean) {
   const [step, setStep] = useState(0);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (faceDetected) {
-      interval = setInterval(() => {
-        setStep((s) => (s < 2 ? s + 1 : s));
-      }, 1500);
-    }
-    return () => clearInterval(interval);
-  }, [faceDetected]);
+    if (!faceDetected || step >= 2) return;
+
+    const timer = setTimeout(() => {
+      setStep(s => s + 1);
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [faceDetected, step]);
 
   return { step, setStep };
 }

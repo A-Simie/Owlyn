@@ -47,7 +47,7 @@ export default function InterviewsListPage() {
           <h1 className="text-3xl font-bold text-white mb-1">Interviews</h1>
           <p className="text-slate-500 text-sm">Manage your scheduled and past interview sessions.</p>
         </div>
-        <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 bg-primary text-black px-5 py-2.5 rounded-lg font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all shadow-lg shadow-primary/20">
+        <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-2 bg-primary text-black px-5 py-2.5 rounded-xl font-bold text-sm uppercase tracking-wider hover:brightness-110 transition-all shadow-lg shadow-primary/20">
           <span className="material-symbols-outlined text-lg">add</span> New Interview
         </button>
       </div>

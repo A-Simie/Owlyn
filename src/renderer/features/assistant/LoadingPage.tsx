@@ -1,46 +1,10 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { candidateApi } from "@/api";
-import { useCandidateStore } from "@/stores/candidate.store";
-import { extractApiError } from "@/lib/api-error";
+import { useAssistantLoading } from "./hooks/useAssistantLoading";
 
 export default function AssistantLoadingPage() {
   const navigate = useNavigate();
-  const [status, setStatus] = useState("Initializing Assistant...");
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const startSession = async () => {
-      try {
-        const res = await candidateApi.startAssistantSession();
-        useCandidateStore.getState().setSession({
-          token: res.token,
-          livekitToken: res.livekitToken,
-          interviewId: res.interviewId,
-          accessCode: "TUTOR",
-          title: res.title,
-          durationMinutes: res.durationMinutes,
-          candidateName: res.candidateName,
-          personaName: res.personaName,
-          toolsEnabled: res.toolsEnabled ?? res.config?.toolsEnabled,
-        });
-        useCandidateStore.getState().setAssistantMode(true);
-        
-        setTimeout(async () => {
-           if (window.owlyn?.window?.setWidgetMode) {
-             await window.owlyn.window.setWidgetMode(true);
-           }
-           navigate("/assistant");
-        }, 1500);
-
-      } catch (err) {
-        setError(extractApiError(err).message);
-      }
-    };
-
-    startSession();
-  }, [navigate]);
+  const { status, error } = useAssistantLoading();
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] flex flex-col items-center justify-center p-6 relative overflow-hidden font-sans text-slate-100">
