@@ -211,18 +211,20 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
     
-    // Force reset all constraints to allow shrinking below 1024x700
-    mainWindow.setResizable(true);
-    mainWindow.setMaximizable(false);
-    mainWindow.setMinimumSize(100, 100); 
-    mainWindow.setMaximumSize(500, 700);
+    // Clear all hard constraints from constructor
+    mainWindow.setMinimumSize(0, 0);
+    mainWindow.setMaximumSize(10000, 10000);
     
-    // Force the bounds
+    mainWindow.setMaximizable(false);
+    mainWindow.setFullScreen(false);
+    mainWindow.setResizable(true); // Must be true to resize
+    
+    // Set actual bounds
     mainWindow.setBounds({
-      x: width - 350,
-      y: height - 370,
-      width: 320,
-      height: 340
+      x: width - 310,
+      y: height - 350,
+      width: 280,
+      height: 320
     }, true);
     
     mainWindow.setAlwaysOnTop(true, "floating");
@@ -232,7 +234,7 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     // Restore: Large, Center
     mainWindow.setResizable(true);
     mainWindow.setMinimumSize(1024, 700);
-    mainWindow.setMaximumSize(4000, 4000); // Massive upper bound
+    mainWindow.setMaximumSize(10000, 10000);
     mainWindow.setSize(1440, 900, true);
     mainWindow.center();
     mainWindow.setAlwaysOnTop(false);

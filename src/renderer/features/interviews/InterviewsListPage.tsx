@@ -69,6 +69,7 @@ export default function InterviewsListPage() {
     null,
   );
   const [justCopied, setJustCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchInterviews = useCallback(async () => {
     setLoading(true);
@@ -204,12 +205,12 @@ export default function InterviewsListPage() {
   };
 
 
-  const notifyCopy = (btn: HTMLElement | null) => {
-    if (!btn) return;
-    const original = btn.innerHTML;
-    btn.innerHTML =
-      '<span class="material-symbols-outlined text-[14px] text-green-500 animate-in fade-in zoom-in duration-200">check_circle</span>';
-    setTimeout(() => (btn.innerHTML = original), 2000);
+  const handleCopyCode = async (id: string, code: string) => {
+    const ok = await copyToClipboard(code);
+    if (ok) {
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    }
   };
 
   const tabs: { key: TabFilter; label: string; count: number }[] = [
@@ -352,18 +353,20 @@ export default function InterviewsListPage() {
                       </span>
                       {interview.accessCode}
                       <button
-                        onClick={async (e) => {
+                        onClick={(e) => {
                           e.stopPropagation();
-                          const ok = await copyToClipboard(
-                            interview.accessCode,
-                          );
-                          if (ok) notifyCopy(e.currentTarget);
+                          handleCopyCode(interview.interviewId, interview.accessCode);
                         }}
-                        className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded"
+                        className="opacity-0 group-hover/code:opacity-100 ml-1 p-1 hover:text-primary transition-all rounded flex items-center gap-1.5"
                         title="Copy Code"
                       >
+                        {copiedId === interview.interviewId && (
+                          <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest animate-in fade-in slide-in-from-right-1">
+                            Copied!
+                          </span>
+                        )}
                         <span className="material-symbols-outlined text-xs">
-                          content_copy
+                          {copiedId === interview.interviewId ? "check_circle" : "content_copy"}
                         </span>
                       </button>
                     </span>

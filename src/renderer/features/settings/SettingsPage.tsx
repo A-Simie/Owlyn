@@ -29,6 +29,7 @@ export default function SettingsPage() {
   const [wsLogoFile, setWsLogoFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [justCopied, setJustCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -105,6 +106,8 @@ export default function SettingsPage() {
     } else {
       navigator.clipboard.writeText(pass);
     }
+    setJustCopied(true);
+    setTimeout(() => setJustCopied(false), 2000);
   }, [tempPasswordMsg]);
 
   const handleUpdateWorkspace = async () => {
@@ -472,11 +475,16 @@ export default function SettingsPage() {
                 </div>
                 <button
                   onClick={handleCopyTempPassword}
-                  className="absolute top-3 right-3 p-2 text-primary/20 hover:text-primary transition-all rounded-lg hover:bg-primary/5"
+                  className="absolute top-3 right-3 p-2 text-primary/40 hover:text-primary transition-all rounded-lg hover:bg-primary/5 flex items-center gap-2"
                   title="Copy password"
                 >
-                  <span className="material-symbols-outlined text-lg">
-                    content_copy
+                  {justCopied && (
+                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-widest animate-in fade-in slide-in-from-right-2">
+                      Copied!
+                    </span>
+                  )}
+                  <span className={`material-symbols-outlined text-lg ${justCopied ? "text-green-500" : ""}`}>
+                    {justCopied ? "check_circle" : "content_copy"}
                   </span>
                 </button>
               </div>

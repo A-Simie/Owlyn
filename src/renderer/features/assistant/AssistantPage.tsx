@@ -43,8 +43,10 @@ function AssistantInterface() {
     setCurrentQuestion, 
     reset: resetInterview,
     isAiSpeaking: isAiSpeakingStore,
-    setAiSpeaking 
+    setAiSpeaking,
+    transcript: transcripts 
   } = useInterviewStore();
+  const lastTranscript = transcripts[transcripts.length - 1];
   const remoteParticipants = useRemoteParticipants();
   const isAiSpeakingLive = remoteParticipants.some(p => p.isSpeaking);
   const isSpeaking = isAiSpeakingStore || isAiSpeakingLive;
@@ -83,13 +85,15 @@ function AssistantInterface() {
 
         switch (msg.type) {
           case "transcript":
+          case "text":
+          case "speech":
             addTranscript({
               id: Date.now().toString(),
               timestamp: new Date().toISOString(),
-              speaker: msg.speaker,
-              text: msg.text,
+              speaker: msg.speaker || "ai",
+              text: msg.text || msg.content || "",
             });
-            if (msg.speaker === "ai") setCurrentQuestion(msg.text);
+            if (msg.speaker === "ai") setCurrentQuestion(msg.text || msg.content);
             break;
           case "AI_SPEAKING":
             setAiSpeaking(msg.active);
@@ -170,6 +174,18 @@ function AssistantInterface() {
               {isSpeaking ? "Assistant Speaking" : "Listening"}
             </p>
           </motion.div>
+          {lastTranscript && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              key={lastTranscript.id}
+              className="mt-4"
+            >
+              <p className="text-[11px] text-slate-300 font-medium leading-relaxed max-w-[200px] mx-auto line-clamp-2">
+                "{lastTranscript.text}"
+              </p>
+            </motion.div>
+          )}
           {error && <p className="text-[8px] text-red-500 font-bold uppercase mt-2 tracking-widest">{error}</p>}
         </div>
       </div>

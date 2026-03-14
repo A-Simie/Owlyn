@@ -27,6 +27,10 @@ If AI says interview ending soon, implement a timer system or something that sho
 
 if session ends, create an endpoint that would receive a session ended notice so we can then fix the live bug in admin page
 
+## 7. Activity detection
+
+currently ui only says we are not looking at screen, we need to show if user is eating, pressing phone, literally any activity. we need to show it in the ui.
+
 
 ## setting fullscreen and no screencapture (frontend note)
 

@@ -122,13 +122,15 @@ function InterviewInterface() {
 
         switch (msg.type) {
           case "transcript":
+          case "text":
+          case "speech":
             addTranscript({
               id: Date.now().toString(),
               timestamp: new Date().toISOString(),
-              speaker: msg.speaker,
-              text: msg.text,
+              speaker: msg.speaker || "ai",
+              text: msg.text || msg.content || "",
             });
-            if (msg.speaker === "ai") setCurrentQuestion(msg.text);
+            if (msg.speaker === "ai") setCurrentQuestion(msg.text || msg.content);
             break;
           case "PROCTOR_WARNING":
             setProctorWarning(msg.message);
