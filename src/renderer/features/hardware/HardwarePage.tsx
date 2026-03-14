@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useMediaStore } from "@/stores/media.store";
 import { candidateApi } from "@/api/candidate.api";
 import { apiClient } from "@/lib/api-client";
+import * as faceapi from "@vladmandic/face-api";
+
+const MODEL_URL = "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model";
 
 export default function HardwarePage() {
   const navigate = useNavigate();
@@ -27,10 +30,30 @@ export default function HardwarePage() {
 
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [faceDetected, setFaceDetected] = useState(false);
+  const [modelsLoaded, setModelsLoaded] = useState(false);
+  const [isInitializingModels, setIsInitializingModels] = useState(true);
 
   useEffect(() => {
     if (!cameraOn) startCamera();
     if (!micOn) startMic();
+
+    let cancelled = false;
+    (async () => {
+      try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+        await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+        if (!cancelled) {
+          setModelsLoaded(true);
+          setIsInitializingModels(false);
+        }
+      } catch (err) {
+        console.error("Failed to load face-api models:", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -50,6 +73,40 @@ export default function HardwarePage() {
       mic: micActive 
     }));
   }, [cameraOn, micOn, cameraStream, audioLevel]);
+
+  // Face Detection Loop
+  useEffect(() => {
+    if (!cameraOn || !videoRef.current || !modelsLoaded) return;
+
+    let rafId: number;
+    let running = true;
+
+    const options = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 224,
+      scoreThreshold: 0.35,
+    });
+
+    const detect = async () => {
+      const video = videoRef.current;
+      if (!video || !running) return;
+
+      if (video.readyState < 2 || video.videoWidth === 0) {
+        rafId = requestAnimationFrame(detect);
+        return;
+      }
+
+      const detections = await faceapi.detectAllFaces(video, options);
+      setFaceDetected(detections.length > 0);
+
+      rafId = requestAnimationFrame(detect);
+    };
+
+    detect();
+    return () => {
+      running = false;
+      cancelAnimationFrame(rafId);
+    };
+  }, [cameraOn, modelsLoaded]);
 
   const runNetworkTest = useCallback(async () => {
     setIsChecking(true);
@@ -77,7 +134,7 @@ export default function HardwarePage() {
     runNetworkTest();
   }, [runNetworkTest]);
 
-  const canProceed = checks.camera && checks.mic && checks.network;
+  const canProceed = checks.camera && checks.mic && checks.network && faceDetected;
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden">
@@ -105,9 +162,6 @@ export default function HardwarePage() {
               }}
             />
           </div>
-          <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">
-            Configuration Status
-          </span>
         </div>
       </header>
 
@@ -139,6 +193,34 @@ export default function HardwarePage() {
                   </div>
                   <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500">
                     Camera Inactive
+                  </p>
+                </div>
+              )}
+              {cameraOn && !isInitializingModels && !faceDetected && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 bg-red-950/40 backdrop-blur-md flex flex-col items-center justify-center text-center p-10"
+                >
+                  <div className="size-16 rounded-full border-2 border-primary/20 flex items-center justify-center mb-4">
+                    <span className="material-symbols-outlined text-3xl text-primary animate-pulse">
+                      face
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white uppercase tracking-tight mb-1">
+                    Face Not Detected
+                  </h3>
+                  <p className="text-[10px] text-slate-300 max-w-xs uppercase font-bold tracking-widest leading-normal">
+                    Please position your face clearly in the frame.
+                  </p>
+                </motion.div>
+              )}
+              {isInitializingModels && cameraOn && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+                  <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                    Initializing Biometrics...
                   </p>
                 </div>
               )}
@@ -183,10 +265,20 @@ export default function HardwarePage() {
 
         <div className="w-full lg:w-[480px] flex flex-col gap-8">
           <div className="bg-[#111] border border-white/5 rounded-sm p-10 flex-1 space-y-12">
-            <div className="space-y-6">
-              <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
-                System Diagnostics
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+                  System Diagnostics
+                </h3>
+                <button
+                  onClick={runNetworkTest}
+                  disabled={isChecking}
+                  className="size-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-primary transition-all active:scale-95 disabled:opacity-20"
+                >
+                  <span className={`material-symbols-outlined text-sm ${isChecking ? "animate-spin" : ""}`}>
+                    refresh
+                  </span>
+                </button>
+              </div>
               <div className="space-y-3">
                 <CheckItem
                   label="Webcam"
@@ -225,7 +317,6 @@ export default function HardwarePage() {
                 Continue to Lobby
               </button>
             </div>
-          </div>
         </div>
       </main>
     </div>

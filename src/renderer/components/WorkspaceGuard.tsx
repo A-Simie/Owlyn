@@ -43,16 +43,10 @@ export default function WorkspaceGuard({ children }: { children: ReactNode }) {
       }
 
       try {
-        const user = await authApi.getCurrentUser();
-        if (!cancelled) {
-          setAuth(user, currentToken);
-          setStatus("authenticated");
-        }
+        await useAuthStore.getState().verifySession();
+        if (!cancelled) setStatus("authenticated");
       } catch {
-        if (!cancelled) {
-          clearAuth();
-          setStatus("unauthenticated");
-        }
+        if (!cancelled) setStatus("unauthenticated");
       }
     }
 

@@ -10,7 +10,7 @@ interface CandidateState {
     candidateName: string | null
     personaName: string | null
     isPracticeMode: boolean
-    isTutorMode: boolean
+    isAssistantMode: boolean
     durationMinutes: number
     hydrated: boolean
     
@@ -24,7 +24,8 @@ interface CandidateState {
         candidateName?: string
         personaName?: string
     }) => void
-    setPracticeMode: (enabled: boolean, isTutor?: boolean) => void
+    setPracticeMode: (enabled: boolean) => void
+    setAssistantMode: (enabled: boolean) => void
     clearSession: () => void
     hydrate: () => Promise<void>
 }
@@ -38,7 +39,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
     candidateName: null,
     personaName: null,
     isPracticeMode: false,
-    isTutorMode: false,
+    isAssistantMode: false,
     durationMinutes: 45,
     hydrated: false,
 
@@ -61,12 +62,12 @@ export const useCandidateStore = create<CandidateState>((set) => ({
         }
     },
 
-    setPracticeMode: (enabled, isTutor = false) => {
-        set({ 
-            isPracticeMode: enabled,
-            isTutorMode: isTutor,
-       
-        })
+    setPracticeMode: (enabled: boolean) => {
+        set({ isPracticeMode: enabled, isAssistantMode: false })
+    },
+
+    setAssistantMode: (enabled: boolean) => {
+        set({ isAssistantMode: enabled, isPracticeMode: true })
     },
 
     clearSession: async () => {
@@ -79,7 +80,7 @@ export const useCandidateStore = create<CandidateState>((set) => ({
             candidateName: null,
             personaName: null,
             isPracticeMode: false,
-            isTutorMode: false
+            isAssistantMode: false
         })
         try {
             await window.owlyn.auth.clearToken()

@@ -103,7 +103,7 @@ export default function LoginPage() {
         candidateName: res.candidateName,
         personaName: res.personaName
       });
-      useCandidateStore.getState().setPracticeMode(false, false);
+      useCandidateStore.getState().setPracticeMode(false);
       setValidationSuccess(true);
       setTimeout(() => navigate("/calibration"), 1000);
     } catch (err) {
@@ -142,27 +142,7 @@ export default function LoginPage() {
   };
 
   const handleTutorMode = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await candidateApi.startTutorSession();
-      useCandidateStore.getState().setSession({
-        token: res.token,
-        livekitToken: res.livekitToken,
-        interviewId: res.interviewId,
-        accessCode: "TUTOR",
-        title: res.title,
-        durationMinutes: res.durationMinutes,
-        candidateName: res.candidateName,
-        personaName: res.personaName
-      });
-      useCandidateStore.getState().setPracticeMode(true, true);
-      navigate("/calibration");
-    } catch (err) {
-      setError(extractApiError(err).message);
-    } finally {
-      setLoading(false);
-    }
+    navigate("/assistant-loading");
   };
 
   return (
@@ -285,15 +265,15 @@ export default function LoginPage() {
                 >
                   <div className="w-14 h-14 mx-auto flex items-center justify-center text-blue-500 border border-blue-500/20 rounded-sm bg-blue-500/5 group-hover:bg-blue-500 group-hover:text-black transition-all">
                     <span className="material-symbols-outlined text-2xl">
-                      school
+                      owl
                     </span>
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-base font-bold text-white uppercase tracking-wide">
-                      AI Tutor
+                      AI Assistant
                     </h3>
                     <p className="text-slate-500 text-[10px] font-light leading-relaxed">
-                      AI assistance while you code.
+                      AI assistant for everyday work.
                     </p>
                   </div>
                 </div>

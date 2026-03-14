@@ -7,16 +7,46 @@ interface AuthState {
     token: string | null
     isAuthenticated: boolean
     hydrated: boolean
+    isVerifying: boolean
+    verifySession: () => Promise<User | null>
     setAuth: (user: User, token: string) => void
     clearAuth: () => void
     hydrate: () => Promise<void>
 }
+
+let activeVerifyPromise: Promise<any> | null = null;
 
 export const useAuthStore = create<AuthState>((set, get) => ({
     user: null,
     token: null,
     isAuthenticated: false,
     hydrated: false,
+    isVerifying: false,
+
+    verifySession: async () => {
+        const { token, setAuth, clearAuth } = get()
+        if (!token) return null
+        
+        if (activeVerifyPromise) return activeVerifyPromise
+
+        activeVerifyPromise = (async () => {
+            try {
+                const { authApi } = await import('@/api')
+                const user = await authApi.getCurrentUser()
+                setAuth(user, token)
+                return user
+            } catch (err) {
+                clearAuth()
+                throw err
+            } finally {
+                activeVerifyPromise = null
+                set({ isVerifying: false })
+            }
+        })()
+
+        set({ isVerifying: true })
+        return activeVerifyPromise
+    },
 
     setAuth: async (user, token) => {
         set({ user, token, isAuthenticated: true })

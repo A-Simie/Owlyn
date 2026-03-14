@@ -58,7 +58,7 @@ function InterviewInterface() {
     isAiSpeaking, 
     setAiSpeaking 
   } = useInterviewStore();
-  const { clearSession, isTutorMode, accessCode, token } = useCandidateStore();
+  const { clearSession, isAssistantMode, accessCode, token } = useCandidateStore();
   const { stopAll } = useMediaStore();
   
   const room = useRoomContext();
@@ -96,7 +96,7 @@ function InterviewInterface() {
     const syncWidgetMode = async () => {
       if (!window.owlyn?.window?.setWidgetMode) return;
 
-      if (isTutorMode) {
+      if (isAssistantMode) {
         setIsWidget(true);
         await window.owlyn.window.setWidgetMode(true);
       } else {
@@ -106,7 +106,7 @@ function InterviewInterface() {
     };
 
     syncWidgetMode();
-  }, [isTutorMode]);
+  }, [isAssistantMode]);
 
   useEffect(() => {
     if (!room) return;
@@ -347,10 +347,15 @@ function InterviewInterface() {
     if (window.owlyn?.window?.setWidgetMode) {
       window.owlyn.window.setWidgetMode(false);
     }
+    const { isAssistantMode } = useCandidateStore.getState();
     resetInterview();
     useSessionStore.getState().reset();
     clearSession();
-    navigate("/analysis");
+    if (isAssistantMode) {
+      navigate("/auth?step=candidate-options");
+    } else {
+      navigate("/analysis");
+    }
   };
 
   const handleEndSession = async (force: boolean = false) => {
@@ -369,9 +374,10 @@ function InterviewInterface() {
       await room?.disconnect();
       stopAll();
       await candidateApi.releaseLockdown();
+      setProctorWarning(null); // Clear any active warnings to remove red overlay
       
-      const { isPracticeMode, isTutorMode } = useCandidateStore.getState();
-      if (!isPracticeMode && !isTutorMode) {
+      const { isPracticeMode, isAssistantMode } = useCandidateStore.getState();
+      if (!isPracticeMode && !isAssistantMode) {
         setShowCompletion(true);
       } else {
         finalizeExit();
@@ -488,8 +494,12 @@ function InterviewInterface() {
               </div>
               <button 
                 onClick={publishMedia}
-                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/10"
+                disabled={!room || room.state !== ConnectionState.Connected}
+                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/10 disabled:opacity-20 flex items-center justify-center gap-3"
               >
+                {(!room || room.state !== ConnectionState.Connected) && (
+                  <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                )}
                 Start Secure Session
               </button>
             </div>
@@ -585,10 +595,12 @@ function InterviewInterface() {
                 </span>
               </div>
               <div className="relative aspect-video rounded-lg overflow-hidden border border-white/5 bg-black shadow-2xl">
-                 <FaceTracker 
-                  onWarning={setProctorWarning} 
-                  stream={(localCameraTrack?.publication?.track as any)?.mediaStream ?? null} 
-                />
+                {!isEnding && (
+                  <FaceTracker 
+                    onWarning={setProctorWarning} 
+                    stream={(localCameraTrack?.publication?.track as any)?.mediaStream ?? null} 
+                  />
+                )}
               </div>
             </div>
 
@@ -614,7 +626,17 @@ function InterviewInterface() {
               </div>
             )}
 
-            {isTutorMode && (
+            {isAssistantMode && isWidget && (
+              <button
+                onClick={() => handleEndSession(true)}
+                className="w-full py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-[0.2em] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3 shadow-xl shadow-red-900/20"
+              >
+                <span className="material-symbols-outlined text-sm">power_settings_new</span>
+                End Assistant Mode
+              </button>
+            )}
+
+            {isAssistantMode && !isWidget && (
               <button
                 onClick={toggleWidget}
                 className="w-full py-3 bg-white/5 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest rounded-sm hover:bg-white/10 transition-all flex items-center justify-center gap-2"

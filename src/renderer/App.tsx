@@ -13,6 +13,8 @@ import SettingsPage from "./features/settings/SettingsPage";
 import InterviewsListPage from "./features/interviews/InterviewsListPage";
 import MonitoringPage from "./features/interviews/MonitoringPage";
 import LandingPage from "./features/landing/LandingPage";
+import AssistantLoadingPage from "./features/assistant/LoadingPage";
+import AssistantPage from "./features/assistant/AssistantPage";
 import AppLayout from "./components/AppLayout";
 import WorkspaceGuard from "./components/WorkspaceGuard";
 import AppGuard from "./components/AppGuard";
@@ -52,6 +54,22 @@ export default function App() {
           }
         />
 
+        <Route
+          path="/assistant-loading"
+          element={
+            <AppGuard>
+              <AssistantLoadingPage />
+            </AppGuard>
+          }
+        />
+        <Route
+          path="/assistant"
+          element={
+            <CandidateGuard>
+              <AssistantPage />
+            </CandidateGuard>
+          }
+        />
         <Route
           path="/calibration"
           element={
