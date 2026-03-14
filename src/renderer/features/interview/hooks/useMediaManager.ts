@@ -50,11 +50,24 @@ export function useMediaManager() {
         }
       }
 
-      await localParticipant.setScreenShareEnabled(true, { 
-        contentHint: "text",
-        // @ts-ignore
-        deviceId: sourceId 
-      });
+      if (sourceId) {
+        const screenStream = await (navigator.mediaDevices as any).getUserMedia({
+          audio: false,
+          video: {
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: sourceId,
+            },
+          },
+        });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        await localParticipant.publishTrack(screenTrack, { 
+          name: "screen_share", 
+          source: Track.Source.ScreenShare 
+        });
+      } else {
+        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+      }
 
       const screenShareEnabled = await waitForScreenSharePublication();
       if (!screenShareEnabled) {

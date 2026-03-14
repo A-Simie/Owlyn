@@ -43,17 +43,11 @@ export function AssistantVisualizer({
          )}
       </div>
 
-      {!isSharingScreen && (
-        <div className="mt-3 text-center space-y-2">
+      {!isSharingScreen && !error && (
+        <div className="mt-3 text-center animate-pulse">
           <p className="text-[9px] text-amber-400 font-black uppercase tracking-[0.2em]">
-            Screen Share Required
+            Initializing Assistant Mode...
           </p>
-          <button
-            onClick={onEnableMedia}
-            className="px-3 py-1.5 text-[8px] font-black uppercase tracking-[0.2em] rounded border border-primary/30 text-primary hover:bg-primary/10 transition-all"
-          >
-            Enable Screen Share
-          </button>
         </div>
       )}
 

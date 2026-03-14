@@ -55,6 +55,16 @@ export function useHardwareChecks() {
     }));
   }, [cameraOn, micOn, cameraStream]);
 
+  // Auto-start media on mount
+  useEffect(() => {
+    if (!cameraOn) startCamera();
+    if (!micOn) startMic();
+    
+    return () => {
+     
+    };
+  }, []); // Only on mount
+
   const runNetworkTest = useCallback(async () => {
     setIsCheckingNetwork(true);
     let start = performance.now();

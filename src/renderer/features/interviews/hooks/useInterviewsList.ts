@@ -16,7 +16,7 @@ export function useInterviewsList() {
     setLoading(true);
     try {
       const data = await interviewsApi.getInterviews();
-      setInterviews([...data].reverse());
+      setInterviews(data);
     } catch (error) {
       console.error(extractApiError(error));
     } finally {

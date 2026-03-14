@@ -1,4 +1,6 @@
 # Things left to do
+
+high priority. Monitoring mode. Assistant mode. Interview reports
 ## 1. Monitoring mode.
 
 It shows a blank screen, it doesnt monitor a live interview properly. Also when I end an interview, the person monitroring is supposed to be notified that the interview has ended and it should take him out of the session after 5 seconds
@@ -6,7 +8,7 @@ It shows a blank screen, it doesnt monitor a live interview properly. Also when 
 
 ## 2. Interview reports
 
-When I try view the interview reports {
+When I try view the interview reports http://157.151.217.157/api/reports/1a551196-cbc9-4da2-a10f-f6891a9eabc1 {
     "code": "REPORT_NOT_READY",
     "error": "Report not ready yet.",
     "message": "Report not ready yet."
@@ -17,6 +19,21 @@ also top top still throwing 400 error {"error":"No reports found for this worksp
 ## 3. Isadpative mode
 
 the isadaptive mode should allow me be able to talk to my german ai in english and it adapts to my language and speaks in english.
+
+## 4. Assistant mode
+
+Assistant does not talk, it does nothing and just stays blank
+
+
+## 5. Initial transcript
+
+When the interview starts, AI speaks but it doesnt show trasncript until it speaks again. We miss showing the first speech.
+
+
+## 6. Disruption
+
+Audio speech from AI gets disrupted if user does any on screen action outside owlyn app
+
 
 ## setting fullscreen and no screencapture (frontend note)
 

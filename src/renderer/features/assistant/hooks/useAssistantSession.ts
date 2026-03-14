@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
-import { ConnectionState, RoomEvent, Track } from "livekit-client";
+import { ConnectionState, RoomEvent, Track, createLocalScreenTracks, VideoPresets } from "livekit-client";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useMediaStore } from "@/stores/media.store";
@@ -23,6 +23,7 @@ export function useAssistantSession() {
   const [error, setError] = useState<string | null>(null);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const autoTriggeredRef = useRef(false);
 
   const hasPublishedScreenShareTrack = () => {
     if (!localParticipant) return false;
@@ -47,10 +48,39 @@ export function useAssistantSession() {
     if (!localParticipant || room.state !== ConnectionState.Connected) return;
     setError(null);
     try {
-      await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+      let sourceId: string | undefined;
+      // In Electron, we can pre-select the screen to avoid the picker
+      if (window.owlyn?.desktop?.getSources) {
+        try {
+          const sources = await window.owlyn.desktop.getSources();
+          const screenSources = sources.filter((s: any) => 
+            s.name?.toLowerCase().includes("screen") || 
+            s.id?.toLowerCase().includes("screen")
+          );
+          sourceId = screenSources[0]?.id || sources[0]?.id;
+          console.log("Assistant: Found Electron screen source:", sourceId);
+        } catch (e) {
+          console.warn("Assistant: Failed to get desktop sources:", e);
+        }
+      }
+
+      if (sourceId) {
+        const tracks = await createLocalScreenTracks({
+          resolution: VideoPresets.h1080.resolution,
+          contentHint: "text",
+          // @ts-ignore
+          deviceId: { exact: sourceId } 
+        });
+        if (tracks.length > 0) {
+          await localParticipant.publishTrack(tracks[0]);
+        }
+      } else {
+        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+      }
+
       const published = await waitForScreenSharePublication();
       if (!published) {
-        setError("Screen sharing is required. Please enable full screen sharing.");
+        setError("Screen sharing is required. Please authorize screen sharing.");
         setIsSharingScreen(false);
         return;
       }
@@ -181,7 +211,16 @@ export function useAssistantSession() {
     };
     localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
 
-    if (room.state === ConnectionState.Connected) checkAndSignal();
+    const autoStartMedia = async () => {
+       if (autoTriggeredRef.current || isEnding || isSharingScreen) return;
+       autoTriggeredRef.current = true;
+       await enableAssistantMedia();
+    };
+
+    if (room.state === ConnectionState.Connected) {
+      checkAndSignal();
+      autoStartMedia();
+    }
 
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
@@ -191,7 +230,7 @@ export function useAssistantSession() {
       room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
       localParticipant?.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
     };
-  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, isEnding]);
+  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, isEnding, isSharingScreen]);
 
   const handleEnd = async () => {
     if (isEnding) return;

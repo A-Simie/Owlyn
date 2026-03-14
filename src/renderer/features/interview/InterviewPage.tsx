@@ -104,9 +104,8 @@ function InterviewInterface({
     pushActivityEvent,
     highlightedLine,
     showMediaRecovery,
-    setShowMediaRecovery,
     recoveryType,
-  } = useInterviewSession(isCommenced, (force, reason) => handleEndSession(force, reason));
+  } = useInterviewSession(isCommenced, isEnding, (force?: boolean, reason?: string) => handleEndSession(force, reason));
 
   const {
     isMediaReady,
@@ -144,6 +143,13 @@ function InterviewInterface({
       localParticipant.publishData(encoder.encode(JSON.stringify({ event: "USER_JOINED" })), { reliable: true });
     }
   }, [isConnected, isMediaReady, isCommenced, localParticipant]);
+
+  // Global safety cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopAll();
+    };
+  }, [stopAll]);
 
   useEffect(() => {
     if (localParticipant && isConnected) {
@@ -213,40 +219,50 @@ function InterviewInterface({
 
   return (
     <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning || localFaceWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}>
-      <InterviewHeader isConnected={isConnected} isProcessing={isProcessing} onEndSession={handleEndSession} formatTime={formatTime} isWidget={isWidget} />
-      
       <InterviewInitiationOverlay isCommenced={isCommenced} isEnding={isEnding} shouldConnect={shouldConnect} isConnected={isConnected} isStartingMedia={isStartingMedia} mediaError={mediaError} onPublishMedia={() => publishMedia(() => setIsCommenced(true))} />
-
-      <div className="flex-1 flex min-h-0">
-        {!isWidget && availableTabs.length > 0 && (
-          <div className="flex-1 flex flex-col min-w-0 border-r border-white/5 relative">
-            <div className="flex items-center px-4 gap-1 border-b border-white/5 h-12 bg-black/40">
-              {availableTabs.map((t) => (
-                <TabButton key={t} active={activeTab === t} onClick={() => setActiveTab(t)} label={t.charAt(0).toUpperCase() + t.slice(1)} icon={t === "code" ? "code" : t === "whiteboard" ? "draw" : "description"} />
-              ))}
-              {activeTab === "code" && (
-                <div className="ml-auto flex items-center gap-4">
-                  <button onClick={handleRunCode} disabled={isProcessing} className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${isProcessing ? "bg-primary/30 text-primary border border-primary/50 animate-pulse" : "bg-primary text-black hover:brightness-110 shadow-lg"}`}>
-                    <span className="material-symbols-outlined text-sm">{isProcessing ? "cognition" : "play_arrow"}</span>
-                    {isProcessing ? "AI Reviewing..." : "Run Code"}
-                  </button>
+      
+      <AnimatePresence>
+        {isCommenced && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex-1 flex flex-col min-h-0"
+          >
+            <InterviewHeader isConnected={isConnected} isProcessing={isProcessing} onEndSession={handleEndSession} formatTime={formatTime} isWidget={isWidget} />
+            
+            <div className="flex-1 flex min-h-0">
+              {!isWidget && availableTabs.length > 0 && (
+                <div className="flex-1 flex flex-col min-w-0 border-r border-white/5 relative">
+                  <div className="flex items-center px-4 gap-1 border-b border-white/5 h-12 bg-black/40">
+                    {availableTabs.map((t) => (
+                      <TabButton key={t} active={activeTab === t} onClick={() => setActiveTab(t)} label={t.charAt(0).toUpperCase() + t.slice(1)} icon={t === "code" ? "code" : t === "whiteboard" ? "draw" : "description"} />
+                    ))}
+                    {activeTab === "code" && (
+                      <div className="ml-auto flex items-center gap-4">
+                        <button onClick={handleRunCode} disabled={isProcessing} className={`flex items-center gap-2 px-6 py-2.5 rounded-sm text-[10px] font-black uppercase tracking-widest transition-all ${isProcessing ? "bg-primary/30 text-primary border border-primary/50 animate-pulse" : "bg-primary text-black hover:brightness-110 shadow-lg"}`}>
+                          <span className="material-symbols-outlined text-sm">{isProcessing ? "cognition" : "play_arrow"}</span>
+                          {isProcessing ? "AI Reviewing..." : "Run Code"}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-h-0 relative">
+                    <AnimatePresence mode="wait">
+                      <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
+                        {activeTab === "code" && <div className={`h-full w-full ${isProcessing ? "opacity-40 blur-[1px]" : ""}`}><CodeEditor value={code} onChange={setCode} highlightedLine={highlightedLine} /></div>}
+                        {activeTab === "whiteboard" && <Whiteboard />}
+                        {activeTab === "notes" && <Notes />}
+                      </motion.div>
+                    </AnimatePresence>
+                  </div>
                 </div>
               )}
-            </div>
-            <div className="flex-1 min-h-0 relative">
-              <AnimatePresence mode="wait">
-                <motion.div key={activeTab} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0">
-                  {activeTab === "code" && <div className={`h-full w-full ${isProcessing ? "opacity-40 blur-[1px]" : ""}`}><CodeEditor value={code} onChange={setCode} highlightedLine={highlightedLine} /></div>}
-                  {activeTab === "whiteboard" && <Whiteboard />}
-                  {activeTab === "notes" && <Notes />}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
 
-        <InterviewSidebar isWidget={isWidget} isEnding={isEnding} isSpeaking={isAiSpeaking} setLocalFaceWarning={setLocalFaceWarning} pushActivityEvent={pushActivityEvent} onEndSession={handleEndSession} onToggleWidget={toggleWidget} />
-      </div>
+              <InterviewSidebar isWidget={isWidget} isEnding={isEnding} isSpeaking={isAiSpeaking} setLocalFaceWarning={setLocalFaceWarning} pushActivityEvent={pushActivityEvent} onEndSession={handleEndSession} onToggleWidget={toggleWidget} />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isCommenced && (proctorWarning || localFaceWarning) && (

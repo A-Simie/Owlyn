@@ -13,6 +13,7 @@ import { useAssistantSession } from "./hooks/useAssistantSession";
 import { AssistantHeader } from "./components/AssistantHeader";
 import { AssistantVisualizer } from "./components/AssistantVisualizer";
 import { AssistantControls } from "./components/AssistantControls";
+import { useMediaStore } from "@/stores/media.store";
 
 export default function AssistantPage() {
   const { livekitToken } = useCandidateStore();
@@ -61,7 +62,10 @@ function AssistantInterface() {
     const checkSize = () => setIsLarge(window.innerHeight > 450);
     window.addEventListener('resize', checkSize);
     checkSize();
-    return () => window.removeEventListener('resize', checkSize);
+    return () => {
+      window.removeEventListener('resize', checkSize);
+      useMediaStore.getState().stopAll();
+    };
   }, []);
 
   return (

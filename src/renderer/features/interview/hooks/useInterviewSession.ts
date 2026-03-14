@@ -15,7 +15,11 @@ export type ActivityEvent = {
   timestamp: string;
 };
 
-export function useInterviewSession(isCommenced: boolean, handleEndSession: (force?: boolean, reason?: string) => Promise<void>) {
+export function useInterviewSession(
+  isCommenced: boolean, 
+  isEnding: boolean,
+  handleEndSession: (force?: boolean, reason?: string) => Promise<void>
+) {
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const { addTranscript, setCurrentQuestion, setAiSpeaking } = useInterviewStore();
@@ -125,6 +129,7 @@ export function useInterviewSession(isCommenced: boolean, handleEndSession: (for
     };
 
     const handleTrackUnpublished = (publication: any) => {
+      if (isEnding || forcedEndHandledRef.current) return;
       const source = publication.source || publication.track?.source;
       if (source === Track.Source.ScreenShare) { setRecoveryType("screen"); setShowMediaRecovery(true); }
       else if (source === Track.Source.Camera) { setRecoveryType("camera"); setShowMediaRecovery(true); }
@@ -132,6 +137,7 @@ export function useInterviewSession(isCommenced: boolean, handleEndSession: (for
     };
 
     const handleTrackMuted = (publication: any) => {
+       if (isEnding || forcedEndHandledRef.current) return;
        const source = publication.source || publication.track?.source;
        if (source === Track.Source.ScreenShare || source === Track.Source.Camera) {
           setRecoveryType(source === Track.Source.ScreenShare ? "screen" : "camera");
@@ -146,18 +152,25 @@ export function useInterviewSession(isCommenced: boolean, handleEndSession: (for
     room.on(RoomEvent.TrackMuted, handleTrackMuted);
 
     const integrityInterval = setInterval(() => {
-      if (!isCommenced || !localParticipant) return;
+      if (!isCommenced || !localParticipant || forcedEndHandledRef.current) return;
       const publications = Array.from(localParticipant.trackPublications.values());
       const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
       const isSharing = !!screenPub && !screenPub.isMuted && !!screenPub.track;
-      if (!isSharing && !showMediaRecovery) {
-        setRecoveryType("screen");
-        setShowMediaRecovery(true);
-      }
-    }, 1500);
+ 
+      setShowMediaRecovery(current => {
+        if (!isSharing && !current) {
+          setRecoveryType("screen");
+          return true;
+        }
+        return current;
+      });
+    }, 2000);
 
     const onConnected = () => setIsConnected(true);
-    const onDisconnected = () => { setIsConnected(false); setShowMediaRecovery(false); };
+    const onDisconnected = () => { 
+      setIsConnected(false); 
+      setShowMediaRecovery(false); 
+    };
     room.on(RoomEvent.Connected, onConnected);
     room.on(RoomEvent.Disconnected, onDisconnected);
 
@@ -171,7 +184,20 @@ export function useInterviewSession(isCommenced: boolean, handleEndSession: (for
       room.off(RoomEvent.Connected, onConnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
     };
-  }, [room, isCommenced, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking]);
+  }, [room, isCommenced, isEnding, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, handleEndSession]);
+
+  // Dedicated Timer Effect
+  useEffect(() => {
+    if (!isCommenced || isEnding || forcedEndHandledRef.current) return;
+    
+    const timerInterval = setInterval(() => {
+      useSessionStore.getState().tick();
+    }, 1000);
+
+    return () => {
+      clearInterval(timerInterval);
+    };
+  }, [isCommenced, isEnding]);
 
   return {
     isConnected,

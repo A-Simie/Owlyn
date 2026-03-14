@@ -1,13 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from "@livekit/components-react";
-import { useMonitoring } from "./hooks/useMonitoring";
+import { useMonitoring, useMonitoringEvents } from "./hooks/useMonitoring";
 import { MonitoringHeader } from "./components/MonitoringHeader";
 import { MonitoringLiveFeed } from "./components/MonitoringLiveFeed";
 import { MonitoringSentinelAlerts } from "./components/MonitoringSentinelAlerts";
 
 export default function MonitoringPage() {
   const navigate = useNavigate();
-  const { interview, monitorToken, loading, error, alerts } = useMonitoring();
+  const { interview, monitorToken, loading, error } = useMonitoring();
 
   if (loading) {
     return (
@@ -37,13 +37,14 @@ export default function MonitoringPage() {
       video={false}
     >
       <RoomAudioRenderer />
-      <MonitoringContent interview={interview} alerts={alerts} onExit={() => navigate("/interviews")} />
+      <MonitoringContent interview={interview} onExit={() => navigate("/interviews")} />
     </LiveKitRoom>
   );
 }
 
-function MonitoringContent({ interview, alerts, onExit }: { interview: any; alerts: any[]; onExit: () => void }) {
+function MonitoringContent({ interview, onExit }: { interview: any; onExit: () => void }) {
   const room = useRoomContext();
+  const { alerts } = useMonitoringEvents();
   const participantsCount = room?.remoteParticipants?.size ?? 0;
 
   return (

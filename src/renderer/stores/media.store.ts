@@ -27,6 +27,7 @@ interface MediaState {
 let audioCtx: AudioContext | null = null;
 let analyser: AnalyserNode | null = null;
 let animFrameId = 0;
+const activeStreams = new Set<MediaStream>();
 
 export const useMediaStore = create<MediaState>((set, get) => ({
   cameraStream: null,
@@ -48,11 +49,11 @@ export const useMediaStore = create<MediaState>((set, get) => ({
       const stream = await navigator.mediaDevices.getUserMedia({
         video: deviceId ? { deviceId: { exact: deviceId } } : true,
       });
+      activeStreams.add(stream);
       set({ cameraStream: stream, cameraOn: true, cameraError: null });
     } catch (err) {
       set({
-        cameraError:
-          err instanceof Error ? err.message : "Camera access denied",
+        cameraError: err instanceof Error ? err.message : "Camera access denied",
       });
     }
   },
@@ -77,6 +78,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
           },
         },
       });
+      activeStreams.add(stream);
       set({ screenStream: stream, screenOn: true, screenError: null });
     } catch (err) {
       set({
@@ -89,12 +91,14 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   stopCamera: () => {
     const { cameraStream } = get();
     cameraStream?.getVideoTracks().forEach((t) => t.stop());
+    if (cameraStream) activeStreams.delete(cameraStream);
     set({ cameraStream: null, cameraOn: false });
   },
 
   stopScreenShare: () => {
     const { screenStream } = get();
     screenStream?.getVideoTracks().forEach((t) => t.stop());
+    if (screenStream) activeStreams.delete(screenStream);
     set({ screenStream: null, screenOn: false });
   },
 
@@ -105,6 +109,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: deviceId ? { deviceId: { exact: deviceId } } : true,
       });
+      activeStreams.add(stream);
 
       audioCtx = new AudioContext();
       const source = audioCtx.createMediaStreamSource(stream);
@@ -125,8 +130,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
       set({ micStream: stream, micOn: true, micError: null });
     } catch (err) {
       set({
-        micError:
-          err instanceof Error ? err.message : "Microphone access denied",
+        micError: err instanceof Error ? err.message : "Microphone access denied",
       });
     }
   },
@@ -135,6 +139,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     cancelAnimationFrame(animFrameId);
     const { micStream } = get();
     micStream?.getAudioTracks().forEach((t) => t.stop());
+    if (micStream) activeStreams.delete(micStream);
     if (audioCtx && audioCtx.state !== "closed") {
       audioCtx.close();
     }
@@ -147,8 +152,15 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   setDisplayCount: (displayCount) => set({ displayCount }),
 
   stopAll: () => {
-    get().stopCamera();
-    get().stopMic();
-    get().stopScreenShare();
+    const { stopCamera, stopMic, stopScreenShare } = get();
+    stopCamera();
+    stopMic();
+    stopScreenShare();
+
+    // Fallback: stop all streams in our registry
+    activeStreams.forEach((stream) => {
+      stream.getTracks().forEach((track) => track.stop());
+    });
+    activeStreams.clear();
   },
 }));
