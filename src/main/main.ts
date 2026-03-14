@@ -219,7 +219,7 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     mainWindow.setFullScreen(false);
     mainWindow.setResizable(true);
     
-    // Set actual bounds - instant resize (no animation to prevent jumping)
+    // Set actual bounds - instant resize
     mainWindow.setMinimumSize(240, 280);
     mainWindow.setBounds({
       x: width - 260,

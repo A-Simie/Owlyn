@@ -13,6 +13,7 @@ import { useCandidateStore } from "@/stores/candidate.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
 import AudioWaveform from "../interview/components/AudioWaveform";
+import TranscriptSidebar from "../interview/components/TranscriptSidebar";
 
 export default function AssistantPage() {
   const { livekitToken } = useCandidateStore();
@@ -59,6 +60,18 @@ function AssistantInterface() {
   const [isConnected, setIsConnected] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Track window size for adaptive UI
+  const [isLarge, setIsLarge] = useState(false);
+
+  useEffect(() => {
+    const checkSize = () => {
+      setIsLarge(window.innerHeight > 450);
+    };
+    window.addEventListener('resize', checkSize);
+    checkSize(); // Initial check
+    return () => window.removeEventListener('resize', checkSize);
+  }, []);
 
   useEffect(() => {
     if (!localParticipant || room.state !== ConnectionState.Connected) return;
@@ -86,7 +99,7 @@ function AssistantInterface() {
         try {
           msg = JSON.parse(raw);
         } catch {
-          // Fallback: If it's a raw string, assume it's a transcript from the AI
+
           if (raw.trim()) {
             addTranscript({
               id: `raw-${Date.now()}`,
@@ -203,58 +216,50 @@ function AssistantInterface() {
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col gap-2 min-h-0">
-        {/* Visualizer & Live Text - More compact */}
-        <div className="h-[120px] bg-black/40 border border-white/5 rounded-xl flex flex-col items-center justify-center gap-3 relative overflow-hidden flex-shrink-0 shadow-inner">
-          <div className="relative flex items-center justify-center scale-75">
+        {/* Visualizer - Fixed height in mini mode, flexible in large mode */}
+        <div className={`${isLarge ? "h-[160px]" : "flex-1"} bg-black/40 border border-white/5 rounded-xl flex flex-col items-center justify-center p-4 relative overflow-hidden shadow-inner flex-shrink-0`}>
+          <div className="relative flex items-center justify-center scale-90">
             <AudioWaveform isActive={isSpeaking} color="#c59f59" />
           </div>
-          <div className="text-center z-10 px-4">
+          
+          <div className="text-center z-10 space-y-3 mt-4">
              <p className={`text-[8px] text-primary font-black uppercase tracking-[0.3em] ${isSpeaking ? "animate-pulse" : ""}`}>
                {isSpeaking ? "Speaking" : "Active"}
              </p>
-          </div>
-        </div>
 
-        {/* Dedicated Transcript Section */}
-        <div className="flex-1 bg-black/20 border border-white/5 rounded-xl p-3 flex flex-col min-h-0 overflow-hidden shadow-inner">
-          <div className="flex items-center justify-between mb-2 border-b border-white/5 pb-1 flex-shrink-0">
-             <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">History</span>
-             <span className="material-symbols-outlined text-slate-600 text-[12px]">history</span>
-          </div>
-          
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1 custom-scrollbar min-h-0">
-            {transcripts.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center opacity-10 space-y-1">
-                <span className="material-symbols-outlined text-xl">forum</span>
-                <span className="text-[8px] uppercase font-bold tracking-widest">Dialogue</span>
-              </div>
-            ) : (
-              transcripts.map((t, i) => (
-                <motion.div 
-                  initial={{ opacity: 0, x: -5 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  key={t.id || i} 
-                  className="space-y-0.5"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[7px] font-black uppercase tracking-widest ${t.speaker === "ai" ? "text-primary" : "text-green-500"}`}>
-                      {t.speaker === "ai" ? "AI" : "You"}
-                    </span>
-                    <span className="text-[6px] text-slate-600 font-bold uppercase">
-                      {new Date(t.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 leading-snug font-medium bg-white/5 p-1.5 rounded-lg border border-white/5">
-                    {t.text}
-                  </p>
-                </motion.div>
-              ))
-            )}
+             {/* Show mini-transcript only in small mode */}
+             {!isLarge && lastTranscript && (
+               <motion.div
+                 initial={{ opacity: 0, y: 5 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 key={lastTranscript.id}
+                 className="max-w-[180px]"
+               >
+                 <p className="text-[9px] text-slate-400 font-medium leading-relaxed italic bg-white/5 p-2 rounded-lg border border-white/5 line-clamp-2">
+                   "{lastTranscript.text}"
+                 </p>
+               </motion.div>
+             )}
           </div>
         </div>
+        
+        {isLarge && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1 bg-black/20 border border-white/5 rounded-xl overflow-hidden min-h-0"
+          >
+            <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest">Dialogue Feed</span>
+              <span className="material-symbols-outlined text-slate-600 text-[12px]">forum</span>
+            </div>
+            <div className="flex-1 h-[calc(100%-36px)]">
+              <TranscriptSidebar />
+            </div>
+          </motion.div>
+        )}
       </div>
 
-      {/* Action - Slimmer button */}
       <button
         onClick={handleEnd}
         className="w-full py-2 bg-red-600/10 hover:bg-red-600/20 border border-red-600/30 text-red-500 text-[8px] font-black uppercase tracking-[0.2em] rounded-lg active:scale-[0.98] transition-all flex items-center justify-center gap-1.5 flex-shrink-0"
