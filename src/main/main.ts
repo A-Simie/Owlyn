@@ -211,18 +211,33 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
     
-    mainWindow.setSize(380, 520, true);
-    mainWindow.setPosition(width - 400, height - 540, true);
+    // Force reset all constraints to allow shrinking below 1024x700
+    mainWindow.setResizable(true);
+    mainWindow.setMaximizable(false);
+    mainWindow.setMinimumSize(100, 100); 
+    mainWindow.setMaximumSize(500, 700);
+    
+    // Force the bounds
+    mainWindow.setBounds({
+      x: width - 350,
+      y: height - 370,
+      width: 320,
+      height: 340
+    }, true);
+    
     mainWindow.setAlwaysOnTop(true, "floating");
     mainWindow.setResizable(false);
     mainWindow.setMinimizable(false);
   } else {
     // Restore: Large, Center
     mainWindow.setResizable(true);
-    mainWindow.setMinimizable(true);
+    mainWindow.setMinimumSize(1024, 700);
+    mainWindow.setMaximumSize(4000, 4000); // Massive upper bound
     mainWindow.setSize(1440, 900, true);
     mainWindow.center();
     mainWindow.setAlwaysOnTop(false);
+    mainWindow.setMinimizable(true);
+    mainWindow.setMaximizable(true);
   }
   return true;
 });

@@ -4,10 +4,11 @@ import {
   LiveKitRoom, 
   useRoomContext,
   useLocalParticipant,
+  useRemoteParticipants,
   RoomAudioRenderer,
 } from "@livekit/components-react";
 import { RoomEvent, ConnectionState } from "livekit-client";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
@@ -40,10 +41,13 @@ function AssistantInterface() {
   const { 
     addTranscript, 
     setCurrentQuestion, 
-    reset: resetInterview, 
-    isAiSpeaking, 
+    reset: resetInterview,
+    isAiSpeaking: isAiSpeakingStore,
     setAiSpeaking 
   } = useInterviewStore();
+  const remoteParticipants = useRemoteParticipants();
+  const isAiSpeakingLive = remoteParticipants.some(p => p.isSpeaking);
+  const isSpeaking = isAiSpeakingStore || isAiSpeakingLive;
   const { clearSession } = useCandidateStore();
   const { stopAll } = useMediaStore();
   
@@ -153,17 +157,17 @@ function AssistantInterface() {
       {/* Visualizer */}
       <div className="flex-1 bg-black/40 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-6 relative overflow-hidden group">
         <div className="relative flex items-center justify-center">
-          <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
+          <AudioWaveform isActive={isSpeaking} color="#c59f59" />
         </div>
 
         <div className="text-center z-10 px-4">
           <motion.div
             initial={false}
-            animate={{ scale: isAiSpeaking ? 1.1 : 1 }}
+            animate={{ scale: isSpeaking ? 1.1 : 1 }}
             className="space-y-3"
           >
-            <p className={`text-[10px] text-primary font-black uppercase tracking-[0.3em] ${isAiSpeaking ? "animate-pulse" : ""}`}>
-              {isAiSpeaking ? "Assistant Speaking" : "Listening"}
+            <p className={`text-[10px] text-primary font-black uppercase tracking-[0.3em] ${isSpeaking ? "animate-pulse" : ""}`}>
+              {isSpeaking ? "Assistant Speaking" : "Listening"}
             </p>
           </motion.div>
           {error && <p className="text-[8px] text-red-500 font-bold uppercase mt-2 tracking-widest">{error}</p>}

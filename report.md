@@ -1,122 +1,31 @@
-# Backend guide for Owlyn
+# Things left to do
 
-### 1. Workspace Profile Updates
-Used for company branding.
-- **ENDPOINT**: `PUT /api/workspace`
-- **CONTENT-TYPE**: `multipart/form-data`
-- **PAYLOAD DETAILS**:
-  - `name`: `String` (Optional) - The display name of the workspace.
-  - `logo`: `File` (Optional, Binary, Max 7MB) - The workspace logo image file.
-- **BEHAVIOR**: 
-  - If `logo` is omitted, the backend MUST NOT clear the existing logo.
-  - Only updates fields provided in the `FormData`.
+## 1. Assistant mode
+convert tutor mode to assistant mode. instead of asking us questions. let it become our assistant. It should see our screen, no need for camera(it doesnt need our face cam)
 
----
+it should focus on assistant in coding, email, browsing, and other tasks.
 
-### 2. AI Persona update
-- **ENDPOINT**: `PUT /api/personas/{id}`
-- **CONTENT-TYPE**: `multipart/form-data`
-- **PAYLOAD DETAILS**:
-  - `persona`: `Blob/String` (Required) - A JSON string with the following exact keys:
-    ```json
-    {
-      "name": "string",
-      "tone": "MENTOR | ARCHITECT | INQUISITOR",
-      "empathyScore": 30, // Integer 0-100
-      "analyticalDepth": 90, // Integer 0-100
-      "directnessScore": 10, // Integer 0-100 (Logic: 100 - Collaborative)
-      "language": "string",
-      "isAdaptive": true, // Boolean
-      "domainExpertise": ["React", "Python", "Cloud"] // Array of strings
-    }
-    ```
-  - `file`: `File` (Optional) - Training PDF or DOCX file for RAG.
+## 2. Interview creation
 
----
+accept the tools(code, whiteboard, notes) in interview creation. if anyone is disabled, it should not be shown in the interview page so it brings an immersive experience. i.e this is only a coding interview.
 
-### 3. Interview Session Lifecycle
-**A. Creation** (POST `/api/interviews`)
-```json
-{
-  "title": "string",
-  "candidateName": "string",
-  "candidateEmail": "string",
-  "personaId": "uuid",
-  "durationMinutes": 45,
-  "toolsEnabled": {
-    "codeEditor": true,
-    "whiteboard": true,
-    "notes": true
-  }
-}
-when we send the tools enabled, send it back so we can show it to candidate.i.e if notes/whiteboard/editor is false, we would not show the component to candidate making the interview more dynamic
-```
+## 3. Interview Session
 
-**B. Candidate Validation** (POST `/api/interviews/validate-code`)
-- **PAYLOAD**: `{"code": "123456"}` (Exact 6-digit numeric string)
-- **GRANULAR RESPONSE**:
-```json
-{
-  "token": "string (Candidate Scope JWT)",
-  "livekitToken": "string (WebRTC Room Token)",
-  "candidateName": "string (The name provided during creation)",
-  "personaName": "string (REQUIRED: The name of the AI persona)",
-  "title": "string (The interview title)",
-  "config": {
-    "toolsEnabled": {
-       "codeEditor": "boolean",
-       "whiteboard": "boolean",
-       "notes": "boolean"
-    }
-  }
-}
-```
+live interview works fine with audio but we need text so we can see.
 
----
+## 4. Persona creation
 
-### 4. B2C & Practice Sessions
-Standalone endpoints for public/guest access.
-- **GET /api/health**: Verified as the heartbeat endpoint for network RTT diagnostics.
-- **POST /api/public/sessions/practice**:
-  - **PAYLOAD**: `{"topic": "...", "difficulty": "...", "durationMinutes": 45}`
-  - **RESPONSE**: Same signature as Candidate Validation (JWT + LiveKit Token).
-- **POST /api/public/sessions/tutor**:
-  - **PAYLOAD**: Empty.
-  - **RESPONSE**: Same signature as Candidate Validation.
-  - **UI FLAG**: `isTutorMode` should trigger the Electron widget/compact view.
+When we create a persona, accept language and isadaptive mode. backend currently doesnt accept them and just returns a succesful creation with language as null and isadaptive as null(this should be true or false also).
 
----
+## 5. 
 
-### 5. Analytics & Top Performer
-Consolidated dashboard intelligence.
-- **ENDPOINT**: `GET /api/reports/top`
-- **SCOPE**: Workspace-wide.
-- **BEHAVIOR**: Returns the single highest AI-ranked report across all successfully completed interviews. Each report object MUST include `candidateName` and `candidateEmail`. Should be displayed exclusively on the `TalentPoolPage`.
+Monitoring page, We need to ensure it works. 
 
----
+## 6. Session end
 
-### 6. Real-time LiveKit Data Channels
-Exact JSON packets for the Python Data Plane -> Electron UI.
-- **Proctoring**: `{"type": "PROCTOR_WARNING", "message": "Look at the camera"}`
-- **Monaco Interaction**: `{"type": "TOOL_HIGHLIGHT", "line": 42}`
-- **Transcript Sync**: `{"type": "transcript", "speaker": "ai|candidate", "text": "..."}`
+If AI says interview ending soon, implement a timer system or something that shows we need to speak to continue the interview otherwise session ends. A Timer system would be perfect as that would give client a flow to end the session.
 
-
-other things to note
-
-if a candidate quits the session, the backend should set the status to "completed", 
-
-currently when a candidate quits the session, the code is unable to be used again(correct).
-
-however the app is in a limbo state as it shows that the interview islive for admin but user cannot join.
-
-now add a flow so when we click on end session, it should set the status to "completed".add an api endpoint for that.
-
-
-running code in session does nothing
-
-
-session doesnt work as intended, run locally to debug.
+if session ends, create an endpoint that would receive a session ended notice so we can then fix the live bug in admin page
 
 
 ## setting fullscreen and no screencapture (frontend note)

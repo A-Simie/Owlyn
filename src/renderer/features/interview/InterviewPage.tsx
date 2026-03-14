@@ -4,6 +4,7 @@ import {
   LiveKitRoom, 
   useRoomContext,
   useLocalParticipant,
+  useRemoteParticipants,
   useTracks,
   RoomAudioRenderer,
 } from "@livekit/components-react";
@@ -54,10 +55,13 @@ function InterviewInterface() {
   const { 
     addTranscript, 
     setCurrentQuestion, 
-    reset: resetInterview, 
-    isAiSpeaking, 
+    reset: resetInterview,
+    isAiSpeaking: isAiSpeakingStore,
     setAiSpeaking 
   } = useInterviewStore();
+  const remoteParticipants = useRemoteParticipants();
+  const isAiSpeakingLive = remoteParticipants.some(p => p.isSpeaking);
+  const isSpeaking = isAiSpeakingStore || isAiSpeakingLive;
   const { clearSession, isAssistantMode, accessCode, token } = useCandidateStore();
   const { stopAll } = useMediaStore();
   
@@ -603,10 +607,10 @@ function InterviewInterface() {
 
             <div className="space-y-4">
               <div className="bg-white/[0.02] border border-primary/20 rounded-xl p-6 flex flex-col items-center gap-4">
-                <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
+                <AudioWaveform isActive={isSpeaking} color="#c59f59" />
                 <div className="text-center">
-                  <p className={`text-[10px] text-primary font-black uppercase tracking-[0.4em] ${isAiSpeaking ? "animate-pulse" : ""}`}>
-                    {isAiSpeaking ? "Owlyn Speaking" : "Standby"}
+                  <p className={`text-[10px] text-primary font-black uppercase tracking-[0.4em] ${isSpeaking ? "animate-pulse" : ""}`}>
+                    {isSpeaking ? "Owlyn Speaking" : "Standby"}
                   </p>
                 </div>
               </div>
