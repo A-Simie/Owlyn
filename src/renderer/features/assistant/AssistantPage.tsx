@@ -51,7 +51,6 @@ function AssistantInterface() {
   const { localParticipant } = useLocalParticipant();
 
   const [isConnected, setIsConnected] = useState(false);
-  const [aiStatus, setAiStatus] = useState<string>("Standby");
   const [isEnding, setIsEnding] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,9 +86,6 @@ function AssistantInterface() {
               text: msg.text,
             });
             if (msg.speaker === "ai") setCurrentQuestion(msg.text);
-            break;
-          case "AI_VISUALIZER_STATUS":
-            setAiStatus(msg.status);
             break;
           case "AI_SPEAKING":
             setAiSpeaking(msg.active);
@@ -140,50 +136,35 @@ function AssistantInterface() {
   };
 
   return (
-    <div className="h-screen w-full bg-[#0D0D0D] flex flex-col p-4 space-y-4 overflow-hidden border border-white/5 shadow-2xl">
+    <div className="h-screen w-full bg-[#0D0D0D] flex flex-col p-3 space-y-3 overflow-hidden border border-white/5 shadow-2xl">
       {/* Mini Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <div className="size-5 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <span className="material-symbols-outlined text-primary text-[10px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <div className="size-4 rounded-sm bg-primary/10 border border-primary/20 flex items-center justify-center">
+            <span className="material-symbols-outlined text-primary text-[8px]" style={{ fontVariationSettings: "'FILL' 1" }}>
               owl
             </span>
           </div>
-          <span className="text-[10px] font-black text-white uppercase tracking-widest">Assistant</span>
+          <span className="text-[8px] font-black text-white uppercase tracking-widest">Assistant</span>
         </div>
-        <div className={`size-2 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+        <div className={`size-1.5 rounded-full ${isConnected ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
       </div>
 
       {/* Visualizer */}
       <div className="flex-1 bg-black/40 border border-white/5 rounded-2xl flex flex-col items-center justify-center gap-6 relative overflow-hidden group">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,159,89,0.02),transparent_70%)]" />
-        
-        <div className="relative">
-          
+        <div className="relative flex items-center justify-center">
+          <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
         </div>
 
         <div className="text-center z-10 px-4">
           <motion.div
             initial={false}
-            animate={{ scale: isAiSpeaking ? 1.05 : 1 }}
-            className="space-y-2"
+            animate={{ scale: isAiSpeaking ? 1.1 : 1 }}
+            className="space-y-3"
           >
-            <div className="flex items-center justify-center gap-1">
-              {[1, 2, 3].map((i) => (
-                <motion.div
-                  key={i}
-                  animate={{
-                    height: isAiSpeaking ? [4, 12, 4] : 4
-                  }}
-                  transition={{
-                    duration: 0.5,
-                    repeat: Infinity,
-                    delay: i * 0.1
-                  }}
-                  className="w-1 bg-primary/40 rounded-full"
-                />
-              ))}
-            </div>
+            <p className={`text-[10px] text-primary font-black uppercase tracking-[0.3em] ${isAiSpeaking ? "animate-pulse" : ""}`}>
+              {isAiSpeaking ? "Assistant Speaking" : "Listening"}
+            </p>
           </motion.div>
           {error && <p className="text-[8px] text-red-500 font-bold uppercase mt-2 tracking-widest">{error}</p>}
         </div>
@@ -192,10 +173,10 @@ function AssistantInterface() {
       {/* Action */}
       <button
         onClick={handleEnd}
-        className="w-full py-3.5 bg-red-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20"
+        className="w-full py-2.5 bg-red-600 text-white text-[8px] font-black uppercase tracking-[0.2em] rounded-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-900/20"
       >
-        <span className="material-symbols-outlined text-[14px]">power_settings_new</span>
-        End Mode
+        <span className="material-symbols-outlined text-[12px]">power_settings_new</span>
+        End Assistant
       </button>
     </div>
   );

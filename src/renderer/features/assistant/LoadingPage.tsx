@@ -26,8 +26,6 @@ export default function AssistantLoadingPage() {
         });
         useCandidateStore.getState().setAssistantMode(true);
         
-        setStatus("AI Assistant is Live");
-        
         setTimeout(async () => {
            if (window.owlyn?.window?.setWidgetMode) {
              await window.owlyn.window.setWidgetMode(true);

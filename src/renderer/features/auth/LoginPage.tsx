@@ -11,6 +11,7 @@ type LoginStep =
   | "selection"
   | "candidate-options"
   | "interview-code"
+  | "practice-config"
   | "credentials"
   | "otp";
 type Role = "ADMIN" | "RECRUITER" | "CANDIDATE";
@@ -30,6 +31,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [validationSuccess, setValidationSuccess] = useState(false);
+  const [practiceTopic, setPracticeTopic] = useState("General Software Engineering");
+  const [practiceDifficulty, setPracticeDifficulty] = useState("MEDIUM");
+  const [practiceDuration, setPracticeDuration] = useState(45);
 
   // Deep Link Handling
   useEffect(() => {
@@ -56,6 +60,7 @@ export default function LoginPage() {
     else if (step === "credentials") setStep("selection");
     else if (step === "candidate-options") setStep("selection");
     else if (step === "interview-code") setStep("candidate-options");
+    else if (step === "practice-config") setStep("candidate-options");
     setError(null);
   };
 
@@ -118,9 +123,9 @@ export default function LoginPage() {
     setError(null);
     try {
       const res = await candidateApi.startPracticeSession({
-        topic: "General Software Engineering",
-        difficulty: "MEDIUM",
-        durationMinutes: 45
+        topic: practiceTopic,
+        difficulty: practiceDifficulty,
+        durationMinutes: practiceDuration
       });
       useCandidateStore.getState().setSession({
         token: res.token,
@@ -241,7 +246,7 @@ export default function LoginPage() {
                 </div>
 
                 <div
-                  onClick={handlePracticeMode}
+                  onClick={() => setStep("practice-config")}
                   className="group relative p-8 surface-card border border-white/5 rounded-[32px] hover:border-green-500/40 transition-all cursor-pointer text-center space-y-4"
                 >
                   <div className="w-14 h-14 mx-auto flex items-center justify-center text-green-500 border border-green-500/20 rounded-sm bg-green-500/5 group-hover:bg-green-500 group-hover:text-black transition-all">
@@ -277,6 +282,87 @@ export default function LoginPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === "practice-config" && (
+            <motion.div
+              key="practice-config"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="obsidian-card p-10 rounded-lg shadow-2xl space-y-8"
+            >
+              <div className="flex flex-col items-center space-y-6 text-center">
+                <button
+                  onClick={handleBack}
+                  className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
+                >
+                  <span className="material-symbols-outlined text-sm">arrow_back</span>
+                  Choose different mode
+                </button>
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">Practice Setup</h2>
+                  <p className="text-slate-500 text-xs font-light tracking-wide">Configure your simulated interview environment.</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Topic</label>
+                  <input
+                    type="text"
+                    value={practiceTopic}
+                    onChange={(e) => setPracticeTopic(e.target.value)}
+                    placeholder="e.g. React Frontend, Data Structures..."
+                    className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white placeholder:text-white/20 outline-none focus:border-primary/50 transition-all text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Difficulty</label>
+                    <select
+                      value={practiceDifficulty}
+                      onChange={(e) => setPracticeDifficulty(e.target.value)}
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-primary/50 transition-all text-sm appearance-none cursor-pointer"
+                    >
+                      <option value="EASY">Easy</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HARD">Hard</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Duration (min)</label>
+                    <select
+                      value={practiceDuration}
+                      onChange={(e) => setPracticeDuration(Number(e.target.value))}
+                      className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-primary/50 transition-all text-sm appearance-none cursor-pointer"
+                    >
+                      <option value={15}>15 Minutes</option>
+                      <option value={30}>30 Minutes</option>
+                      <option value={45}>45 Minutes</option>
+                      <option value={60}>60 Minutes</option>
+                    </select>
+                  </div>
+                </div>
+
+                {error && (
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">{error}</p>
+                )}
+
+                <button
+                  onClick={handlePracticeMode}
+                  disabled={loading}
+                  className="w-full py-5 bg-[#c59f59] text-black font-black uppercase tracking-[0.3em] text-[10px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-50 shadow-xl shadow-primary/20"
+                >
+                  {loading ? (
+                    <div className="size-5 border-2 border-black/30 border-t-black rounded-full animate-spin mx-auto" />
+                  ) : (
+                    "Launch Practice Session"
+                  )}
+                </button>
               </div>
             </motion.div>
           )}

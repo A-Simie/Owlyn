@@ -73,7 +73,7 @@ function InterviewInterface() {
   const [proctorWarning, setProctorWarning] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [highlightedLine, setHighlightedLine] = useState<number | null>(null);
-  const [aiStatus, setAiStatus] = useState<string>("Standby");
+
   const [showCompletion, setShowCompletion] = useState(false);
   const [isMediaReady, setIsMediaReady] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
@@ -133,9 +133,6 @@ function InterviewInterface() {
           case "TOOL_HIGHLIGHT":
             setHighlightedLine(msg.line);
             setTimeout(() => setHighlightedLine(null), 3000);
-            break;
-          case "AI_VISUALIZER_STATUS":
-            setAiStatus(msg.status);
             break;
           case "AI_SPEAKING":
             setAiSpeaking(msg.active);
@@ -609,7 +606,7 @@ function InterviewInterface() {
                 <AudioWaveform isActive={isAiSpeaking} color="#c59f59" />
                 <div className="text-center">
                   <p className={`text-[10px] text-primary font-black uppercase tracking-[0.4em] ${isAiSpeaking ? "animate-pulse" : ""}`}>
-                    {isAiSpeaking ? "Owlyn Speaking" : (aiStatus || "Standby")}
+                    {isAiSpeaking ? "Owlyn Speaking" : "Standby"}
                   </p>
                 </div>
               </div>
