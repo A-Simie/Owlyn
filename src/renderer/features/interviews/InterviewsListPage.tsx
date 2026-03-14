@@ -121,6 +121,10 @@ export default function InterviewsListPage() {
   );
 
   const handleGenerateQuestions = async () => {
+    if (newInterview.durationMinutes > 30) {
+      alert("Session duration cannot exceed 30 minutes at the moment.");
+      return;
+    }
     setIsGenerating(true);
     try {
       const res = await interviewsApi.generateQuestions({
@@ -143,6 +147,10 @@ export default function InterviewsListPage() {
   };
 
   const handleCreateInterview = async () => {
+    if (newInterview.durationMinutes > 30) {
+      alert("Session duration cannot exceed 30 minutes at the moment.");
+      return;
+    }
     setIsCreating(true);
     try {
       const res = await interviewsApi.createInterview({

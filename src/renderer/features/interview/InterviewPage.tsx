@@ -1,20 +1,14 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo} from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  LiveKitRoom, 
-  useRoomContext,
-  useLocalParticipant,
-  useRemoteParticipants,
-  useTracks,
-  RoomAudioRenderer,
-} from "@livekit/components-react";
-import { RoomEvent, Track, ConnectionState } from "livekit-client";
+import { useRemoteParticipants, useRoomContext, useLocalParticipant, useTracks, LiveKitRoom, RoomAudioRenderer } from "@livekit/components-react";
+import { ConnectionState, RoomEvent, Track } from "livekit-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCandidateStore } from "@/stores/candidate.store";
-import { useInterviewStore } from "@/stores/interview.store";
 import { useSessionStore } from "@/stores/session.store";
+import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
 import { candidateApi } from "@/api/candidate.api";
+import MediaRecoveryModal, { MediaType } from "./components/MediaRecoveryModal";
 import CodeEditor from "./components/CodeEditor";
 import Whiteboard from "./components/Whiteboard";
 import Notes from "./components/Notes";
@@ -33,8 +27,10 @@ type ActivityEvent = {
 };
 
 export default function InterviewPage() {
-  const { livekitToken } = useCandidateStore();
+  const { livekitToken, token, accessCode } = useCandidateStore();
   const navigate = useNavigate();
+  const [shouldConnect, setShouldConnect] = useState(true); // Auto-connect in background
+  const [isCommenced, setIsCommenced] = useState(false);
 
   if (!livekitToken) {
     navigate("/calibration");
@@ -45,16 +41,31 @@ export default function InterviewPage() {
     <LiveKitRoom
       token={livekitToken}
       serverUrl={import.meta.env.VITE_LIVEKIT_URL}
-      connect={true}
+      connect={shouldConnect}
       className="h-screen w-full bg-[#0B0B0B]"
     >
-      <InterviewInterface />
-      <RoomAudioRenderer />
+      <InterviewInterface 
+        isCommenced={isCommenced} 
+        setIsCommenced={setIsCommenced} 
+        shouldConnect={shouldConnect}
+        setShouldConnect={setShouldConnect}
+      />
+      {isCommenced && <RoomAudioRenderer />}
     </LiveKitRoom>
   );
 }
 
-function InterviewInterface() {
+function InterviewInterface({ 
+  isCommenced, 
+  setIsCommenced,
+  shouldConnect,
+  setShouldConnect 
+}: { 
+  isCommenced: boolean, 
+  setIsCommenced: (v: boolean) => void,
+  shouldConnect: boolean,
+  setShouldConnect: (v: boolean) => void
+}) {
   const navigate = useNavigate();
   const whiteboardRef = useRef<{ getData: () => string | undefined }>(null);
   const forcedEndHandledRef = useRef(false);
@@ -98,8 +109,11 @@ function InterviewInterface() {
 
   const [showCompletion, setShowCompletion] = useState(false);
   const [isMediaReady, setIsMediaReady] = useState(false);
+  const [isStartingMedia, setIsStartingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isEnding, setIsEnding] = useState(false);
+  const [showMediaRecovery, setShowMediaRecovery] = useState(false);
+  const [recoveryType, setRecoveryType] = useState<MediaType>("screen");
 
   useEffect(() => {
     if (availableTabs.length === 0) {
@@ -171,7 +185,7 @@ function InterviewInterface() {
           // Fallback: If it's a raw string, assume it's a transcript from the AI
           if (raw.trim()) {
             addTranscript({
-              id: `raw-${Date.now()}`,
+              id: `raw-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
               timestamp: new Date().toISOString(),
               speaker: "ai",
               text: raw.trim(),
@@ -182,23 +196,22 @@ function InterviewInterface() {
         }
 
         const type = msg.type || msg.event;
-        const text = msg.text || msg.content || msg.message || msg.transcript;
+        const text = msg.text || msg.content || msg.message || msg.transcript || msg.dialogue;
+
+        console.log("Data Received:", { type, text, msg });
+
+        if (text && (type === "transcript" || type === "text" || type === "speech" || type === "assistant_message" || !type)) {
+          addTranscript({
+            id: msg.id || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+            timestamp: new Date().toISOString(),
+            speaker: msg.speaker === "candidate" ? "candidate" : "ai",
+            text: text,
+          });
+          if (msg.speaker !== "candidate") setCurrentQuestion(text);
+          return;
+        }
 
         switch (type) {
-          case "transcript":
-          case "text":
-          case "speech":
-          case "assistant_message":
-            if (text) {
-              addTranscript({
-                id: msg.id || Date.now().toString(),
-                timestamp: new Date().toISOString(),
-                speaker: msg.speaker || "ai",
-                text: text,
-              });
-              if (msg.speaker !== "candidate") setCurrentQuestion(text);
-            }
-            break;
           case "PROCTOR_WARNING":
             setProctorWarning(msg.message);
             pushActivityEvent("proctor", msg.message || "Proctor warning detected");
@@ -233,43 +246,61 @@ function InterviewInterface() {
       }
     };
 
-    room.on(RoomEvent.DataReceived, handleData);
-
     const handleTranscription = (transcription: any) => {
+      if (!transcription?.segments) return;
+      
       transcription.segments.forEach((segment: any) => {
-        if (segment.text.trim()) {
-          const isLocal = transcription.participantIdentity === room.localParticipant.identity;
-          const text = segment.text.trim();
-          
-          addTranscript({
-            id: segment.id || `seg-${transcription.participantIdentity}`,
-            timestamp: new Date().toISOString(),
-            speaker: isLocal ? "candidate" : "ai",
-            text: text,
-          });
-          
-          if (!isLocal) {
-            setCurrentQuestion(text);
-          }
+        const text = segment.text?.trim();
+        if (!text) return;
+
+        const isLocal = transcription.participantIdentity === room?.localParticipant?.identity;
+        // Use segment ID if available, otherwise fallback to a stable ID for the utterance
+        const transcriptId = segment.id || `utm-${transcription.participantIdentity}-${Math.floor(segment.startTime / 100)}`;
+        
+        console.log(`[Transcription] ${isLocal ? "CANDIDATE" : "AI"} [id=${transcriptId}] [final=${segment.final}]: ${text}`);
+
+        addTranscript({
+          id: transcriptId,
+          timestamp: new Date().toISOString(),
+          speaker: isLocal ? "candidate" : "ai",
+          text: text,
+        });
+        
+        if (!isLocal) {
+          // Update the "Owlyn Speaking" text immediately for better feedback
+          setCurrentQuestion(text);
         }
       });
     };
 
+    const handleTrackUnpublished = (publication: any) => {
+      console.warn("Track unpublished:", publication.source);
+      if (publication.source === Track.Source.ScreenShare) {
+        setRecoveryType("screen");
+        setShowMediaRecovery(true);
+      } else if (publication.source === Track.Source.Camera) {
+        setRecoveryType("camera");
+        setShowMediaRecovery(true);
+      } else if (publication.source === Track.Source.Microphone) {
+        setRecoveryType("mic");
+        setShowMediaRecovery(true);
+      }
+    };
+
+    room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
+    room.on(RoomEvent.TrackUnpublished, handleTrackUnpublished);
 
     const checkAndSignal = () => {
       if (room.state === ConnectionState.Connected) {
-        const participant = room.localParticipant;
-        const encoder = new TextEncoder();
-        participant.publishData(
-          encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
-          { reliable: true }
-        );
         setIsConnected(true);
       }
     };
 
-    const handleDisconnected = () => setIsConnected(false);
+    const handleDisconnected = () => {
+      setIsConnected(false);
+      setShowMediaRecovery(false);
+    };
 
     if (room.state === ConnectionState.Connected) checkAndSignal();
     room.on(RoomEvent.Connected, checkAndSignal);
@@ -278,10 +309,23 @@ function InterviewInterface() {
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.TranscriptionReceived, handleTranscription);
+      room.off(RoomEvent.TrackUnpublished, handleTrackUnpublished);
       room.off(RoomEvent.Connected, checkAndSignal);
       room.off(RoomEvent.Disconnected, handleDisconnected);
     };
-  }, [room, addTranscript, setCurrentQuestion, setAiSpeaking]);
+  }, [room, addTranscript, setCurrentQuestion, setAiSpeaking, isCommenced]);
+
+  // Handle Session Start Signaling - Only when connected, media ready, AND user clicks COMMENCE
+  useEffect(() => {
+    if (isConnected && isMediaReady && isCommenced && localParticipant && room.state === ConnectionState.Connected) {
+      const encoder = new TextEncoder();
+      localParticipant.publishData(
+        encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
+        { reliable: true }
+      );
+      console.log("Session signaled: USER_JOINED");
+    }
+  }, [isConnected, isMediaReady, isCommenced, localParticipant, room.state]);
 
   useEffect(() => {
     if (localParticipant && isConnected) {
@@ -311,80 +355,36 @@ function InterviewInterface() {
     );
   };
 
-  const waitForScreenSharePublication = async (timeoutMs = 3500) => {
+  const waitForScreenSharePublication = async (timeoutMs = 30000) => {
     const startedAt = Date.now();
     while (Date.now() - startedAt < timeoutMs) {
       if (hasPublishedScreenShareTrack()) {
         return true;
       }
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
     return false;
   };
 
   const publishMedia = async () => {
     if (!localParticipant) return;
+    setIsStartingMedia(true);
     setMediaError(null);
 
-    if (room.state !== ConnectionState.Connected) {
-      setMediaError("Session is still connecting. Please wait a few seconds.");
-      setIsMediaReady(false);
-      return;
-    }
-
-    // 0. Lockdown Check: Multi-monitor 
-    if (window.owlyn?.platform?.getDisplayCount) {
-      try {
-        const count = await window.owlyn.platform.getDisplayCount();
-        if (count > 1) {
-          // setMediaError("Multiple monitors detected. Please disconnect extra displays to proceed.");
-          // return; 
-          console.warn("Multiple monitors detected during debug mode.");
-        }
-      } catch (e) {
-        console.warn("Display count check failed", e);
-      }
-    }
-    
-    let cameraEnabled = false;
-    let screenShareEnabled = false;
-
-    // 1. Microphone
     try {
+      // 1. Microphone
       await localParticipant.setMicrophoneEnabled(true);
-    } catch (err) {
-      console.error("Microphone capture failed:", err);
-      const errorText = String(err).toLowerCase();
-      if (
-        errorText.includes("engine not connected") ||
-        errorText.includes("timeout") ||
-        errorText.includes("not connected")
-      ) {
-        setMediaError("Session connection is not ready yet. Please wait and retry.");
-      } else {
-        setMediaError("Microphone access denied. Please check your browser permissions.");
-      }
-      setIsMediaReady(false);
-      return;
-    }
-
-    // 2. Camera
-    try {
+      
+      // 2. Camera
       await localParticipant.setCameraEnabled(true);
-      cameraEnabled = true;
-    } catch (err) {
-      console.warn("Camera capture rejected:", err);
-    }
-
-    // 3. Screen Share
-    try {
+      
+      // 3. Screen Share
       let sourceId: string | undefined;
       if (window.owlyn?.desktop?.getSources) {
         try {
           const sources = await window.owlyn.desktop.getSources();
           const screenSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("screen"));
-          const windowSources = sources.filter((s: { name: string; }) => s.name.toLowerCase().includes("window"));
-          const source = screenSources[0] || windowSources[0] || sources[0];
+          const source = screenSources[0] || sources[0];
           sourceId = source?.id;
         } catch (e) {
           console.warn("Failed to get desktop sources:", e);
@@ -396,32 +396,28 @@ function InterviewInterface() {
         // @ts-ignore
         deviceId: sourceId 
       });
-      screenShareEnabled = await waitForScreenSharePublication();
+
+      const screenShareEnabled = await waitForScreenSharePublication();
       if (!screenShareEnabled) {
-        const publicationSources = Array.from(localParticipant.trackPublications.values())
-          .map((publication) => String(publication.source))
-          .join(", ");
-        console.warn(`Screen share requested but no published screen track detected. sources=[${publicationSources}]`);
+         console.warn("Screen share track not confirmed. User might have cancelled.");
+         setMediaError("Screen share authorization cancelled. This session requires screen monitoring.");
+         setIsStartingMedia(false);
+         setIsMediaReady(false);
+         return;
       }
+
+      setIsMediaReady(true);
+      setIsStartingMedia(false);
+      setIsCommenced(true);
+      setShowMediaRecovery(false);
     } catch (err) {
-      console.warn("Screen share capture rejected:", err);
-      setMediaError("Full screen sharing is required for monitoring. Please allow screen share and retry.");
-      setIsMediaReady(false);
-      return;
+      console.error("Media publication failed:", err);
+      setMediaError("Failed to authorize media devices. Please ensure permissions are granted.");
+      setIsStartingMedia(false);
     }
-
-    if (!screenShareEnabled) {
-      setMediaError("Screen share is not active. Please start screen share to continue.");
-      setIsMediaReady(false);
-      return;
-    }
-
-    if (!cameraEnabled) {
-      console.warn("Camera is not active; continuing with screen-share-only session.");
-    }
-
-    setIsMediaReady(true);
   };
+
+  // Removed auto-activation useEffect to satisfy browser's "Transient Activation" requirement
 
   const handleRunCode = async () => {
     if (isEnding || sessionEnded) {
@@ -568,16 +564,39 @@ function InterviewInterface() {
       )}
 
       <AnimatePresence>
-        {!isMediaReady && (
+        {!isCommenced && !isEnding && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md"
+            className="fixed inset-0 z-[200] flex items-center justify-center bg-black/95 backdrop-blur-md"
           >
-            <div className="max-w-md w-full p-12 text-center space-y-8 bg-[#0D0D0D] border border-white/5 rounded-3xl">
+            <div className="max-w-md w-full p-12 text-center space-y-8 bg-[#0D0D0D] border border-white/5 rounded-3xl shadow-2xl relative overflow-hidden">
+               {(isStartingMedia || (shouldConnect && !isConnected)) && (
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{ duration: 15, ease: "linear" }}
+                  className="absolute top-0 left-0 h-1 bg-primary/40 shadow-[0_0_10px_rgba(197,159,89,0.5)]"
+                />
+              )}
+              
               <div className="space-y-4">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Commence Interview</h2>
+                <div className="size-16 mx-auto rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mb-6">
+                   <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                     owl
+                   </span>
+                </div>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight">
+                  {!shouldConnect ? "Interview Portal" : "Commencing Session"}
+                </h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-[0.2em] leading-relaxed">
+                  {!shouldConnect 
+                    ? "Establish connection and begin session" 
+                    : !isConnected 
+                      ? "Establishing secure connection..." 
+                      : "Syncing media & transcripts..."}
+                </p>
                 {mediaError && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -590,16 +609,38 @@ function InterviewInterface() {
                   </motion.div>
                 )}
               </div>
-              <button 
-                onClick={publishMedia}
-                disabled={!room || room.state !== ConnectionState.Connected}
-                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[10px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all shadow-xl shadow-primary/10 disabled:opacity-20 flex items-center justify-center gap-3"
-              >
-                {(!room || room.state !== ConnectionState.Connected) && (
-                  <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                )}
-                Start
-              </button>
+
+              {!isCommenced && (
+                <div className="w-full">
+                  {!isConnected ? (
+                    <div className="flex flex-col items-center gap-4 py-4">
+                       <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 animate-pulse">
+                         Establishing Secure Connection...
+                       </span>
+                    </div>
+                  ) : (
+                    <button 
+                      onClick={publishMedia}
+                      disabled={isStartingMedia}
+                      className="group relative w-full py-5 bg-primary text-black font-black uppercase tracking-[0.3em] text-[13px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_50px_rgba(197,159,89,0.3)] flex items-center justify-center gap-4 overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
+                      {isStartingMedia ? (
+                        <>
+                          <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
+                          <span className="animate-pulse">Initializing...</span>
+                        </>
+                      ) : (
+                        <>
+                          Enter Session
+                          <span className="material-symbols-outlined text-xl">login</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -713,44 +754,6 @@ function InterviewInterface() {
               </div>
             </div>
 
-            {!isWidget && (
-              <div className="space-y-3">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">
-                  Activity Detection
-                </span>
-                <div className="max-h-[170px] overflow-y-auto border border-white/5 rounded-lg bg-black/20 p-3 space-y-2 custom-scrollbar">
-                  {activityEvents.length === 0 ? (
-                    <p className="text-[10px] text-slate-600 font-bold uppercase tracking-widest text-center py-3">
-                      No activity alerts yet
-                    </p>
-                  ) : (
-                    activityEvents.map((event) => (
-                      <div
-                        key={event.id}
-                        className="p-2 rounded border border-white/10 bg-white/[0.02]"
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[8px] font-black uppercase tracking-widest text-primary">
-                            {event.source}
-                          </span>
-                          <span className="text-[8px] text-slate-500 font-mono">
-                            {new Date(event.timestamp).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                              second: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-300 leading-relaxed">
-                          {event.message}
-                        </p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-
             <div className="space-y-4">
               <div className="bg-white/[0.02] border border-primary/20 rounded-xl p-6 flex flex-col items-center gap-4">
                 <AudioWaveform isActive={isSpeaking} color="#c59f59" />
@@ -797,7 +800,7 @@ function InterviewInterface() {
       </div>
 
       <AnimatePresence>
-        {(proctorWarning || localFaceWarning) && (
+        {isCommenced && (proctorWarning || localFaceWarning) && (
           <motion.div
             initial={{ opacity: 0, y: -50 }}
             animate={{ opacity: 1, y: 0 }}
@@ -825,6 +828,13 @@ function InterviewInterface() {
           />
         )}
       </AnimatePresence>
+
+      <MediaRecoveryModal 
+        isOpen={showMediaRecovery}
+        type={recoveryType}
+        onReshare={publishMedia}
+        onTimeout={() => handleEndSession(true, `Media recovery failed: ${recoveryType}`)}
+      />
     </div>
   );
 }

@@ -147,11 +147,6 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
         const distNoseBridge = Math.abs(noseTip.y - noseBridge.y);
         const verticalRatio = distNoseBridge / distNoseChin;
 
-        // Mouth activity (Eating/Talking)
-        const upperLip = mouth[13];
-        const lowerLip = mouth[19];
-        const mouthOpenness = Math.abs(upperLip.y - lowerLip.y);
-
         const isLookingAway = horizontalRatio < 0.45;
         const isLookingDown = verticalRatio < 0.35; 
         
@@ -180,106 +175,6 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
           setStatus("valid");
           emitWarning(null);
         }
-
-        // Draw on canvas (scaled from video coords to canvas coords)
-        const displayW = canvas.width;
-        const displayH = canvas.height;
-        const scaleX = displayW / video.videoWidth;
-        const scaleY = displayH / video.videoHeight;
-
-        const box = detection.detection.box;
-        const color =
-          status === "valid"
-            ? "#22c55e"
-            : status === "warning"
-              ? "#ef4444"
-              : "#ef4444";
-
-        // Bounding box
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([6, 4]);
-        ctx.strokeRect(
-          box.x * scaleX,
-          box.y * scaleY,
-          box.width * scaleX,
-          box.height * scaleY,
-        );
-        ctx.setLineDash([]);
-
-        // Corner brackets
-        const bx = box.x * scaleX;
-        const by = box.y * scaleY;
-        const bw = box.width * scaleX;
-        const bh = box.height * scaleY;
-        const cornerLen = 14;
-        ctx.lineWidth = 2.5;
-        ctx.strokeStyle = color;
-
-        // Top-left
-        ctx.beginPath();
-        ctx.moveTo(bx, by + cornerLen);
-        ctx.lineTo(bx, by);
-        ctx.lineTo(bx + cornerLen, by);
-        ctx.stroke();
-        // Top-right
-        ctx.beginPath();
-        ctx.moveTo(bx + bw - cornerLen, by);
-        ctx.lineTo(bx + bw, by);
-        ctx.lineTo(bx + bw, by + cornerLen);
-        ctx.stroke();
-        // Bottom-left
-        ctx.beginPath();
-        ctx.moveTo(bx, by + bh - cornerLen);
-        ctx.lineTo(bx, by + bh);
-        ctx.lineTo(bx + cornerLen, by + bh);
-        ctx.stroke();
-        // Bottom-right
-        ctx.beginPath();
-        ctx.moveTo(bx + bw - cornerLen, by + bh);
-        ctx.lineTo(bx + bw, by + bh);
-        ctx.lineTo(bx + bw, by + bh - cornerLen);
-        ctx.stroke();
-
-        // Draw landmark dots
-        ctx.fillStyle = color;
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 6;
-        const allPoints = landmarks.positions;
-        for (const pt of allPoints) {
-          ctx.beginPath();
-          ctx.arc(pt.x * scaleX, pt.y * scaleY, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.shadowBlur = 0;
-
-        // Eye highlights
-        const eyeColor = status === "valid" ? "#c59f59" : "#ef4444";
-        ctx.fillStyle = eyeColor;
-        ctx.shadowColor = eyeColor;
-        ctx.shadowBlur = 12;
-        for (const eye of [leftEye, rightEye]) {
-          const cx =
-            (eye.reduce((s: number, p: { x: number }) => s + p.x, 0) / eye.length) * scaleX;
-          const cy =
-            (eye.reduce((s: number, p: { y: number }) => s + p.y, 0) / eye.length) * scaleY;
-          ctx.beginPath();
-          ctx.arc(cx, cy, 4, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.shadowBlur = 0;
-
-        // Nose bridge line
-        ctx.strokeStyle = "rgba(197, 159, 89, 0.3)";
-        ctx.lineWidth = 1;
-        ctx.setLineDash([3, 3]);
-        ctx.beginPath();
-        ctx.moveTo(nose[0].x * scaleX, nose[0].y * scaleY);
-        for (let i = 1; i < nose.length; i++) {
-          ctx.lineTo(nose[i].x * scaleX, nose[i].y * scaleY);
-        }
-        ctx.stroke();
-        ctx.setLineDash([]);
       }
 
       if (running) {

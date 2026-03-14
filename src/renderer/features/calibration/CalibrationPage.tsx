@@ -278,7 +278,7 @@ export default function CalibrationPage() {
             <button
               onClick={() => navigate("/hardware")}
               disabled={step < 2 || !faceDetected}
-              className="w-full py-5 bg-primary text-black font-black uppercase tracking-[0.4em] text-xs rounded-lg hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-20 shadow-2xl shadow-primary/20"
+              className="w-full py-5 bg-primary text-black font-black uppercase rounded-xl tracking-[0.4em] text-xs hover:brightness-110 active:scale-[0.98] transition-all disabled:opacity-20 shadow-2xl shadow-primary/20"
             >
               Continue to Diagnostic
             </button>

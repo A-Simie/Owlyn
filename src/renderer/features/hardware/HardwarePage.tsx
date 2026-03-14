@@ -20,12 +20,14 @@ export default function HardwarePage() {
     stopCamera,
     startMic,
     stopMic,
+    setDisplayCount,
   } = useMediaStore();
 
   const [checks, setChecks] = useState({
     camera: false,
     mic: false,
     network: false,
+    singleDisplay: true,
   });
 
   const [networkLatency, setNetworkLatency] = useState<number | null>(null);
@@ -33,6 +35,24 @@ export default function HardwarePage() {
   const [faceDetected, setFaceDetected] = useState(false);
   const [modelsLoaded, setModelsLoaded] = useState(false);
   const [isInitializingModels, setIsInitializingModels] = useState(true);
+
+  // Display Check
+  useEffect(() => {
+    const checkDisplays = async () => {
+      if (window.owlyn?.platform?.getDisplayCount) {
+        try {
+          const count = await window.owlyn.platform.getDisplayCount();
+          setDisplayCount(count);
+          setChecks(prev => ({ ...prev, singleDisplay: count === 1 }));
+        } catch (e) {
+          console.warn("Display check failed", e);
+        }
+      }
+    };
+    checkDisplays();
+    const interval = setInterval(checkDisplays, 3000);
+    return () => clearInterval(interval);
+  }, [setDisplayCount]);
 
   useEffect(() => {
     if (!cameraOn) startCamera();
@@ -64,13 +84,12 @@ export default function HardwarePage() {
   }, [cameraStream]);
 
   useEffect(() => {
-    // A simple boolean check for stream existence and audio oscillation
     const videoActive = cameraOn && !!cameraStream && videoRef.current?.videoWidth !== 0;
     const micActive = micOn;
     setChecks((prev) => ({ 
       ...prev, 
       camera: videoActive, 
-      mic: micActive 
+      mic: micActive,
     }));
   }, [cameraOn, micOn, cameraStream, audioLevel]);
 
@@ -108,6 +127,7 @@ export default function HardwarePage() {
     };
   }, [cameraOn, modelsLoaded]);
 
+
   const runNetworkTest = useCallback(async () => {
     setIsChecking(true);
     let start = performance.now();
@@ -115,7 +135,6 @@ export default function HardwarePage() {
       try {
         await candidateApi.healthCheck();
       } catch (e) {
-        // Fallback to root health if /api/health is missing
         await apiClient.get("/health");
       }
       const latency = Math.round(performance.now() - start);
@@ -134,7 +153,7 @@ export default function HardwarePage() {
     runNetworkTest();
   }, [runNetworkTest]);
 
-  const canProceed = checks.camera && checks.mic && checks.network && faceDetected;
+  const canProceed = checks.camera && checks.mic && checks.network && faceDetected && checks.singleDisplay;
 
   return (
     <div className="min-h-screen bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden">
@@ -151,17 +170,6 @@ export default function HardwarePage() {
           <span className="text-sm font-black uppercase tracking-widest text-white">
             Owlyn
           </span>
-        </div>
-        <div className="flex items-center gap-6">
-          <div className="h-[2px] w-32 bg-white/5 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-primary"
-              initial={{ width: 0 }}
-              animate={{
-                width: `${(Object.values(checks).filter(Boolean).length / 3) * 100}%`,
-              }}
-            />
-          </div>
         </div>
       </header>
 
@@ -264,20 +272,22 @@ export default function HardwarePage() {
         </div>
 
         <div className="w-full lg:w-[480px] flex flex-col gap-8">
-          <div className="bg-[#111] border border-white/5 rounded-sm p-10 flex-1 space-y-12">
+            <div className="bg-[#111] border border-white/5 rounded-sm p-10 flex-1 space-y-12">
               <div className="flex items-center justify-between">
                 <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
                   System Diagnostics
                 </h3>
-                <button
-                  onClick={runNetworkTest}
-                  disabled={isChecking}
-                  className="size-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-primary transition-all active:scale-95 disabled:opacity-20"
-                >
-                  <span className={`material-symbols-outlined text-sm ${isChecking ? "animate-spin" : ""}`}>
-                    refresh
-                  </span>
-                </button>
+                <div className="flex items-center gap-2">
+                   <button
+                    onClick={runNetworkTest}
+                    disabled={isChecking}
+                    className="size-8 rounded-sm bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-primary transition-all active:scale-95 disabled:opacity-20"
+                  >
+                    <span className={`material-symbols-outlined text-sm ${isChecking ? "animate-spin" : ""}`}>
+                      refresh
+                    </span>
+                  </button>
+                </div>
               </div>
               <div className="space-y-3">
                 <CheckItem
@@ -292,6 +302,15 @@ export default function HardwarePage() {
                   desc={checks.mic ? "Operational" : "Check permissions"}
                   icon="keyboard_voice"
                 />
+                {!checks.singleDisplay && (
+                   <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-sm flex items-center gap-4">
+                      <span className="material-symbols-outlined text-red-500">monitor</span>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Multiple Monitors Detected</p>
+                        <p className="text-[8px] text-red-400/80 uppercase mt-1">Please disconnect extra displays to proceed.</p>
+                      </div>
+                   </div>
+                )}
                 <CheckItem
                   label="Network"
                   status={checks.network}
@@ -312,9 +331,11 @@ export default function HardwarePage() {
               <button
                 disabled={!canProceed}
                 onClick={() => navigate("/lobby")}
-                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.4em] text-xs rounded-sm hover:brightness-110 active:scale-[0.98] disabled:opacity-20 flex items-center justify-center gap-4 transition-all"
+                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.4em] text-xs rounded-xl hover:brightness-110 active:scale-[0.98] disabled:opacity-20 flex items-center justify-center gap-4 transition-all"
               >
-                Continue to Lobby
+                {canProceed ? "Continue to Lobby" : (
+                  !checks.singleDisplay ? "Disconnect Monitors" : "Check Diagnostics"
+                )}
               </button>
             </div>
         </div>

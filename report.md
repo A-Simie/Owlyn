@@ -1,42 +1,19 @@
-# Things left to do
+# Things left to do(backend engineer)
 
-## 1. Assistant mode
-convert tutor mode to assistant mode. instead of asking us questions. let it become our assistant. It should see our screen, no need for camera(it doesnt need our face cam)
+## 1. Monitoring mode.
 
-it should focus on assistant in coding, email, browsing, and other tasks.
+It shows a blank screen, it doesnt monitor a live interview properly. Also when I end an interview, the person monitroring is supposed to be notified that the interview has ended and it should take him out of the session after 5 seconds
 
-## 2. Interview creation
 
-accept the tools(code, whiteboard, notes) in interview creation. if anyone is disabled, it should not be shown in the interview page so it brings an immersive experience. i.e this is only a coding interview.
+## 2. Interview reports
 
-## 3. Interview Session
+When I try view the interview reports {
+    "code": "REPORT_NOT_READY",
+    "error": "Report not ready yet.",
+    "message": "Report not ready yet."
+}
 
-live interview works fine with audio but we need text so we can see.
-
-## 4. Persona creation
-
-When we create a persona, accept language and isadaptive mode. backend currently doesnt accept them and just returns a succesful creation with language as null and isadaptive as null(this should be true or false also).
-
-## 5. 
-
-Monitoring page, We need to ensure it works. 
-
-## 6. Session end
-
-If AI says interview ending soon, implement a timer system or something that shows we need to speak to continue the interview otherwise session ends. A Timer system would be perfect as that would give client a flow to end the session.
-
-if session ends, create an endpoint that would receive a session ended notice so we can then fix the live bug in admin page
-
-if session ends, disable run code button
-
-## 7. Activity detection
-
-currently ui only says we are not looking at screen, we need to show if user is eating, pressing phone, literally any activity. we need to show it in the ui.
-
-## 8. Practice mode
-
-Since we now use a form to enter practice mode, I should be able to select language in practice mode too. Let's not restrict it to English only.
-
+also top top still throwing 400 error {"error":"No reports found for this workspace."}
 
 ## setting fullscreen and no screencapture (frontend note)
 
@@ -51,17 +28,8 @@ To toggle between **Debug Mode** (current) and **Production Secure Mode** (Hard 
   }
   ```
 
-### 2. Enable Multi-Monitor Restriction
-- **File**: `src/renderer/features/interview/InterviewPage.tsx`
-- **Action**: In `publishMedia`, uncomment the `return` statement in the `getDisplayCount` check:
-  ```typescript
-  if (count > 1) {
-    setMediaError("Multiple monitors detected...");
-    return; // <--- Uncomment this
-  }
-  ```
 
-### 3. Require Camera & Screen Share (Strict Proctoring)
+### 2. Require Camera & Screen Share (Strict Proctoring)
 - **File**: `src/renderer/features/interview/InterviewPage.tsx`
 - **Action**: In `publishMedia`, uncomment the `return` and `setIsMediaReady(false)` lines in both the **Camera** and **Screen Share** catch blocks.
   - This prevents the "Start Secure Session" overlay from closing unless both tracks are successfully captured.

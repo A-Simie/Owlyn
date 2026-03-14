@@ -7,10 +7,25 @@ export default function TranscriptSidebar() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    console.log("Transcript Updated in Sidebar:", transcript.length, "messages total");
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [transcript]);
+
+  // Fallback Polling for high-latency updates
+  useEffect(() => {
+    const timer = setInterval(() => {
+       if (scrollRef.current && transcript.length > 0) {
+         // Force a minor scroll check
+         const isAtBottom = scrollRef.current.scrollHeight - scrollRef.current.scrollTop <= scrollRef.current.clientHeight + 50;
+         if (isAtBottom) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+         }
+       }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [transcript.length]);
 
   return (
     <div className="h-full flex flex-col bg-black/40 backdrop-blur-md">
@@ -32,7 +47,7 @@ export default function TranscriptSidebar() {
                 <div className={`flex items-center gap-2 mb-1.5 ${message.speaker === "ai" ? "flex-row" : "flex-row-reverse"}`}>
                    <div className={`size-1.5 rounded-full ${message.speaker === "ai" ? "bg-primary" : "bg-blue-400"} ${message.speaker === "ai" && "animate-pulse"}`} />
                    <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-500">
-                     {message.speaker === "ai" ? "Owlyn Core" : "You (Candidate)"}
+                     {message.speaker === "ai" ? "Owlyn" : "You (Candidate)"}
                    </span>
                 </div>
                 <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-[11px] leading-relaxed shadow-xl border ${

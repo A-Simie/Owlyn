@@ -80,7 +80,7 @@ export default function LandingPage() {
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               onClick={() => navigate("/auth")}
-              className="bg-primary text-black px-6 py-2.5 text-sm font-bold rounded-sm hover:brightness-110 transition-all uppercase tracking-widest"
+              className="bg-primary text-black px-6 py-2.5 text-sm font-bold rounded-xl hover:brightness-110 transition-all uppercase tracking-widest"
             >
               Sign In
             </motion.button>
@@ -127,7 +127,7 @@ export default function LandingPage() {
               custom={1}
               className="text-5xl md:text-7xl font-bold tracking-tight text-heading mb-8 leading-[1.1]"
             >
-              The Future of Career <br />
+              The Future of Technical <br />
               <motion.span
                 className="text-primary font-light inline-block"
                 animate={{ opacity: [0.7, 1, 0.7] }}
@@ -147,8 +147,9 @@ export default function LandingPage() {
               custom={2}
               className="text-lg md:text-xl text-muted max-w-2xl mx-auto mb-12 font-light leading-relaxed"
             >
-              A multimodal AI agent that conducts live interviews, analyzes
-              candidate reasoning, and ensures a fair hiring process.
+              An autonomous multimodal agent ecosystem that conducts live
+              interviews, provides real-time assistance, and generates
+              structured technical evaluation reports.
             </motion.p>
 
             <motion.div
@@ -163,7 +164,7 @@ export default function LandingPage() {
                 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => navigate("/auth")}
-                className="w-full sm:w-auto bg-primary text-black px-10 py-4 text-base font-bold rounded-sm transition-all uppercase tracking-widest aion-glow"
+                className="w-full sm:w-auto bg-primary text-black px-10 py-4 text-base font-bold rounded-xl transition-all uppercase tracking-widest aion-glow"
               >
                 Sign In
               </motion.button>
@@ -173,7 +174,7 @@ export default function LandingPage() {
                   borderColor: "rgba(197,159,89,0.5)",
                 }}
                 whileTap={{ scale: 0.97 }}
-                className="w-full sm:w-auto border border-slate-200 dark:border-white/10 px-10 py-4 text-base font-bold rounded-sm transition-all uppercase tracking-widest bg-slate-50 dark:bg-white/5 text-heading"
+                className="w-full sm:w-auto border rounded-xl border-slate-200 dark:border-white/10 px-10 py-4 text-base font-bold transition-all uppercase tracking-widest bg-slate-50 dark:bg-white/5 text-heading"
               >
                 View Demo
               </motion.button>
@@ -409,8 +410,6 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </section>
-
-   
       </main>
 
       <footer className="py-12 px-6 border-t divider">
@@ -437,7 +436,7 @@ export default function LandingPage() {
             ))}
           </div>
           <p className="text-[11px] text-subtle font-medium tracking-wide">
-            © {currentYear} Owlyn Systems. All rights reserved.
+            © {currentYear} Owlyn. All rights reserved.
           </p>
         </div>
       </footer>

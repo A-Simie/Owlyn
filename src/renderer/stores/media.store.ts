@@ -3,18 +3,24 @@ import { create } from "zustand";
 interface MediaState {
   cameraStream: MediaStream | null;
   micStream: MediaStream | null;
+  screenStream: MediaStream | null;
   cameraOn: boolean;
   micOn: boolean;
+  screenOn: boolean;
   audioLevel: number;
   cameraError: string | null;
   micError: string | null;
+  screenError: string | null;
+  displayCount: number;
 
   startCamera: (deviceId?: string) => Promise<void>;
-  startScreenShare: (sourceId?: string) => Promise<void>;
+  startScreenShare: () => Promise<void>;
   stopCamera: () => void;
+  stopScreenShare: () => void;
   startMic: (deviceId?: string) => Promise<void>;
   stopMic: () => void;
   setAudioLevel: (level: number) => void;
+  setDisplayCount: (count: number) => void;
   stopAll: () => void;
 }
 
@@ -25,11 +31,15 @@ let animFrameId = 0;
 export const useMediaStore = create<MediaState>((set, get) => ({
   cameraStream: null,
   micStream: null,
+  screenStream: null,
   cameraOn: false,
   micOn: false,
+  screenOn: false,
   audioLevel: 0,
   cameraError: null,
   micError: null,
+  screenError: null,
+  displayCount: 1,
 
   startCamera: async (deviceId) => {
     const { cameraOn, stopCamera } = get();
@@ -47,10 +57,17 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     }
   },
 
-  startScreenShare: async (sourceId) => {
-    const { cameraOn, stopCamera } = get();
-    if (cameraOn) stopCamera();
+  startScreenShare: async () => {
+    const { screenOn, stopScreenShare } = get();
+    if (screenOn) stopScreenShare();
     try {
+      let sourceId: string | undefined;
+      if (window.owlyn?.desktop?.getSources) {
+        const sources = await window.owlyn.desktop.getSources();
+        const screenSources = sources.filter((s: any) => s.name.toLowerCase().includes("screen"));
+        sourceId = screenSources[0]?.id || sources[0]?.id;
+      }
+
       const stream = await (navigator.mediaDevices as any).getUserMedia({
         audio: false,
         video: {
@@ -60,11 +77,12 @@ export const useMediaStore = create<MediaState>((set, get) => ({
           },
         },
       });
-      set({ cameraStream: stream, cameraOn: true, cameraError: null });
+      set({ screenStream: stream, screenOn: true, screenError: null });
     } catch (err) {
       set({
-        cameraError: err instanceof Error ? err.message : "Screen share denied",
+        screenError: err instanceof Error ? err.message : "Screen share denied",
       });
+      throw err;
     }
   },
 
@@ -72,6 +90,12 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     const { cameraStream } = get();
     cameraStream?.getVideoTracks().forEach((t) => t.stop());
     set({ cameraStream: null, cameraOn: false });
+  },
+
+  stopScreenShare: () => {
+    const { screenStream } = get();
+    screenStream?.getVideoTracks().forEach((t) => t.stop());
+    set({ screenStream: null, screenOn: false });
   },
 
   startMic: async (deviceId) => {
@@ -120,9 +144,11 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   },
 
   setAudioLevel: (audioLevel) => set({ audioLevel }),
+  setDisplayCount: (displayCount) => set({ displayCount }),
 
   stopAll: () => {
     get().stopCamera();
     get().stopMic();
+    get().stopScreenShare();
   },
 }));
