@@ -274,22 +274,52 @@ function InterviewInterface({
     };
 
     const handleTrackUnpublished = (publication: any) => {
-      console.warn("Track unpublished:", publication.source);
-      if (publication.source === Track.Source.ScreenShare) {
+      const source = publication.source || publication.track?.source;
+      console.warn(`[Media] Track unpublished: source=${source}`, { publication, source });
+      
+      if (source === Track.Source.ScreenShare) {
         setRecoveryType("screen");
         setShowMediaRecovery(true);
-      } else if (publication.source === Track.Source.Camera) {
+      } else if (source === Track.Source.Camera) {
         setRecoveryType("camera");
         setShowMediaRecovery(true);
-      } else if (publication.source === Track.Source.Microphone) {
+      } else if (source === Track.Source.Microphone) {
         setRecoveryType("mic");
         setShowMediaRecovery(true);
       }
     };
 
+    const handleTrackMuted = (publication: any) => {
+       const source = publication.source || publication.track?.source;
+       console.warn(`[Media] Track muted: source=${source}`, { publication, source });
+       // We treat muting of screen share or camera as a recovery event
+       if (source === Track.Source.ScreenShare || source === Track.Source.Camera) {
+          setRecoveryType(source === Track.Source.ScreenShare ? "screen" : "camera");
+          setShowMediaRecovery(true);
+       }
+    };
+
     room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
     room.on(RoomEvent.TrackUnpublished, handleTrackUnpublished);
+    room.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
+    room.on(RoomEvent.TrackMuted, handleTrackMuted);
+
+    // Heartbeat check for media integrity
+    console.log("[Media Integrity] Heartbeat started.");
+    const integrityInterval = setInterval(() => {
+      if (!isCommenced || !localParticipant) return;
+      
+      const publications = Array.from(localParticipant.trackPublications.values());
+      const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
+      const isSharing = !!screenPub && !screenPub.isMuted && !!screenPub.track;
+      
+      if (!isSharing && !showMediaRecovery) {
+        console.warn(`[Media Integrity] Screen share lost! (isCommenced=${isCommenced}, showRecovery=${showMediaRecovery})`);
+        setRecoveryType("screen");
+        setShowMediaRecovery(true);
+      }
+    }, 1500);
 
     const checkAndSignal = () => {
       if (room.state === ConnectionState.Connected) {
@@ -310,6 +340,9 @@ function InterviewInterface({
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.TranscriptionReceived, handleTranscription);
       room.off(RoomEvent.TrackUnpublished, handleTrackUnpublished);
+      room.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
+      room.off(RoomEvent.TrackMuted, handleTrackMuted);
+      clearInterval(integrityInterval);
       room.off(RoomEvent.Connected, checkAndSignal);
       room.off(RoomEvent.Disconnected, handleDisconnected);
     };

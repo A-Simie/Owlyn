@@ -1,5 +1,4 @@
-# Things left to do(backend engineer)
-
+# Things left to do
 ## 1. Monitoring mode.
 
 It shows a blank screen, it doesnt monitor a live interview properly. Also when I end an interview, the person monitroring is supposed to be notified that the interview has ended and it should take him out of the session after 5 seconds
@@ -14,6 +13,10 @@ When I try view the interview reports {
 }
 
 also top top still throwing 400 error {"error":"No reports found for this workspace."}
+
+## 3. Isadpative mode
+
+the isadaptive mode should allow me be able to talk to my german ai in english and it adapts to my language and speaks in english.
 
 ## setting fullscreen and no screencapture (frontend note)
 

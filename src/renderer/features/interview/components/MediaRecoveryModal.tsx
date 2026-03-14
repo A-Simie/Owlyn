@@ -20,29 +20,40 @@ export default function MediaRecoveryModal({
 }: MediaRecoveryModalProps) {
   const [timeLeft, setTimeLeft] = useState(countdownSeconds);
 
+  // Synchronize timeLeft when the modal is first opened
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
       setTimeLeft(countdownSeconds);
-      return;
     }
+  }, [isOpen, countdownSeconds]);
+
+  useEffect(() => {
+    if (!isOpen || timeLeft <= 0) return;
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 1) {
+        const next = prev - 1;
+        if (next <= 0) {
           clearInterval(timer);
-          onTimeout();
           return 0;
         }
-        return prev - 1;
+        return next;
       });
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isOpen, onTimeout, countdownSeconds]);
+  }, [isOpen, timeLeft]);
+
+  // Separate effect for timeout notification to avoid re-triggering logic
+  useEffect(() => {
+    if (isOpen && timeLeft === 0) {
+      onTimeout();
+    }
+  }, [isOpen, timeLeft, onTimeout]);
 
   const content = {
     screen: {
-      icon: "screen_share_off",
+      icon: "desktop_access_disabled",
       title: "Screen Share Lost",
       text: "Continuous screen sharing is required for proctoring. Please re-authorize screen sharing immediately.",
       button: "Reshare Screen",
@@ -76,8 +87,11 @@ export default function MediaRecoveryModal({
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             className="max-w-md w-full bg-[#0D0D0D] border border-red-500/20 rounded-3xl p-10 text-center shadow-[0_0_50px_rgba(239,68,68,0.2)]"
           >
-            <div className="size-20 mx-auto rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-6">
-              <span className="material-symbols-outlined text-red-500 text-4xl animate-pulse">
+            <div className="size-24 mx-auto rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mb-8">
+              <span
+                className="material-symbols-outlined text-red-500 text-5xl animate-pulse"
+                style={{ fontVariationSettings: "'FILL' 1" }}
+              >
                 {content.icon}
               </span>
             </div>
@@ -85,7 +99,7 @@ export default function MediaRecoveryModal({
             <h2 className="text-2xl font-black text-white uppercase tracking-tight mb-4">
               {content.title}
             </h2>
-            
+
             <p className="text-slate-400 text-[10px] font-bold leading-relaxed uppercase tracking-widest mb-8">
               {content.text}
             </p>
@@ -95,7 +109,9 @@ export default function MediaRecoveryModal({
                 onClick={onReshare}
                 className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[11px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
               >
-                <span className="material-symbols-outlined text-sm">refresh</span>
+                <span className="material-symbols-outlined text-sm">
+                  refresh
+                </span>
                 {content.button}
               </button>
 
@@ -111,7 +127,7 @@ export default function MediaRecoveryModal({
 
             <div className="mt-8 pt-8 border-t border-white/5">
               <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                <motion.div 
+                <motion.div
                   className="h-full bg-red-500"
                   initial={{ width: "100%" }}
                   animate={{ width: `${(timeLeft / countdownSeconds) * 100}%` }}
