@@ -65,7 +65,7 @@ export default function LandingPage() {
             </span>
           </motion.div>
           <nav className="hidden md:flex items-center gap-10">
-            {["About", "Pricing", "Contact"].map((item) => (
+            {["About", "Contact"].map((item) => (
               <motion.a
                 key={item}
                 whileHover={{ y: -1 }}

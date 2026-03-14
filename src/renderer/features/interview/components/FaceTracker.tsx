@@ -120,33 +120,57 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
           clearTimeout(lookAwayTimerRef.current);
           lookAwayTimerRef.current = null;
         }
+      } else if (detections.length > 1) {
+        setStatus("warning");
+        emitWarning("Multiple faces detected. Please ensure you are alone.");
       } else {
         const detection = detections[0];
         const landmarks = detection.landmarks;
         const nose = landmarks.getNose();
         const jaw = landmarks.getJawOutline();
+        const mouth = landmarks.getMouth();
         const leftEye = landmarks.getLeftEye();
         const rightEye = landmarks.getRightEye();
 
         // Gaze: compare nose-to-left-jaw vs nose-to-right-jaw distance
-        const noseTip = nose[3]; // tip of nose
-        const leftJaw = jaw[0]; // leftmost jaw point
-        const rightJaw = jaw[16]; // rightmost jaw point
-
+        const noseTip = nose[3];
+        const leftJaw = jaw[0];
+        const rightJaw = jaw[16];
         const distLeft = Math.abs(noseTip.x - leftJaw.x);
         const distRight = Math.abs(noseTip.x - rightJaw.x);
-        const ratio =
-          Math.min(distLeft, distRight) / Math.max(distLeft, distRight);
+        const horizontalRatio = Math.min(distLeft, distRight) / Math.max(distLeft, distRight);
 
-        // ratio < 0.45 means head is turned significantly
-        const isLookingAway = ratio < 0.45;
+        // Vertical Gaze: compare nose-to-chin vs nose-to-eyebrow
+        const chin = jaw[8];
+        const noseBridge = nose[0];
+        const distNoseChin = Math.abs(noseTip.y - chin.y);
+        const distNoseBridge = Math.abs(noseTip.y - noseBridge.y);
+        const verticalRatio = distNoseBridge / distNoseChin;
 
-        if (isLookingAway) {
+        // Mouth activity (Eating/Talking)
+        const upperLip = mouth[13];
+        const lowerLip = mouth[19];
+        const mouthOpenness = Math.abs(upperLip.y - lowerLip.y);
+
+        const isLookingAway = horizontalRatio < 0.45;
+        const isLookingDown = verticalRatio < 0.35; 
+        
+        // Improved Occlusion / Landmark loss check
+        const mouthLandmarks = landmarks.getMouth();
+        const noseLandmarks = landmarks.getNose();
+        
+        // If landmarks are physically improbable or missing
+        const isObscured = !mouthLandmarks || !noseLandmarks || mouthLandmarks.length < 5;
+
+        if (isLookingAway || isLookingDown || isObscured) {
           if (!lookAwayTimerRef.current) {
             lookAwayTimerRef.current = window.setTimeout(() => {
               setStatus("warning");
-              emitWarning("Please return your focus to the screen");
-            }, 1500);
+              let msg = "Please return your focus to the screen";
+              if (isLookingDown) msg = "Avoid looking down or using external devices";
+              if (isObscured) msg = "Please ensure your mouth and nose are visible";
+              emitWarning(msg);
+            }, 1000);
           }
         } else {
           if (lookAwayTimerRef.current) {

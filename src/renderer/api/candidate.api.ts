@@ -73,7 +73,9 @@ export const candidateApi = {
   },
 
   startAssistantSession: async () => {
-    const { data } = await apiClient.post<ValidateCodeResponse>("/api/public/sessions/tutor");
+    const { data } = await apiClient.post<ValidateCodeResponse>(
+      "/api/public/sessions/tutor",
+    );
     return data;
   },
 };

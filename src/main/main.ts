@@ -215,21 +215,21 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     mainWindow.setMinimumSize(0, 0);
     mainWindow.setMaximumSize(10000, 10000);
     
-    mainWindow.setMaximizable(false);
+    mainWindow.setMaximizable(true);
     mainWindow.setFullScreen(false);
-    mainWindow.setResizable(true); // Must be true to resize
+    mainWindow.setResizable(true);
     
-    // Set actual bounds
+    // Set actual bounds - instant resize (no animation to prevent jumping)
+    mainWindow.setMinimumSize(240, 280);
     mainWindow.setBounds({
-      x: width - 310,
-      y: height - 350,
-      width: 280,
-      height: 320
-    }, true);
+      x: width - 260,
+      y: height - 320,
+      width: 240,
+      height: 280
+    });
     
     mainWindow.setAlwaysOnTop(true, "floating");
-    mainWindow.setResizable(false);
-    mainWindow.setMinimizable(false);
+    mainWindow.setMinimizable(true);
   } else {
     // Restore: Large, Center
     mainWindow.setResizable(true);

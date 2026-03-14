@@ -31,7 +31,9 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [validationSuccess, setValidationSuccess] = useState(false);
-  const [practiceTopic, setPracticeTopic] = useState("General Software Engineering");
+  const [practiceTopic, setPracticeTopic] = useState(
+    "General Software Engineering",
+  );
   const [practiceDifficulty, setPracticeDifficulty] = useState("MEDIUM");
   const [practiceDuration, setPracticeDuration] = useState(45);
 
@@ -106,7 +108,7 @@ export default function LoginPage() {
         title: res.title,
         durationMinutes: res.durationMinutes,
         candidateName: res.candidateName,
-        personaName: res.personaName
+        personaName: res.personaName,
       });
       useCandidateStore.getState().setPracticeMode(false);
       setValidationSuccess(true);
@@ -125,7 +127,7 @@ export default function LoginPage() {
       const res = await candidateApi.startPracticeSession({
         topic: practiceTopic,
         difficulty: practiceDifficulty,
-        durationMinutes: practiceDuration
+        durationMinutes: practiceDuration,
       });
       useCandidateStore.getState().setSession({
         token: res.token,
@@ -135,7 +137,7 @@ export default function LoginPage() {
         title: res.title,
         durationMinutes: res.durationMinutes,
         candidateName: res.candidateName,
-        personaName: res.personaName
+        personaName: res.personaName,
       });
       useCandidateStore.getState().setPracticeMode(true);
       navigate("/calibration");
@@ -299,18 +301,26 @@ export default function LoginPage() {
                   onClick={handleBack}
                   className="group inline-flex items-center gap-2 text-slate-500 hover:text-white text-[10px] uppercase tracking-widest font-bold transition-all"
                 >
-                  <span className="material-symbols-outlined text-sm">arrow_back</span>
+                  <span className="material-symbols-outlined text-sm">
+                    arrow_back
+                  </span>
                   Choose different mode
                 </button>
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">Practice Setup</h2>
-                  <p className="text-slate-500 text-xs font-light tracking-wide">Configure your simulated interview environment.</p>
+                  <h2 className="text-3xl font-black text-white tracking-tight uppercase">
+                    Practice Setup
+                  </h2>
+                  <p className="text-slate-500 text-xs font-light tracking-wide">
+                    Configure your simulated interview environment.
+                  </p>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Topic</label>
+                  <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">
+                    Topic
+                  </label>
                   <input
                     type="text"
                     value={practiceTopic}
@@ -322,7 +332,9 @@ export default function LoginPage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Difficulty</label>
+                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">
+                      Difficulty
+                    </label>
                     <select
                       value={practiceDifficulty}
                       onChange={(e) => setPracticeDifficulty(e.target.value)}
@@ -334,10 +346,14 @@ export default function LoginPage() {
                     </select>
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">Duration (min)</label>
+                    <label className="text-[10px] font-black text-primary uppercase tracking-[2px]">
+                      Duration (min)
+                    </label>
                     <select
                       value={practiceDuration}
-                      onChange={(e) => setPracticeDuration(Number(e.target.value))}
+                      onChange={(e) =>
+                        setPracticeDuration(Number(e.target.value))
+                      }
                       className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white outline-none focus:border-primary/50 transition-all text-sm appearance-none cursor-pointer"
                     >
                       <option value={15}>15 Minutes</option>
@@ -349,7 +365,9 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">{error}</p>
+                  <p className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">
+                    {error}
+                  </p>
                 )}
 
                 <button

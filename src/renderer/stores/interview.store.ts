@@ -25,7 +25,13 @@ export const useInterviewStore = create<InterviewSlice>((set) => ({
     networkLatency: 0,
     notes: localStorage.getItem('owlyn_notes') || '',
     addTranscript: (entry) => set((s) => {
-        if (s.transcript.some((t) => t.id === entry.id)) return s
+        const index = s.transcript.findIndex((t) => t.id === entry.id);
+        if (index !== -1) {
+            // Update existing entry if text has changed
+            const newTranscript = [...s.transcript];
+            newTranscript[index] = { ...newTranscript[index], text: entry.text };
+            return { transcript: newTranscript };
+        }
         return { transcript: [...s.transcript, entry] }
     }),
     setCurrentQuestion: (currentQuestion) => set({ currentQuestion }),

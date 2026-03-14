@@ -117,20 +117,42 @@ function InterviewInterface() {
 
     const handleData = (payload: Uint8Array) => {
       try {
-        const text = new TextDecoder().decode(payload);
-        const msg = JSON.parse(text);
+        const raw = new TextDecoder().decode(payload);
+        
+        let msg: any;
+        try {
+          msg = JSON.parse(raw);
+        } catch {
+          // Fallback: If it's a raw string, assume it's a transcript from the AI
+          if (raw.trim()) {
+            addTranscript({
+              id: `raw-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              speaker: "ai",
+              text: raw.trim(),
+            });
+            setCurrentQuestion(raw.trim());
+          }
+          return;
+        }
 
-        switch (msg.type) {
+        const type = msg.type || msg.event;
+        const text = msg.text || msg.content || msg.message || msg.transcript;
+
+        switch (type) {
           case "transcript":
           case "text":
           case "speech":
-            addTranscript({
-              id: Date.now().toString(),
-              timestamp: new Date().toISOString(),
-              speaker: msg.speaker || "ai",
-              text: msg.text || msg.content || "",
-            });
-            if (msg.speaker === "ai") setCurrentQuestion(msg.text || msg.content);
+          case "assistant_message":
+            if (text) {
+              addTranscript({
+                id: msg.id || Date.now().toString(),
+                timestamp: new Date().toISOString(),
+                speaker: msg.speaker || "ai",
+                text: text,
+              });
+              if (msg.speaker !== "candidate") setCurrentQuestion(text);
+            }
             break;
           case "PROCTOR_WARNING":
             setProctorWarning(msg.message);
@@ -160,6 +182,28 @@ function InterviewInterface() {
 
     room.on(RoomEvent.DataReceived, handleData);
 
+    const handleTranscription = (transcription: any) => {
+      transcription.segments.forEach((segment: any) => {
+        if (segment.text.trim()) {
+          const isLocal = transcription.participantIdentity === room.localParticipant.identity;
+          const text = segment.text.trim();
+          
+          addTranscript({
+            id: segment.id || `seg-${transcription.participantIdentity}`,
+            timestamp: new Date().toISOString(),
+            speaker: isLocal ? "candidate" : "ai",
+            text: text,
+          });
+          
+          if (!isLocal) {
+            setCurrentQuestion(text);
+          }
+        }
+      });
+    };
+
+    room.on(RoomEvent.TranscriptionReceived, handleTranscription);
+
     const checkAndSignal = () => {
       if (room.state === ConnectionState.Connected) {
         const participant = room.localParticipant;
@@ -176,11 +220,11 @@ function InterviewInterface() {
 
     if (room.state === ConnectionState.Connected) checkAndSignal();
     room.on(RoomEvent.Connected, checkAndSignal);
-
     room.on(RoomEvent.Disconnected, handleDisconnected);
 
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
+      room.off(RoomEvent.TranscriptionReceived, handleTranscription);
       room.off(RoomEvent.Connected, checkAndSignal);
       room.off(RoomEvent.Disconnected, handleDisconnected);
     };
@@ -475,14 +519,8 @@ function InterviewInterface() {
             className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-md"
           >
             <div className="max-w-md w-full p-12 text-center space-y-8 bg-[#0D0D0D] border border-white/5 rounded-3xl">
-              <div className="size-20 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center border border-primary/20">
-                <span className="material-symbols-outlined text-4xl text-primary animate-pulse">lock_open</span>
-              </div>
               <div className="space-y-4">
-                <h2 className="text-2xl font-black text-white uppercase tracking-tight">System Initialization</h2>
-                <p className="text-slate-500 text-xs font-light leading-relaxed">
-                  To ensure a secure and fair interview environment, please authorize microphone and screen share access.
-                </p>
+                <h2 className="text-2xl font-black text-white uppercase tracking-tight">Commence Interview</h2>
                 {mediaError && (
                   <motion.div 
                     initial={{ opacity: 0, scale: 0.9 }}
@@ -503,7 +541,7 @@ function InterviewInterface() {
                 {(!room || room.state !== ConnectionState.Connected) && (
                   <div className="size-3 border-2 border-black/30 border-t-black rounded-full animate-spin" />
                 )}
-                Start Secure Session
+                Start
               </button>
             </div>
           </motion.div>
