@@ -100,14 +100,6 @@ function AssistantInterface() {
 
     setError(null);
     try {
-      await localParticipant.setMicrophoneEnabled(true);
-    } catch (err) {
-      console.warn("Microphone access failed", err);
-      setError("Microphone access is required for assistant mode.");
-      return;
-    }
-
-    try {
       await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
       const published = await waitForScreenSharePublication();
       if (!published) {
@@ -120,12 +112,21 @@ function AssistantInterface() {
       console.warn("Screen share access failed", err);
       setError("Screen sharing is required for assistant mode.");
       setIsSharingScreen(false);
+      return;
+    }
+
+    try {
+      await localParticipant.setMicrophoneEnabled(true);
+    } catch (err) {
+      console.warn("Microphone access failed", err);
+      setError("Microphone access is required for assistant mode.");
     }
   };
 
+  // No automatic media enablement - requires user gesture
   useEffect(() => {
     if (!localParticipant || room.state !== ConnectionState.Connected) return;
-    enableAssistantMedia();
+    // We wait for the user to click the button to avoid "transient activation" errors
   }, [localParticipant, room.state]);
 
   useEffect(() => {

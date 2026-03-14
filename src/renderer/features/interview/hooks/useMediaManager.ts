@@ -1,0 +1,86 @@
+import { useState } from "react";
+import { useLocalParticipant } from "@livekit/components-react";
+import { Track } from "livekit-client";
+
+export function useMediaManager() {
+  const { localParticipant } = useLocalParticipant();
+  const [isMediaReady, setIsMediaReady] = useState(false);
+  const [isStartingMedia, setIsStartingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+
+  const hasPublishedScreenShareTrack = () => {
+    if (!localParticipant) return false;
+    const publications = Array.from(localParticipant.trackPublications.values());
+    return publications.some(
+      (publication) =>
+        publication.source === Track.Source.ScreenShare &&
+        !!publication.track,
+    );
+  };
+
+  const waitForScreenSharePublication = async (timeoutMs = 30000) => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < timeoutMs) {
+      if (hasPublishedScreenShareTrack()) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    return false;
+  };
+
+  const publishMedia = async (onSuccess?: () => void) => {
+    if (!localParticipant) return;
+    setIsStartingMedia(true);
+    setMediaError(null);
+
+    try {
+      await localParticipant.setMicrophoneEnabled(true);
+      await localParticipant.setCameraEnabled(true);
+      
+      let sourceId: string | undefined;
+      if (window.owlyn?.desktop?.getSources) {
+        try {
+          const sources = await window.owlyn.desktop.getSources();
+          const screenSources = sources.filter((s: any) => s.name?.toLowerCase().includes("screen"));
+          const source = screenSources[0] || sources[0];
+          sourceId = source?.id;
+        } catch (e) {
+          console.warn("Failed to get desktop sources:", e);
+        }
+      }
+
+      await localParticipant.setScreenShareEnabled(true, { 
+        contentHint: "text",
+        // @ts-ignore
+        deviceId: sourceId 
+      });
+
+      const screenShareEnabled = await waitForScreenSharePublication();
+      if (!screenShareEnabled) {
+         setMediaError("Screen share authorization cancelled.");
+         setIsStartingMedia(false);
+         setIsMediaReady(false);
+         return;
+      }
+
+      setIsMediaReady(true);
+      setIsStartingMedia(false);
+      onSuccess?.();
+    } catch (err) {
+      console.error("Media publication failed:", err);
+      setMediaError("Failed to authorize media devices.");
+      setIsStartingMedia(false);
+    }
+  };
+
+  return {
+    isMediaReady,
+    isStartingMedia,
+    mediaError,
+    publishMedia,
+    setMediaError,
+    setIsStartingMedia,
+    setIsMediaReady,
+  };
+}
