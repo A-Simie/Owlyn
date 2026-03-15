@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Track } from "livekit-client";
 import { useLocalParticipant, useTracks } from "@livekit/components-react";
 import { useCandidateStore } from "@/stores/candidate.store";
@@ -28,6 +29,22 @@ export default function InterviewSidebar({
   const { localParticipant } = useLocalParticipant();
   const cameraTracks = useTracks([Track.Source.Camera]).filter((t) => t.participant === localParticipant);
   const localCameraTrack = cameraTracks[0];
+  const localCameraStream = useMemo(() => {
+    const track = localCameraTrack?.publication?.track;
+    if (!track) return null;
+    
+    // Attempt to get MediaStream from LiveKit track
+    if ((track as any).mediaStream instanceof MediaStream) {
+      return (track as any).mediaStream;
+    }
+    
+    // Fallback: Create new MediaStream from track's MediaStreamTrack
+    if (track.mediaStreamTrack) {
+      return new MediaStream([track.mediaStreamTrack]);
+    }
+    
+    return null;
+  }, [localCameraTrack]);
 
   return (
     <div
@@ -49,7 +66,7 @@ export default function InterviewSidebar({
                     pushActivityEvent("local", message);
                   }
                 }} 
-                stream={(localCameraTrack?.publication?.track as any)?.mediaStream ?? null} 
+                stream={localCameraStream} 
               />
             )}
           </div>

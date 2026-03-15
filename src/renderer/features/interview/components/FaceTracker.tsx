@@ -44,8 +44,12 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
     if (stream === null) return; // Wait for external stream
     if (stream) {
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play().then(() => setCameraReady(true)).catch(console.error);
+        if (videoRef.current.srcObject !== stream) {
+          videoRef.current.srcObject = stream;
+        }
+        videoRef.current.play()
+          .then(() => setCameraReady(true))
+          .catch((err) => console.warn("FaceTracker video play failed:", err));
       }
       return;
     }

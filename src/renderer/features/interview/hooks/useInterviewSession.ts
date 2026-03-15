@@ -1,12 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { ConnectionState, RoomEvent, Track, LocalVideoTrack, LocalAudioTrack } from "livekit-client";
+import { ConnectionState, RoomEvent, Track} from "livekit-client";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
 import { useInterviewStore } from "@/stores/interview.store";
-import { useCandidateStore } from "@/stores/candidate.store";
 import { useSessionStore } from "@/stores/session.store";
-import { candidateApi } from "@/api/candidate.api";
-import { useNavigate } from "react-router-dom";
-import { useMediaStore } from "@/stores/media.store";
 
 export type ActivityEvent = {
   id: string;
@@ -145,45 +141,57 @@ export function useInterviewSession(
        }
     };
 
+    const handleTrackPublished = (publication: any) => {
+      const source = publication.source || publication.track?.source;
+      if (source === Track.Source.ScreenShare || source === Track.Source.Camera || source === Track.Source.Microphone) {
+        setShowMediaRecovery(false);
+      }
+    };
+
+    const handleTrackUnmuted = (publication: any) => {
+      const source = publication.source || publication.track?.source;
+      if (source === Track.Source.ScreenShare || source === Track.Source.Camera || source === Track.Source.Microphone) {
+        setShowMediaRecovery(false);
+      }
+    };
+
     room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
     room.on(RoomEvent.TrackUnpublished, handleTrackUnpublished);
     room.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
     room.on(RoomEvent.TrackMuted, handleTrackMuted);
+    
+    // Listen to local participant for unmute/publish to clear recovery modal
+    localParticipant?.on("trackPublished" as any, handleTrackPublished);
+    localParticipant?.on("trackUnmuted" as any, () => setShowMediaRecovery(false));
+    localParticipant?.on("localTrackPublished" as any, () => setShowMediaRecovery(false));
 
     const integrityInterval = setInterval(() => {
       if (!isCommenced || !localParticipant || isEnding || forcedEndHandledRef.current) return;
       
       const publications = Array.from(localParticipant.trackPublications.values());
       const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
-      const isSharing = !!screenPub && !screenPub.isMuted && !!screenPub.track;
+      // More robust check: is it published AND not muted?
+      const isSharing = !!screenPub && !screenPub.isMuted;
 
       const camPub = publications.find(p => p.source === Track.Source.Camera);
-      const isCamActive = !!camPub && !camPub.isMuted && !!camPub.track;
+      const isCamActive = !!camPub && !camPub.isMuted;
 
       const micPub = publications.find(p => p.source === Track.Source.Microphone);
-      const isMicActive = !!micPub && !micPub.isMuted && !!micPub.track;
+      const isMicActive = !!micPub && !micPub.isMuted;
 
-      setShowMediaRecovery(current => {
-        if (isEnding || forcedEndHandledRef.current) return false;
-        
-        // If everything is fine, close the modal
-        if (isSharing && isCamActive && isMicActive) {
-          return false;
-        }
+      // If everything is healthy, ensure the modal is CLOSED
+      if (isSharing && isCamActive && isMicActive) {
+        setShowMediaRecovery(false);
+        return;
+      }
 
-        // If something is missing and modal isn't open, open it
-        if (!current) {
-          if (!isSharing) {
-             // Screen share is the main one we auto-recover
-             setRecoveryType("screen");
-             return true;
-          }
-        }
-
-        return current;
-      });
-    }, 2000);
+      // If screen share is lost, it's a critical recovery trigger
+      if (!isSharing && !showMediaRecovery) {
+        setRecoveryType("screen");
+        setShowMediaRecovery(true);
+      }
+    }, 3000);
 
     const onConnected = () => setIsConnected(true);
     const onDisconnected = () => { 
@@ -199,11 +207,13 @@ export function useInterviewSession(
       room.off(RoomEvent.TrackUnpublished, handleTrackUnpublished);
       room.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
       room.off(RoomEvent.TrackMuted, handleTrackMuted);
+      room.off(RoomEvent.LocalTrackPublished, handleTrackPublished);
+      room.off(RoomEvent.TrackUnmuted, handleTrackUnmuted);
       clearInterval(integrityInterval);
       room.off(RoomEvent.Connected, onConnected);
       room.off(RoomEvent.Disconnected, onDisconnected);
     };
-  }, [room, isCommenced, isEnding, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, handleEndSession]);
+  }, [room, isCommenced, isEnding, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, handleEndSession, showMediaRecovery]);
 
   // Dedicated Timer Effect
   useEffect(() => {

@@ -36,49 +36,42 @@ export function useMediaManager() {
     setMediaError(null);
 
     try {
-      // 1. Microphone
-      const isMicPublished = Array.from(localParticipant.trackPublications.values()).some(p => p.source === Track.Source.Microphone && !!p.track);
-      if (!isMicPublished) {
+      // 1. Microphone - Only enable if not already published
+      const micPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.Microphone);
+      if (!micPub || !micPub.track) {
         await localParticipant.setMicrophoneEnabled(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else if (micPub.isMuted) {
+        await micPub.track.unmute();
       }
 
-      // 2. Camera
-      const isCamPublished = Array.from(localParticipant.trackPublications.values()).some(p => p.source === Track.Source.Camera && !!p.track);
-      if (!isCamPublished) {
+      // 2. Camera - Only enable if not already published
+      const camPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.Camera);
+      if (!camPub || !camPub.track) {
         await localParticipant.setCameraEnabled(true);
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else if (camPub.isMuted) {
+        await camPub.track.unmute();
       }
       
       // 3. Screen Share
       if (!hasPublishedScreenShareTrack()) {
-        // Force cleanup of any existing but muted/broken screen track
-        const publications = Array.from(localParticipant.trackPublications.values());
-        const existingPub = publications.find(p => p.source === Track.Source.ScreenShare);
+        // Force cleanup of any existing but stale screen track
+        const existingPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.ScreenShare);
         if (existingPub && existingPub.track) {
-          try {
-            await localParticipant.unpublishTrack(existingPub.track);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (e) {
-            console.warn("MediaManager: Failed to unpublish existing screen share:", e);
-          }
+          try { await localParticipant.unpublishTrack(existingPub.track); } catch (e) {}
         }
 
         let sourceId: string | undefined;
         if (window.owlyn?.desktop?.getSources) {
           try {
             const sources = await window.owlyn.desktop.getSources();
-            const screenSources = sources.filter((s: any) => s.name?.toLowerCase().includes("screen"));
-            const source = screenSources[0] || sources[0];
-            sourceId = source?.id;
-          } catch (e) {
-            console.warn("MediaManager: Failed to get desktop sources:", e);
-          }
+            const screenSource = sources.find((s: any) => s.name?.toLowerCase().includes("screen")) || sources[0];
+            sourceId = screenSource?.id;
+          } catch (e) { console.warn("MediaManager: Electron source fetch failed", e); }
         }
 
         if (sourceId) {
           const screenStream = await (navigator.mediaDevices as any).getUserMedia({
-            audio: false, // Explicitly disable screen audio to avoid opus collision
+            audio: false,
             video: {
               mandatory: {
                 chromeMediaSource: "desktop",
@@ -94,15 +87,13 @@ export function useMediaManager() {
         } else {
           await localParticipant.setScreenShareEnabled(true, { 
             contentHint: "text",
-            audio: false // CRITICAL fallback
+            audio: false 
           });
         }
 
         const screenShareEnabled = await waitForScreenSharePublication();
         if (!screenShareEnabled && !hasPublishedScreenShareTrack()) {
-           setMediaError("Screen share authorization cancelled.");
            setIsStartingMedia(false);
-           setIsMediaReady(false);
            return;
         }
       }
@@ -112,7 +103,6 @@ export function useMediaManager() {
       onSuccess?.();
     } catch (err) {
       console.error("Media publication failed:", err);
-      setMediaError("Failed to authorize media devices.");
       setIsStartingMedia(false);
     }
   };

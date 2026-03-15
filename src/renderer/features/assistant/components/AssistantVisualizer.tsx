@@ -46,14 +46,6 @@ export function AssistantVisualizer({
           </motion.div>
         )}
       </div>
-
-      {!isSharingScreen && !error && (
-        <div className="mt-3 text-center animate-pulse">
-          <p className="text-[9px] text-amber-400 font-black uppercase tracking-[0.2em]">
-            ...
-          </p>
-        </div>
-      )}
     </div>
   );
 }

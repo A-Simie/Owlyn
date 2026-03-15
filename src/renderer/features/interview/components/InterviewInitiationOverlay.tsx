@@ -16,7 +16,6 @@ export default function InterviewInitiationOverlay({
   shouldConnect,
   isConnected,
   isStartingMedia,
-  mediaError,
   onPublishMedia,
 }: InterviewInitiationOverlayProps) {
   if (isCommenced || isEnding) return null;
@@ -57,17 +56,6 @@ export default function InterviewInitiationOverlay({
                 ? "Establishing secure connection..."
                 : "Syncing media & transcripts..."}
           </p>
-          {mediaError && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl"
-            >
-              <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-relaxed">
-                {mediaError}
-              </p>
-            </motion.div>
-          )}
         </div>
 
         <div className="w-full">

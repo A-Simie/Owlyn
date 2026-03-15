@@ -201,7 +201,8 @@ function InterviewInterface({
   useEffect(() => {
     useSessionStore.getState().reset();
     return () => {
-      useMediaStore.getState().stopAll();
+      // Don't stop all (cam/mic), just stop the screen share to preserve setup state
+      useMediaStore.getState().stopScreenShare();
       useSessionStore.getState().reset();
     };
   }, []);

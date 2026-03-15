@@ -13,7 +13,6 @@ import { useAssistantSession } from "./hooks/useAssistantSession";
 import { AssistantHeader } from "./components/AssistantHeader";
 import { AssistantVisualizer } from "./components/AssistantVisualizer";
 import { AssistantControls } from "./components/AssistantControls";
-import { useMediaStore } from "@/stores/media.store";
 
 export default function AssistantPage() {
   const { livekitToken } = useCandidateStore();
@@ -63,7 +62,7 @@ function AssistantInterface() {
     checkSize();
     return () => {
       window.removeEventListener('resize', checkSize);
-      useMediaStore.getState().stopAll();
+      // Removed stopAll() on unmount to preserve camera/mic state
     };
   }, []);
 

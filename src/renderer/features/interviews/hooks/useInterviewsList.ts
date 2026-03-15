@@ -29,13 +29,33 @@ export function useInterviewsList() {
   }, [fetchInterviews]);
 
   const filteredInterviews = useMemo(() => {
-    if (activeTab === "all") return interviews;
+    // 1. Define status order: ACTIVE -> UPCOMING -> COMPLETED -> CANCELLED
+    const statusOrder: Record<string, number> = {
+      ACTIVE: 0,
+      UPCOMING: 1,
+      COMPLETED: 2,
+      CANCELLED: 3,
+    };
+
+    // 2. Sort all interviews by status (case-insensitive)
+    const sorted = [...interviews].sort((a, b) => {
+      const sA = (a.status || "").toUpperCase();
+      const sB = (b.status || "").toUpperCase();
+      const orderA = statusOrder[sA] ?? 99;
+      const orderB = statusOrder[sB] ?? 99;
+      
+      if (orderA !== orderB) return orderA - orderB;
+      return 0; // Maintain stable order for same status
+    });
+
+    // 3. Apply tab filter to sorted list
+    if (activeTab === "all") return sorted;
     const statusMap: Record<string, string> = {
       LIVE: "ACTIVE",
       UPCOMING: "UPCOMING",
       COMPLETED: "COMPLETED"
     };
-    return interviews.filter((i) => i.status === (statusMap[activeTab] || activeTab));
+    return sorted.filter((i) => i.status === (statusMap[activeTab] || activeTab));
   }, [interviews, activeTab]);
 
   const pagedInterviews = useMemo(() => {
