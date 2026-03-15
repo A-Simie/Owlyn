@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
+import { useSessionStore } from "@/stores/session.store";
 import { candidateApi } from "@/api/candidate.api";
 
 // Hooks
@@ -198,13 +199,16 @@ function InterviewInterface({
 
   // Cleanup all media on unmount
   useEffect(() => {
+    useSessionStore.getState().reset();
     return () => {
       useMediaStore.getState().stopAll();
+      useSessionStore.getState().reset();
     };
   }, []);
 
   const finalizeExit = () => {
     resetInterview();
+    useSessionStore.getState().reset();
     useMediaStore.getState().stopAll();
     clearSession();
     navigate("/auth?step=candidate-options");
@@ -305,7 +309,14 @@ function InterviewInterface({
         {showCompletion && <InterviewCompletionModal onClose={finalizeExit} candidateName={useCandidateStore.getState().candidateName} />}
       </AnimatePresence>
 
-      <MediaRecoveryModal isOpen={showMediaRecovery} type={recoveryType} onReshare={() => publishMedia()} onTimeout={() => handleEndSession(true, `Media recovery failed: ${recoveryType}`)} />
+      <MediaRecoveryModal 
+        isOpen={showMediaRecovery} 
+        type={recoveryType} 
+        onReshare={() => publishMedia()} 
+        onTimeout={() => handleEndSession(true, `Media recovery failed: ${recoveryType}`)} 
+        error={mediaError}
+        isStarting={isStartingMedia}
+      />
     </div>
   );
 }

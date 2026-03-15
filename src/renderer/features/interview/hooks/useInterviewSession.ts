@@ -153,16 +153,34 @@ export function useInterviewSession(
 
     const integrityInterval = setInterval(() => {
       if (!isCommenced || !localParticipant || isEnding || forcedEndHandledRef.current) return;
+      
       const publications = Array.from(localParticipant.trackPublications.values());
       const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
       const isSharing = !!screenPub && !screenPub.isMuted && !!screenPub.track;
- 
+
+      const camPub = publications.find(p => p.source === Track.Source.Camera);
+      const isCamActive = !!camPub && !camPub.isMuted && !!camPub.track;
+
+      const micPub = publications.find(p => p.source === Track.Source.Microphone);
+      const isMicActive = !!micPub && !micPub.isMuted && !!micPub.track;
+
       setShowMediaRecovery(current => {
         if (isEnding || forcedEndHandledRef.current) return false;
-        if (!isSharing && !current) {
-          setRecoveryType("screen");
-          return true;
+        
+        // If everything is fine, close the modal
+        if (isSharing && isCamActive && isMicActive) {
+          return false;
         }
+
+        // If something is missing and modal isn't open, open it
+        if (!current) {
+          if (!isSharing) {
+             // Screen share is the main one we auto-recover
+             setRecoveryType("screen");
+             return true;
+          }
+        }
+
         return current;
       });
     }, 2000);

@@ -9,6 +9,8 @@ interface MediaRecoveryModalProps {
   onReshare: () => void;
   onTimeout: () => void;
   countdownSeconds?: number;
+  error?: string | null;
+  isStarting?: boolean;
 }
 
 export default function MediaRecoveryModal({
@@ -17,6 +19,8 @@ export default function MediaRecoveryModal({
   onReshare,
   onTimeout,
   countdownSeconds = 15,
+  error,
+  isStarting,
 }: MediaRecoveryModalProps) {
   const [timeLeft, setTimeLeft] = useState(countdownSeconds);
 
@@ -107,13 +111,20 @@ export default function MediaRecoveryModal({
             <div className="flex flex-col gap-4">
               <button
                 onClick={onReshare}
-                className="w-full py-4 bg-primary text-black font-black uppercase tracking-[0.2em] text-[11px] rounded-xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                disabled={isStarting}
+                className={`w-full py-4 ${isStarting ? "bg-primary/50 cursor-not-allowed" : "bg-primary hover:brightness-110 active:scale-[0.98]"} text-black font-black uppercase tracking-[0.2em] text-[11px] rounded-xl transition-all flex items-center justify-center gap-3`}
               >
-                <span className="material-symbols-outlined text-sm">
-                  refresh
+                <span className={`material-symbols-outlined text-sm ${isStarting ? "animate-spin" : ""}`}>
+                  {isStarting ? "progress_activity" : "refresh"}
                 </span>
-                {content.button}
+                {isStarting ? "Recovering..." : content.button}
               </button>
+
+              {error && (
+                <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest animate-pulse">
+                  {error}
+                </p>
+              )}
 
               <div className="flex items-center justify-between px-2">
                 <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">

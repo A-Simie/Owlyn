@@ -11,11 +11,12 @@ export function useMediaManager() {
   const hasPublishedScreenShareTrack = () => {
     if (!localParticipant) return false;
     const publications = Array.from(localParticipant.trackPublications.values());
-    return publications.some(
+    const pub = publications.find(
       (publication) =>
         publication.source === Track.Source.ScreenShare &&
         !!publication.track,
     );
+    return !!pub && !pub.isMuted;
   };
 
   const waitForScreenSharePublication = async (timeoutMs = 30000) => {
@@ -36,22 +37,33 @@ export function useMediaManager() {
 
     try {
       // 1. Microphone
-      const micPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Microphone);
-      if (micPublications.length === 0 || !micPublications[0].track) {
+      const isMicPublished = Array.from(localParticipant.trackPublications.values()).some(p => p.source === Track.Source.Microphone && !!p.track);
+      if (!isMicPublished) {
         await localParticipant.setMicrophoneEnabled(true);
-        // Sequential delay to prevent SDP BUNDLE collision
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // 2. Camera
-      const camPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Camera);
-      if (camPublications.length === 0 || !camPublications[0].track) {
+      const isCamPublished = Array.from(localParticipant.trackPublications.values()).some(p => p.source === Track.Source.Camera && !!p.track);
+      if (!isCamPublished) {
         await localParticipant.setCameraEnabled(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
       // 3. Screen Share
       if (!hasPublishedScreenShareTrack()) {
+        // Force cleanup of any existing but muted/broken screen track
+        const publications = Array.from(localParticipant.trackPublications.values());
+        const existingPub = publications.find(p => p.source === Track.Source.ScreenShare);
+        if (existingPub && existingPub.track) {
+          try {
+            await localParticipant.unpublishTrack(existingPub.track);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (e) {
+            console.warn("MediaManager: Failed to unpublish existing screen share:", e);
+          }
+        }
+
         let sourceId: string | undefined;
         if (window.owlyn?.desktop?.getSources) {
           try {
