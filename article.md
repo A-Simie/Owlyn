@@ -3,7 +3,7 @@ The current landscape of technical hiring is bottlenecked by a fundamental scala
 
 We built **Owlyn** to bridge this gap using real-time multimodal intelligence. Our goal was to create an **autonomous agent ecosystem** that isn't just an automated assessment, but a live, immersive collaborator. By leveraging the Gemini Live API, Owlyn conducts real-time technical interviews and provides an persistent assistant mode that can see, hear, and interact with sub-second latency. Every interaction is synchronized with live transcripts, ensuring the system is both high-fidelity and accessible across every workflow.
 
-[Watch the Owlyn Demo on YouTube](https://www.youtube.com/watch?v=nEaLIrNk0uk&list=PL1BztTYDF-QPfrzXwoC_6OSLs818uAqN2&index=9)
+- [Watch the Owlyn Demo on YouTube](https://www.youtube.com/watch?v=nEaLIrNk0uk&list=PL1BztTYDF-QPfrzXwoC_6OSLs818uAqN2&index=9)
 
 > This piece of content was written by me, **Abdulrahmon Adenuga** (@Rahmannugar), along with **Akeem Adetunji** and **Mosimiloluwa Adebisi** and created for the purposes of entering the Google **#GeminiLiveAgentChallenge** hackathon. It covers how we built Owlyn using Google AI models and Google Cloud.
 
@@ -12,10 +12,11 @@ We built **Owlyn** to bridge this gap using real-time multimodal intelligence. O
 2. [System Architecture](#2-system-architecture)
 3. [The Multi-Agent Protocol](#3-the-multi-agent-protocol)
 4. [Live Workflows: Interview, Monitoring, and Assistant](#4-live-workflows-interview-monitoring-and-assistant)
-5. [Real-Time Multimodal Pipelines](#5-real-time-multimodal-pipelines)
-6. [Security: The Sentinel Mode](#6-security-the-sentinel-mode)
-7. [Engineering Decisions](#7-engineering-decisions)
-8. [Closing Thoughts and Future Roadmap](#8-closing-thoughts-and-future-roadmap)
+5. [Recruitment Management: Dashboards and Talent Pools](#5-recruitment-management-dashboards-and-talent-pools)
+6. [Real-Time Multimodal Pipelines](#6-real-time-multimodal-pipelines)
+7. [Security: The Sentinel Mode](#7-security-the-sentinel-mode)
+8. [Engineering Decisions](#8-engineering-decisions)
+9. [Closing Thoughts and Future Roadmap](#9-closing-thoughts-and-future-roadmap)
 
 
 ## 1. The Core Objectives
@@ -260,7 +261,35 @@ Before entering a real technical interview session, candidates need a way to tes
 - **Customizable Sessions**: Users input a specific topic (e.g., "React Performance" or "Distributed Systems") and set a difficulty and timer. The agent then dynamically generates a technical session based on those constraints.
 - **Protocol Parity**: It uses the same multi-agent orchestration, audio/video streaming, and code analysis as the Enterprise mode. This ensures the candidate is getting the real experience in a private environment.
 
-## 5. Real-Time Multimodal Pipelines
+# 5. Recruitment Management: Dashboards and Talent Pools
+
+Technical hiring is about more than just one interview; it is about managing many candidates effectively across an entire company. We built a management system to help teams handle their hiring process from start to finish:
+
+### The Recruitment Dashboard
+This is the main control center where hiring teams manage their daily work. It shows what is happening in the company right now:
+- **Track Candidates in Real-Time**: Managers can see which candidates are waiting in the lobby, which interviews are currently live, and which ones are finished. This helps teams stay organized during busy hiring seasons.
+- **Role-Based Customization**: Recruiters can set different rules for different positions. You can choose the language the AI speaks and set how strict it should be. For example, you can make the AI a helpful guide for a junior developer or a very rigorous judge for a senior lead. You can also upload specific coding tasks for each role.
+- **Human Decision Making (Hire or Decline)**: While the AI handles the interview, the final choice always belongs to a human. After the interview, a recruiter reviews the technical report and uses the **Hire or Decline** buttons to make a final evaluation. This ensures that a real person always has the last word.
+
+### Team Collaboration
+Hiring is a team sport. We added features to help engineering leads and recruiters work together:
+- **Team Management**: Organizations can invite multiple team members to the dashboard. This allows different people to review the same candidate report and share their feedback.
+- **Shared Feedback**: Recruiters can leave notes on a candidate's profile for other team members to see. This helps build a complete picture of the candidate’s performance from different perspectives.
+
+### Analysis and Reporting
+Once an interview is over, the AI generates a detailed technical report. This report is the primary tool recruiters use to make their hiring decisions:
+- **Technical Radar Charts**: The system visualizes candidate skills (like Problem Solving, Communication, and Code Quality) on a radar chart. This makes it easy to see at a glance where a candidate is strongest.
+- **Full Transcripts and Code History**: Recruiters can read every word said during the interview and see exactly how the candidate's code evolved over time.
+- **Automated Summary**: The AI provides a short summary of the candidate's performance, highlighting both their strengths and their mistakes.
+
+### The Talent Pool
+The Talent Pool is a central library where all candidate results are kept. It helps teams find the best talent faster:
+- **Compare Skills Side-by-Side**: The system takes the AI's technical scores and puts them in a simple table. This lets recruiters filter candidates by their score or role, making it easy to see who performed best across hundreds of sessions.
+- **Talent Analytics**: The dashboard shows overall stats for your hiring pipeline, such as the total number of candidates, the percentage of high-potential profiles, and the average score for a specific role.
+- **Exporting for Teams**: Recruiters can export lists of elite candidates to share with other departments, ensuring that top talent is never lost in the system.
+- **Unbiased Ranking**: Because the AI scores everyone using the same technical rules, the Talent Pool gives teams an objective way to rank people based on their actual coding ability.
+
+## 6. Real-Time Multimodal Pipelines
 
 Capturing human interaction for an autonomous agent is technically demanding. We had to solve for two main things: data shape and latency.
 
@@ -268,7 +297,7 @@ For the **Video Feed**, we stream 1 frame per second. We found this to be the "s
 
 For **Audio**, we use 16kHz mono PCM. This is streamed up to our Java server, which then pipes it directly into the Gemini Live API via the **Google ADK**. We spent a lot of time on the `audio.service.ts` to ensure that audio chunks are small enough for low latency but large enough to maintain quality.
 
-## 6. Security: The Sentinel Mode
+## 7. Security: The Sentinel Mode
 
 Integrity is non-negotiable for professional assessments. We implemented what we call **Sentinel Mode** to protect the session:
 
@@ -276,7 +305,7 @@ Integrity is non-negotiable for professional assessments. We implemented what we
 2. **Environmental Breach Detection**: We listen for "blur" events. If the candidate switches windows, it’s logged as a breach, and the agent verbally warns them to focus.
 3. **Vision-Based Security Monitoring**: Since Gemini is looking at the 1fps feed, it natively detects unauthorized objects (phones, tablets) or external participants in the room.
 
-## 7. Engineering Decisions
+## 8. Engineering Decisions
 
 Every engineering project is a series of trade-offs.
 
@@ -285,7 +314,7 @@ Every engineering project is a series of trade-offs.
 - **In-Context Logic Verification**: We leveraged Gemini’s specialized reasoning models to verify logic in real-time. This avoided the overhead of a formal execution sandbox while allowing the agent to provide feedback on implementation details as they unfold.
 - **Memory-First State Management**: We use Redis for all active session data (transcripts, flags, editor state). This sacrifices the "safety" of persistent disk writes for the sub-millisecond updates required in a live, voice-driven environment.
 
-## 8. Closing Thoughts and Future Roadmap
+## 9. Closing Thoughts and Future Roadmap
 
 Building Owlyn for the **#GeminiLiveAgentChallenge** allowed us to move beyond traditional AI interviews by creating a truly live and immersive workspace. By synchronizing voice and vision, we’ve enabled both high-fidelity technical assessments and a persistent assistant mode for everyday development. We see this multimodal synergy as the new standard for how technical talent is discovered, validated, and empowered in a high-stakes engineering world.
 

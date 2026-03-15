@@ -30,51 +30,69 @@ export function useMediaManager() {
   };
 
   const publishMedia = async (onSuccess?: () => void) => {
-    if (!localParticipant) return;
+    if (!localParticipant || isStartingMedia) return;
     setIsStartingMedia(true);
     setMediaError(null);
 
     try {
-      await localParticipant.setMicrophoneEnabled(true);
-      await localParticipant.setCameraEnabled(true);
+      // 1. Microphone
+      const micPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Microphone);
+      if (micPublications.length === 0 || !micPublications[0].track) {
+        await localParticipant.setMicrophoneEnabled(true);
+        // Sequential delay to prevent SDP BUNDLE collision
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+
+      // 2. Camera
+      const camPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Camera);
+      if (camPublications.length === 0 || !camPublications[0].track) {
+        await localParticipant.setCameraEnabled(true);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
       
-      let sourceId: string | undefined;
-      if (window.owlyn?.desktop?.getSources) {
-        try {
-          const sources = await window.owlyn.desktop.getSources();
-          const screenSources = sources.filter((s: any) => s.name?.toLowerCase().includes("screen"));
-          const source = screenSources[0] || sources[0];
-          sourceId = source?.id;
-        } catch (e) {
-          console.warn("Failed to get desktop sources:", e);
+      // 3. Screen Share
+      if (!hasPublishedScreenShareTrack()) {
+        let sourceId: string | undefined;
+        if (window.owlyn?.desktop?.getSources) {
+          try {
+            const sources = await window.owlyn.desktop.getSources();
+            const screenSources = sources.filter((s: any) => s.name?.toLowerCase().includes("screen"));
+            const source = screenSources[0] || sources[0];
+            sourceId = source?.id;
+          } catch (e) {
+            console.warn("MediaManager: Failed to get desktop sources:", e);
+          }
         }
-      }
 
-      if (sourceId) {
-        const screenStream = await (navigator.mediaDevices as any).getUserMedia({
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: "desktop",
-              chromeMediaSourceId: sourceId,
+        if (sourceId) {
+          const screenStream = await (navigator.mediaDevices as any).getUserMedia({
+            audio: false, // Explicitly disable screen audio to avoid opus collision
+            video: {
+              mandatory: {
+                chromeMediaSource: "desktop",
+                chromeMediaSourceId: sourceId,
+              },
             },
-          },
-        });
-        const screenTrack = screenStream.getVideoTracks()[0];
-        await localParticipant.publishTrack(screenTrack, { 
-          name: "screen_share", 
-          source: Track.Source.ScreenShare 
-        });
-      } else {
-        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
-      }
+          });
+          const screenTrack = screenStream.getVideoTracks()[0];
+          await localParticipant.publishTrack(screenTrack, { 
+            name: "screen_share", 
+            source: Track.Source.ScreenShare 
+          });
+        } else {
+          await localParticipant.setScreenShareEnabled(true, { 
+            contentHint: "text",
+            audio: false // CRITICAL fallback
+          });
+        }
 
-      const screenShareEnabled = await waitForScreenSharePublication();
-      if (!screenShareEnabled) {
-         setMediaError("Screen share authorization cancelled.");
-         setIsStartingMedia(false);
-         setIsMediaReady(false);
-         return;
+        const screenShareEnabled = await waitForScreenSharePublication();
+        if (!screenShareEnabled && !hasPublishedScreenShareTrack()) {
+           setMediaError("Screen share authorization cancelled.");
+           setIsStartingMedia(false);
+           setIsMediaReady(false);
+           return;
+        }
       }
 
       setIsMediaReady(true);

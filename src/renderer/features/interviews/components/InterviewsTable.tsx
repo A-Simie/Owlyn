@@ -5,7 +5,7 @@ import { useClipboard } from "@/hooks/useClipboard";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   UPCOMING: { label: "Upcoming", color: "text-blue-400", bg: "bg-blue-500/10 border-blue-500/20" },
-  ACTIVE: { label: "Active", color: "text-primary", bg: "bg-primary/10 border-primary/20" },
+  ACTIVE: { label: "Live", color: "text-red-400", bg: "bg-red-500/10 border-red-500/20" },
   COMPLETED: { label: "Completed", color: "text-green-400", bg: "bg-green-500/10 border-green-500/20" },
   CANCELLED: { label: "Cancelled", color: "text-slate-500", bg: "bg-slate-500/10 border-slate-500/20" },
 };

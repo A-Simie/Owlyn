@@ -36,9 +36,9 @@ export default function InterviewsListPage() {
 
   const tabs = [
     { key: "all", label: "All", count: stats.all },
+    { key: "LIVE", label: "Live", count: stats.live },
     { key: "UPCOMING", label: "Upcoming", count: stats.upcoming },
     { key: "COMPLETED", label: "Completed", count: stats.completed },
-    { key: "CANCELLED", label: "Cancelled", count: stats.cancelled },
   ] as const;
 
   return (
@@ -53,7 +53,7 @@ export default function InterviewsListPage() {
         </button>
       </div>
 
-      <InterviewsStats upcoming={stats.upcoming} completed={stats.completed} total={stats.all} />
+      <InterviewsStats live={stats.live} upcoming={stats.upcoming} completed={stats.completed} total={stats.all} />
 
       <div className="flex gap-1 mb-6 bg-[#0d0d0d] p-1 rounded-lg border border-primary/10 w-fit">
         {tabs.map((tab) => (

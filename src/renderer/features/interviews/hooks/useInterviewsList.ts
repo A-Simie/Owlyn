@@ -3,7 +3,7 @@ import { interviewsApi } from "@/api/interviews.api";
 import { extractApiError } from "@/lib/api-error";
 import type { InterviewListItem } from "@shared/schemas/interview.schema";
 
-export type TabFilter = "all" | "UPCOMING" | "COMPLETED" | "CANCELLED";
+export type TabFilter = "all" | "UPCOMING" | "COMPLETED" | "LIVE";
 
 export function useInterviewsList() {
   const [interviews, setInterviews] = useState<InterviewListItem[]>([]);
@@ -29,9 +29,13 @@ export function useInterviewsList() {
   }, [fetchInterviews]);
 
   const filteredInterviews = useMemo(() => {
-    return activeTab === "all"
-      ? interviews
-      : interviews.filter((i) => i.status === activeTab);
+    if (activeTab === "all") return interviews;
+    const statusMap: Record<string, string> = {
+      LIVE: "ACTIVE",
+      UPCOMING: "UPCOMING",
+      COMPLETED: "COMPLETED"
+    };
+    return interviews.filter((i) => i.status === (statusMap[activeTab] || activeTab));
   }, [interviews, activeTab]);
 
   const pagedInterviews = useMemo(() => {
@@ -43,7 +47,7 @@ export function useInterviewsList() {
     all: interviews.length,
     upcoming: interviews.filter(i => i.status === "UPCOMING").length,
     completed: interviews.filter(i => i.status === "COMPLETED").length,
-    cancelled: interviews.filter(i => i.status === "CANCELLED").length
+    live: interviews.filter(i => i.status === "ACTIVE").length
   }), [interviews]);
 
   return {

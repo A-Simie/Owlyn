@@ -51,8 +51,7 @@ function AssistantInterface() {
   const { 
     isConnected, 
     error, 
-    isSharingScreen, 
-    enableAssistantMedia, 
+    isSharingScreen,  
     handleEnd 
   } = useAssistantSession();
 
@@ -79,7 +78,6 @@ function AssistantInterface() {
           lastTranscript={lastTranscript}
           isSharingScreen={isSharingScreen}
           error={error}
-          onEnableMedia={enableAssistantMedia}
         />
         
         {isLarge && !error && (

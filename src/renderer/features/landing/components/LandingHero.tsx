@@ -21,7 +21,7 @@ export function LandingHero() {
         initial="hidden"
         animate="visible"
       >
-        <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/30 bg-primary/5 mb-8">
+        <motion.div variants={fadeUp} custom={0} className="inline-flex items-center gap-2 px-3 py-1 mt-10 rounded-full border border-primary/30 bg-primary/5 mb-8">
           <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
           <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-primary">Owlyn AI</span>
         </motion.div>

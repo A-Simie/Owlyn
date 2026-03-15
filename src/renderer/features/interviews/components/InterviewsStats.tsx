@@ -1,12 +1,14 @@
 interface InterviewsStatsProps {
+  live: number;
   upcoming: number;
   completed: number;
   total: number;
 }
 
-export function InterviewsStats({ upcoming, completed, total }: InterviewsStatsProps) {
+export function InterviewsStats({ live, upcoming, completed, total }: InterviewsStatsProps) {
   return (
-    <div className="grid grid-cols-3 gap-4 mb-8">
+    <div className="grid grid-cols-4 gap-4 mb-8">
+      <StatCard label="Live" value={live} icon="sensors" colorClass="text-red-400" bgClass="bg-red-500/10" />
       <StatCard label="Upcoming" value={upcoming} icon="schedule" colorClass="text-blue-400" bgClass="bg-blue-500/10" />
       <StatCard label="Completed" value={completed} icon="check_circle" colorClass="text-green-400" bgClass="bg-green-500/10" />
       <StatCard label="Total" value={total} icon="owl" colorClass="text-primary" bgClass="bg-primary/10" />

@@ -43,6 +43,15 @@ export function useAssistantSession() {
     const sessionToken = room.localParticipant?.sid || (room as any).sid || room.name;
     if (!sessionToken || signaledJoinedRef.current === sessionToken || !localParticipant || room.state !== ConnectionState.Connected) return;
     
+    // Safety check: ensure we actually have the tracks published before signaling readiness
+    const hasMic = Array.from(localParticipant.trackPublications.values()).some(p => p.source === Track.Source.Microphone && !!p.track);
+    const hasScreen = hasPublishedScreenShareTrack();
+    
+    if (!hasMic || !hasScreen) {
+      console.log("Assistant: Delaying USER_JOINED signal until media is fully published");
+      return;
+    }
+
     try {
       const encoder = new TextEncoder();
       localParticipant.publishData(
@@ -54,7 +63,7 @@ export function useAssistantSession() {
     } catch (err) {
       console.warn("Assistant: Failed to signal USER_JOINED", err);
     }
-  }, [room, localParticipant]);
+  }, [room, localParticipant, hasPublishedScreenShareTrack]);
 
   const waitForScreenSharePublication = async (timeoutMs = 15000) => {
     const startedAt = Date.now();
@@ -64,7 +73,6 @@ export function useAssistantSession() {
     }
     return false;
   };
-
   const enableAssistantMedia = useCallback(async () => {
     if (mediaRequestPendingRef.current || !localParticipant || room.state !== ConnectionState.Connected) return;
     
@@ -72,14 +80,20 @@ export function useAssistantSession() {
     setError(null);
 
     try {
-      // 1. Handle Microphone first (standard API)
+      // 1. Handle Microphone first
       const micPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Microphone);
-      if (micPublications.length === 0 || !micPublications[0].track) {
+      const isMicActive = micPublications.some(p => !!p.track && !p.isMuted);
+      
+      if (!isMicActive) {
+        console.log("Assistant: Enabling microphone...");
         await localParticipant.setMicrophoneEnabled(true);
+        // Extended delay to let the BUNDLE negotiation stabilize
+        await new Promise(resolve => setTimeout(resolve, 1500));
       }
 
       // 2. Handle Screen Share
       if (!hasPublishedScreenShareTrack()) {
+        console.log("Assistant: Enabling screen share...");
         let sourceId: string | undefined;
         if (window.owlyn?.desktop?.getSources) {
           try {
@@ -95,6 +109,7 @@ export function useAssistantSession() {
         }
 
         const screenTrackOptions: ScreenShareCaptureOptions = {
+          audio: false, // CRITICAL: Explicitly disable screen audio to avoid opus collision
           resolution: VideoPresets.h1080.resolution,
           contentHint: "text",
           ...(sourceId ? { deviceId: { exact: sourceId } as any } : {})
@@ -102,31 +117,34 @@ export function useAssistantSession() {
 
         if (sourceId) {
           const tracks = await createLocalScreenTracks(screenTrackOptions);
-          if (tracks.length > 0) {
-            await localParticipant.publishTrack(tracks[0]);
+          // Only publish video tracks
+          const videoTrack = tracks.find(t => t.kind === Track.Kind.Video);
+          if (videoTrack) {
+            await localParticipant.publishTrack(videoTrack);
           }
         } else {
-          await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+          await localParticipant.setScreenShareEnabled(true, { 
+            contentHint: "text",
+            audio: false // CRITICAL fallback
+          });
         }
 
         const published = await waitForScreenSharePublication();
         if (!published) {
+          // Check if we already got it through some other event
           if (!hasPublishedScreenShareTrack()) {
-            setError("Screen sharing is required. Please authorize screen sharing.");
+            console.warn("Assistant: Screen share publication timed out");
           }
-          mediaRequestPendingRef.current = false;
-          return;
         }
       }
 
       setIsSharingScreen(true);
-      signalUserJoined();
+      // Wait a bit more before signaling to ensure track state is propagated to remote
+      setTimeout(() => signalUserJoined(), 1000);
     } catch (err: any) {
-      console.warn("Media access failed", err);
-      // Only set UI error if we definitely don't have a track and aren't ending
-      if (!isEnding && !hasPublishedScreenShareTrack()) {
-        setError("Camera and Microphone access are required for assistant mode.");
-      }
+      console.warn("Assistant: Media access failed", err);
+      // We don't show the error in UI as per user request to remove "retry nonsense"
+      // But we log it for debugging
     } finally {
       mediaRequestPendingRef.current = false;
     }

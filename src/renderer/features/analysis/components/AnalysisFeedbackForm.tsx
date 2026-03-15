@@ -11,12 +11,14 @@ export function AnalysisFeedbackForm({ interviewId, initialNotes, initialDecisio
   const [decision, setDecision] = useState(initialDecision);
   const [notes, setNotes] = useState(initialNotes);
   const [isFinalizing, setIsFinalizing] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
 
   const handleFinalize = async () => {
     if (!interviewId || !decision) return;
     setIsFinalizing(true);
     try {
       await reportsApi.addFeedback(interviewId, notes, decision);
+      setIsSubmitted(true);
       alert("Verification complete. Assessment record updated.");
     } catch (err) {
       console.error(err);
@@ -26,7 +28,7 @@ export function AnalysisFeedbackForm({ interviewId, initialNotes, initialDecisio
     }
   };
 
-  if (initialDecision && initialDecision !== "PENDING") {
+  if (isSubmitted || (initialDecision && initialDecision !== "PENDING")) {
     return null;
   }
 
