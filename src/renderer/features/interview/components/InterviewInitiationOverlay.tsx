@@ -82,7 +82,7 @@ export default function InterviewInitiationOverlay({
             <button
               onClick={onPublishMedia}
               disabled={isStartingMedia}
-              className="group relative w-full py-5 bg-primary text-black font-black uppercase tracking-[0.3em] text-[13px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_50px_rgba(197,159,89,0.3)] flex items-center justify-center gap-4 overflow-hidden"
+              className="group relative w-full py-3 bg-primary text-black font-black uppercase tracking-[0.3em] text-[13px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all shadow-[0_0_50px_rgba(197,159,89,0.3)] flex items-center justify-center gap-4 overflow-hidden"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-shimmer" />
               {isStartingMedia ? (

@@ -35,11 +35,11 @@ export function useAssistantSession() {
     );
   };
 
-  const waitForScreenSharePublication = async (timeoutMs = 3500) => {
+  const waitForScreenSharePublication = async (timeoutMs = 15000) => {
     const startedAt = Date.now();
     while (Date.now() - startedAt < timeoutMs) {
       if (hasPublishedScreenShareTrack()) return true;
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
     return false;
   };
@@ -49,7 +49,6 @@ export function useAssistantSession() {
     setError(null);
     try {
       let sourceId: string | undefined;
-      // In Electron, we can pre-select the screen to avoid the picker
       if (window.owlyn?.desktop?.getSources) {
         try {
           const sources = await window.owlyn.desktop.getSources();
@@ -82,20 +81,20 @@ export function useAssistantSession() {
       if (!published) {
         setError("Screen sharing is required. Please authorize screen sharing.");
         setIsSharingScreen(false);
+        autoTriggeredRef.current = false; // Allow retry
         return;
       }
       setIsSharingScreen(true);
-    } catch (err) {
+    } catch (err: any) {
       console.warn("Screen share access failed", err);
       setError("Screen sharing is required for assistant mode.");
       setIsSharingScreen(false);
+      autoTriggeredRef.current = false; // Allow retry
       return;
     }
 
     try {
       await localParticipant.setMicrophoneEnabled(true);
-      
-      // Signal again after media is enabled to ensure the agent knows we are ready
       const encoder = new TextEncoder();
       localParticipant.publishData(
         encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
@@ -108,14 +107,26 @@ export function useAssistantSession() {
     }
   };
 
+  // Auto-start media when everything is ready
+  useEffect(() => {
+    if (
+      !localParticipant || 
+      room.state !== ConnectionState.Connected || 
+      autoTriggeredRef.current || 
+      isEnding || 
+      isSharingScreen
+    ) return;
+
+    console.log("Assistant: Auto-triggering media enablement...");
+    autoTriggeredRef.current = true;
+    enableAssistantMedia().catch(err => {
+      console.error("Assistant: Auto-start failed", err);
+      autoTriggeredRef.current = false;
+    });
+  }, [localParticipant, room.state, isEnding, isSharingScreen]);
+
   useEffect(() => {
     if (!room) return;
-
-    const autoStartMedia = async () => {
-      if (autoTriggeredRef.current || isEnding || isSharingScreen) return;
-      autoTriggeredRef.current = true;
-      await enableAssistantMedia();
-    };
 
     const handleData = (payload: Uint8Array) => {
       try {
@@ -139,28 +150,16 @@ export function useAssistantSession() {
         const type = msg.type || msg.event;
         const text = msg.text || msg.content || msg.message || msg.transcript;
         
-        console.log("Assistant: Data message received", type, !!text);
-
-        switch (type) {
-          case "transcript":
-          case "text":
-          case "speech":
-          case "assistant_message":
-            if (text) {
-              addTranscript({
-                id: msg.id || Date.now().toString(),
-                timestamp: new Date().toISOString(),
-                speaker: msg.speaker || "ai",
-                text: text,
-              });
-              if (msg.speaker !== "candidate") setCurrentQuestion(text);
-            }
-            break;
-          case "AI_SPEAKING":
-            setAiSpeaking(msg.active);
-            break;
-          default:
-            console.log("Assistant: Unhandled message type", msg);
+        if (type === "AI_SPEAKING") {
+          setAiSpeaking(msg.active);
+        } else if (text) {
+          addTranscript({
+            id: msg.id || Date.now().toString(),
+            timestamp: new Date().toISOString(),
+            speaker: msg.speaker || "ai",
+            text: text,
+          });
+          if (msg.speaker !== "candidate") setCurrentQuestion(text);
         }
       } catch (err) {
         console.warn("AI command error:", err);
@@ -168,70 +167,47 @@ export function useAssistantSession() {
     };
 
     const handleTranscription = (transcription: any) => {
-      console.log("Assistant: Transcription received", transcription.participantIdentity);
       transcription.segments.forEach((segment: any) => {
         if (segment.text.trim()) {
-          const isLocal = transcription.participantIdentity === room.localParticipant.identity;
-          const text = segment.text.trim();
+          const isLocal = transcription.participantIdentity === room.localParticipant?.identity;
           addTranscript({
-            id: segment.id || `seg-${transcription.participantIdentity}`,
+            id: segment.id || `seg-${Date.now()}`,
             timestamp: new Date().toISOString(),
             speaker: isLocal ? "candidate" : "ai",
-            text: text,
+            text: segment.text.trim(),
           });
-          if (!isLocal) setCurrentQuestion(text);
+          if (!isLocal) setCurrentQuestion(segment.text.trim());
         }
       });
     };
 
-    const checkAndSignal = () => {
-      console.log("Assistant: Room state is", room.state);
-      if (room.state === ConnectionState.Connected) {
-        setIsConnected(true);
-        console.log("Assistant: Connected to room, waiting for media to signal USER_JOINED");
-        void autoStartMedia();
-      }
-    };
-
-    const handleParticipantJoined = (p: any) => {
-      console.log("Assistant: Participant joined", p.identity, p.metadata);
-    };
-
-    const handleParticipantDisconnected = (p: any) => {
-      console.log("Assistant: Participant disconnected", p.identity);
-    };
+    const handleDisconnect = () => setIsConnected(false);
+    const handleConnect = () => setIsConnected(true);
 
     room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
-    room.on(RoomEvent.Connected, checkAndSignal);
-    room.on(RoomEvent.Disconnected, () => setIsConnected(false));
-    room.on(RoomEvent.ParticipantConnected, handleParticipantJoined);
-    room.on(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+    room.on(RoomEvent.Connected, handleConnect);
+    room.on(RoomEvent.Disconnected, handleDisconnect);
 
-    // Monitor local tracks to detect when screen share stops
+    if (room.state === ConnectionState.Connected) setIsConnected(true);
+
+    // Track unpublication
     const handleTrackUnpublished = (publication: any) => {
       if (publication.source === Track.Source.ScreenShare) {
-        console.log("Assistant: Screen share unpublished, ending session...");
         setIsSharingScreen(false);
         handleEnd();
       }
     };
     localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
 
-    if (room.state === ConnectionState.Connected) {
-      checkAndSignal();
-      void autoStartMedia();
-    }
-
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.TranscriptionReceived, handleTranscription);
-      room.off(RoomEvent.Connected, checkAndSignal);
-      room.off(RoomEvent.ParticipantConnected, handleParticipantJoined);
-      room.off(RoomEvent.ParticipantDisconnected, handleParticipantDisconnected);
+      room.off(RoomEvent.Connected, handleConnect);
+      room.off(RoomEvent.Disconnected, handleDisconnect);
       localParticipant?.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
     };
-  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, isEnding, isSharingScreen]);
+  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking]);
 
   const handleEnd = async () => {
     if (isEnding) return;

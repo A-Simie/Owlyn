@@ -1,61 +1,76 @@
 # Owlyn
 
-A live multimodal AI interview system that conducts real-time AI-powered interviews with live video, audio, and face tracking. Built for enterprise hiring teams to standardize technical interviews, detect candidate engagement, and generate structured performance analysis.
+Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring and developer assistance. By orchestrating low-latency voice, vision-based proctoring, and native code execution through the Gemini Live API, Owlyn provides an immersive, high-fidelity environment for evaluating and empowering technical talent.
 
 ## Features
 
-### Live Multimodal Interviews
+### 1. Live Multimodal Interviews
+- **Gemini Live Integration** - Sub-second conversational responses for natural, real-time dialogue.
+- **Unified Workspace** - Integrated **Monaco Editor** (20+ languages), canvas-based **Whiteboard**, and **Notes** app.
+- **Hardware Diagnostics** - Comprehensive pre-interview checks for camera, microphone, and network health.
 
-- **Real-time Conversation** - Low-latency WebSocket streaming for instant AI responses
-- **Embedded Tools** - Integrated Code Editor, Whiteboard, and Notes during the session
-- **Hardware Diagnostics** - Pre-interview checks for camera, microphone, and network
+### 2. The Sentinel Ecosystem (Proctoring)
+- **Integrity Sentinel** - Real-time vision-based monitoring to detect unauthorized devices or participants.
+- **Workspace Sentinel** - Analyzes implementation logic and code structure as it unfolds in the editor.
+- **Lockdown Mode** - OS-level security via Electron to prevent navigation or unauthorized screen recording.
 
-### AI-Powered Proctoring
+### 3. Assistant Mode
+- **Multimodal Companion** - A floating desktop widget that sees your screen and hears your reasoning.
+- **Ambient Debugging** - Context-aware assistance for architecting, debugging, and pair-programming in real-time.
 
-- **Face & Eye Tracking** - Chromium FaceDetector API for real-time gaze visualization
-- **Lockdown Mode** - Secure environment preventing unauthorized resource access
-- **Candidate Analysis** - Automatic post-interview reports with transcripts and metrics
-
-### Customization & Tracking
-
-- **AI Persona** - Tailor the interviewer's personality, domains, and difficulty level
-- **Talent Pool** - Dashboard for managing candidate pipelines and interview schedules
+### 4. Customization & Analytics
+- **Persona Engine** - Configure behavioral scalars (Empathy, Analytical Depth, Directness) and linguistic localization.
+- **Strategic Assessment** - Unbiased, data-driven reports with competency radar charts and full session transcripts.
 
 ## Tech Stack
 
-### Desktop Core
+### Desktop Layer
+- **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
+- **Framer Motion** - Smooth transitions and micro-animations.
+- **Monaco Editor** - Professional-grade code editing engine.
 
-- **Electron 33** - Cross-platform desktop shell environment
-- **electron-vite + Vite** - High-performance build system
+### Orchestration Layer
+- **Spring Boot 4** - Centralized session orchestration and agent routing.
+- **LiveKit WebRTC** - Low-latency media backbone for synchronized audio/video feeds.
+- **Redis** - Sub-millisecond state updates for active transcripts and session data.
+- **PostgreSQL (Google Cloud SQL)** - Persistent storage for interview metrics and talent data.
 
-### Frontend Structure
-
-- **React 18** + **TypeScript** - Strongly typed UI layer
-- **Tailwind CSS** - Utility-first styling framework
-- **Framer Motion** - Fluid animations and transitions
-
-### State & Communication
-
-- **Zustand** - High-performance atomic state management
-- **@tanstack/react-query** - API state management and caching
-- **WebSockets** - Real-time continuous media chunk streaming
-- **Zod** - Runtime type validation for shared schemas
+### Intelligence Layer
+- **Gemini Live API** - Powers the conversational interview loop.
+- **Gemini 3.1 Pro/Flash** - Specialized agents for structural vision and strategic assessment.
 
 ## Getting Started
 
 ### Prerequisites
-
 - Node.js 18+
-- npm or yarn
+- npm (for frontend)
+- Java 17+ & Maven (for backend)
+
+### Testing the Admin Flow
+To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:
+- **Email**: `owlyn.admin@gmail.com`
+- **Password**: [Any password of your choice]
+- **OTP Code**: `123456`
 
 ### Installation
 
 ```bash
-# Install dependencies
-npm install
+# 1. Clone the frontend
+git clone https://github.com/A-Simie/Owlyn.git
+cd Owlyn
 
-# Start development server
+# 2. Configure Environment Variables
+# REQUIRED: Copy the example env and update the URLs for your local setup
+cp .env.example .env
+
+# 3. Install and Run Frontend
+npm install
 npm run dev
+
+# 4. Clone and Run Backend
+git clone https://github.com/Akeem1955/OwlynBackend.git
+cd OwlynBackend
+mvn spring-boot:run
 ```
 
 ### Build & Production
@@ -112,9 +127,9 @@ Meet the engineers behind Owlyn:
 | Contributor              | GitHub Profile                                     |
 | :----------------------- | :------------------------------------------------- |
 | **Mosimiloluwa Adebisi** | [@A-Simie](https://github.com/A-Simie)             |
-| **Akeem**                | [@akeem](https://github.com/Akeem1955) |
-| **Rahmannugar**          | [@Rahmannugar](https://github.com/Rahmannugar)     |
+| **Akeem Adetunji**       | [@akeem](https://github.com/Akeem1955)             |
+| **Adenuga Abdulrahmon**  | [@Rahmannugar](https://github.com/Rahmannugar)     |
 
 ## License
 
-Proprietary. All rights reserved.
+Distributed under the MIT License. See `LICENSE` for more information.

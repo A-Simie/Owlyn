@@ -35,19 +35,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </section>
-
-        {/* Social Proof */}
-        <section className="py-20 border-t divider bg-white/80 dark:bg-black/40 overflow-hidden">
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <p className="text-[11px] uppercase tracking-[0.4em] text-primary font-bold mb-12">Trusted by the world's most discerning talent partners</p>
-            <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24">
-              {["QUANTUM", "STRATOS", "VANGUARD", "AETHER", "NODAL"].map((name) => (
-                <div key={name} className="text-2xl font-bold tracking-tighter text-heading opacity-30 hover:opacity-100 transition-opacity cursor-default">{name}</div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </main>
+    </main>
 
       <LandingFooter />
     </div>
