@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   useRemoteParticipants,
@@ -8,15 +8,13 @@ import {
   RoomAudioRenderer,
 } from "@livekit/components-react";
 import {
-  ConnectionState,
-  LocalAudioTrack,
-  LocalVideoTrack,
+
+  Track,
 } from "livekit-client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useMediaStore } from "@/stores/media.store";
-import { useSessionStore } from "@/stores/session.store";
 import { candidateApi } from "@/api/candidate.api";
 
 // Hooks
@@ -38,11 +36,9 @@ type Tab = "code" | "whiteboard" | "notes";
 export default function InterviewPage() {
   const { livekitToken } = useCandidateStore();
   const navigate = useNavigate();
-  const [shouldConnect, setShouldConnect] = useState(true);
-  const [isCommenced, setIsCommenced] = useState(false);
 
   if (!livekitToken) {
-    navigate("/calibration");
+    navigate("/auth?step=candidate-options");
     return null;
   }
 
@@ -50,9 +46,20 @@ export default function InterviewPage() {
     <LiveKitRoom
       token={livekitToken}
       serverUrl={import.meta.env.VITE_LIVEKIT_URL}
-      connect={shouldConnect}
+      connect={true}
       className="h-screen w-full bg-[#0B0B0B]"
     >
+      <InterviewInterfaceWrapper />
+    </LiveKitRoom>
+  );
+}
+
+function InterviewInterfaceWrapper() {
+  const [isCommenced, setIsCommenced] = useState(false);
+  const [shouldConnect, setShouldConnect] = useState(false);
+
+  return (
+    <>
       <InterviewInterface
         isCommenced={isCommenced}
         setIsCommenced={setIsCommenced}
@@ -60,7 +67,7 @@ export default function InterviewPage() {
         setShouldConnect={setShouldConnect}
       />
       {isCommenced && <RoomAudioRenderer />}
-    </LiveKitRoom>
+    </>
   );
 }
 
@@ -82,7 +89,7 @@ function InterviewInterface({
     token,
     toolsEnabled,
   } = useCandidateStore();
-  const { stopAll } = useMediaStore();
+  
   const room = useRoomContext();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useRemoteParticipants();
@@ -94,25 +101,60 @@ function InterviewInterface({
   const [isProcessing, setIsProcessing] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [showCompletion, setShowCompletion] = useState(false);
+  
+  const signaledJoinedRef = useRef<string | null>(null);
+  const forcedEndHandledRef = useRef(false);
 
   // Modular Hooks
+  const {
+    publishMedia,
+    isMediaReady,
+    isStartingMedia,
+    mediaError,
+  } = useMediaManager();
+
+  const handleEndSession = async (force = false, reason = "Interview completed by candidate") => {
+    if (isEnding) return;
+    if (force || confirm("End session?")) {
+      setIsEnding(true);
+      forcedEndHandledRef.current = true;
+
+      if (accessCode && token) {
+        try { await candidateApi.notifySessionEnded(accessCode, token, reason); } catch {}
+        try { await candidateApi.completeInterview(accessCode, token); } catch {}
+      }
+      
+      // Stop screen share specifically but leave cam/mic for cleaner transition
+      useMediaStore.getState().stopScreenShare();
+      
+      if (localParticipant) {
+        localParticipant.trackPublications.forEach((pub) => {
+          if (pub.track && pub.source === Track.Source.ScreenShare) {
+            localParticipant.unpublishTrack(pub.track);
+          }
+        });
+      }
+
+      await room?.disconnect();
+      await candidateApi.releaseLockdown();
+      
+      if (!isAssistantMode) setShowCompletion(true);
+      else finalizeExit();
+    }
+  };
+
   const {
     isConnected,
     proctorWarning,
     localFaceWarning,
     setLocalFaceWarning,
+    activityEvents,
     pushActivityEvent,
     highlightedLine,
     showMediaRecovery,
+    setShowMediaRecovery,
     recoveryType,
-  } = useInterviewSession(isCommenced, isEnding, (force?: boolean, reason?: string) => handleEndSession(force, reason));
-
-  const {
-    isMediaReady,
-    isStartingMedia,
-    mediaError,
-    publishMedia,
-  } = useMediaManager();
+  } = useInterviewSession(isCommenced, isEnding, handleEndSession);
 
   const isAiSpeaking = isAiSpeakingStore || remoteParticipants.some((p) => p.isSpeaking);
 
@@ -138,18 +180,14 @@ function InterviewInterface({
   }, [isAssistantMode]);
 
   useEffect(() => {
-    if (isConnected && isMediaReady && isCommenced && localParticipant) {
+    const sessionId = (room as any).sid || room.name;
+    if (isConnected && isMediaReady && isCommenced && localParticipant && signaledJoinedRef.current !== sessionId) {
       const encoder = new TextEncoder();
       localParticipant.publishData(encoder.encode(JSON.stringify({ event: "USER_JOINED" })), { reliable: true });
+      signaledJoinedRef.current = sessionId;
+      console.log("Interview: Signaled USER_JOINED for session", sessionId);
     }
-  }, [isConnected, isMediaReady, isCommenced, localParticipant]);
-
-  // Global safety cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopAll();
-    };
-  }, [stopAll]);
+  }, [isConnected, isMediaReady, isCommenced, localParticipant, room]);
 
   useEffect(() => {
     if (localParticipant && isConnected) {
@@ -158,56 +196,40 @@ function InterviewInterface({
     }
   }, [activeTab, localParticipant, isConnected]);
 
+  // Cleanup all media on unmount
+  useEffect(() => {
+    return () => {
+      useMediaStore.getState().stopAll();
+    };
+  }, []);
+
+  const finalizeExit = () => {
+    resetInterview();
+    useMediaStore.getState().stopAll();
+    clearSession();
+    navigate("/auth?step=candidate-options");
+  };
+
   const toggleWidget = async () => {
-    const nextState = !isWidget;
-    setIsWidget(nextState);
-    if (window.owlyn?.window?.setWidgetMode) await window.owlyn.window.setWidgetMode(nextState);
+    const newState = !isWidget;
+    setIsWidget(newState);
+    if (window.owlyn?.window?.setWidgetMode) {
+      await window.owlyn.window.setWidgetMode(newState);
+    }
   };
 
   const handleRunCode = async () => {
-    if (isEnding || !localParticipant || room.state !== ConnectionState.Connected) return;
+    if (isProcessing) return;
     setIsProcessing(true);
     try {
-      const encoder = new TextEncoder();
-      await localParticipant.publishData(encoder.encode(JSON.stringify({ event: "RUN_CODE" })), { reliable: true });
-    } catch (err) {
-      console.warn("Run Code failed:", err);
-    }
-    setTimeout(() => setIsProcessing(false), 3000);
-  };
-
-  const finalizeExit = () => {
-    if (window.owlyn?.window?.setWidgetMode) window.owlyn.window.setWidgetMode(false);
-    resetInterview();
-    useSessionStore.getState().reset();
-    clearSession();
-    navigate(isAssistantMode ? "/auth?step=candidate-options" : "/analysis");
-  };
-
-  const handleEndSession = async (force = false, reason = "USER_ENDED") => {
-    if (isEnding) return;
-    if (force || confirm("End session?")) {
-      setIsEnding(true);
-      if (accessCode && token) {
-        try { await candidateApi.notifySessionEnded(accessCode, token, reason); } catch {}
-        try { await candidateApi.completeInterview(accessCode, token); } catch {}
-      }
       if (localParticipant) {
-        localParticipant.trackPublications.forEach((pub) => {
-          if (pub.track) {
-            pub.track.stop();
-            if (pub.track instanceof LocalVideoTrack || pub.track instanceof LocalAudioTrack) {
-              // @ts-ignore
-              localParticipant.unpublishTrack(pub.track);
-            }
-          }
-        });
+        const encoder = new TextEncoder();
+        localParticipant.publishData(encoder.encode(JSON.stringify({ event: "RUN_CODE", code })), { reliable: true });
       }
-      await room?.disconnect();
-      stopAll();
-      await candidateApi.releaseLockdown();
-      if (!isAssistantMode) setShowCompletion(true);
-      else finalizeExit();
+      setTimeout(() => setIsProcessing(false), 2000);
+    } catch (err) {
+      console.error(err);
+      setIsProcessing(false);
     }
   };
 
@@ -228,14 +250,19 @@ function InterviewInterface({
             animate={{ opacity: 1 }}
             className="flex-1 flex flex-col min-h-0"
           >
-            <InterviewHeader isConnected={isConnected} isProcessing={isProcessing} onEndSession={handleEndSession} formatTime={formatTime} isWidget={isWidget} />
+            <InterviewHeader 
+               isConnected={isConnected} 
+               isProcessing={isProcessing}
+               onEndSession={() => handleEndSession()} 
+               formatTime={formatTime}
+            />
             
             <div className="flex-1 flex min-h-0">
-              {!isWidget && availableTabs.length > 0 && (
-                <div className="flex-1 flex flex-col min-w-0 border-r border-white/5 relative">
-                  <div className="flex items-center px-4 gap-1 border-b border-white/5 h-12 bg-black/40">
-                    {availableTabs.map((t) => (
-                      <TabButton key={t} active={activeTab === t} onClick={() => setActiveTab(t)} label={t.charAt(0).toUpperCase() + t.slice(1)} icon={t === "code" ? "code" : t === "whiteboard" ? "draw" : "description"} />
+              {!isWidget && (
+                <div className="flex-1 flex flex-col min-w-0 border-r border-white/5">
+                  <div className="h-14 border-b border-white/5 bg-white/[0.02] flex items-center px-6 gap-2 shrink-0">
+                    {availableTabs.map((tab) => (
+                      <TabButton key={tab} active={activeTab === tab} onClick={() => setActiveTab(tab)} label={tab} icon={tab === "code" ? "code" : tab === "whiteboard" ? "palette" : "description"} />
                     ))}
                     {activeTab === "code" && (
                       <div className="ml-auto flex items-center gap-4">
@@ -286,7 +313,7 @@ function InterviewInterface({
 function TabButton({ active, onClick, label, icon }: { active: boolean; onClick: () => void; label: string; icon: string }) {
   return (
     <button onClick={onClick} className={`flex items-center gap-2 px-4 h-full text-[9px] font-black uppercase tracking-widest transition-all relative ${active ? "text-primary" : "text-slate-500 hover:text-slate-300"}`}>
-      <span className="material-symbols-outlined text-lg">{icon}</span>
+      <span className="material-symbols-outlined text-[14px]">{icon}</span>
       {label}
       {active && <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
     </button>

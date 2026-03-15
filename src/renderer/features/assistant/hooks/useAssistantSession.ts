@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoomContext, useLocalParticipant } from "@livekit/components-react";
-import { ConnectionState, RoomEvent, Track, createLocalScreenTracks, VideoPresets } from "livekit-client";
+import { ConnectionState, RoomEvent, Track, createLocalScreenTracks, VideoPresets, type ScreenShareCaptureOptions } from "livekit-client";
 import { useInterviewStore } from "@/stores/interview.store";
 import { useCandidateStore } from "@/stores/candidate.store";
 import { useMediaStore } from "@/stores/media.store";
@@ -23,9 +23,12 @@ export function useAssistantSession() {
   const [error, setError] = useState<string | null>(null);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  
   const autoTriggeredRef = useRef(false);
+  const mediaRequestPendingRef = useRef(false);
+  const signaledJoinedRef = useRef<string | null>(null);
 
-  const hasPublishedScreenShareTrack = () => {
+  const hasPublishedScreenShareTrack = useCallback(() => {
     if (!localParticipant) return false;
     const publications = Array.from(localParticipant.trackPublications.values());
     return publications.some(
@@ -33,7 +36,25 @@ export function useAssistantSession() {
         publication.source === Track.Source.ScreenShare &&
         !!publication.track,
     );
-  };
+  }, [localParticipant]);
+
+  const signalUserJoined = useCallback(() => {
+    // Only signal if connected and not signaled for this SID
+    const sessionToken = room.localParticipant?.sid || (room as any).sid || room.name;
+    if (!sessionToken || signaledJoinedRef.current === sessionToken || !localParticipant || room.state !== ConnectionState.Connected) return;
+    
+    try {
+      const encoder = new TextEncoder();
+      localParticipant.publishData(
+        encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
+        { reliable: true }
+      );
+      signaledJoinedRef.current = sessionToken;
+      console.log("Assistant: Signaled USER_JOINED for session", sessionToken);
+    } catch (err) {
+      console.warn("Assistant: Failed to signal USER_JOINED", err);
+    }
+  }, [room, localParticipant]);
 
   const waitForScreenSharePublication = async (timeoutMs = 15000) => {
     const startedAt = Date.now();
@@ -44,68 +65,78 @@ export function useAssistantSession() {
     return false;
   };
 
-  const enableAssistantMedia = async () => {
-    if (!localParticipant || room.state !== ConnectionState.Connected) return;
+  const enableAssistantMedia = useCallback(async () => {
+    if (mediaRequestPendingRef.current || !localParticipant || room.state !== ConnectionState.Connected) return;
+    
+    mediaRequestPendingRef.current = true;
     setError(null);
+
     try {
-      let sourceId: string | undefined;
-      if (window.owlyn?.desktop?.getSources) {
-        try {
-          const sources = await window.owlyn.desktop.getSources();
-          const screenSources = sources.filter((s: any) => 
-            s.name?.toLowerCase().includes("screen") || 
-            s.id?.toLowerCase().includes("screen")
-          );
-          sourceId = screenSources[0]?.id || sources[0]?.id;
-          console.log("Assistant: Found Electron screen source:", sourceId);
-        } catch (e) {
-          console.warn("Assistant: Failed to get desktop sources:", e);
-        }
+      // 1. Handle Microphone first (standard API)
+      const micPublications = Array.from(localParticipant.trackPublications.values()).filter(p => p.source === Track.Source.Microphone);
+      if (micPublications.length === 0 || !micPublications[0].track) {
+        await localParticipant.setMicrophoneEnabled(true);
       }
 
-      if (sourceId) {
-        const tracks = await createLocalScreenTracks({
+      // 2. Handle Screen Share
+      if (!hasPublishedScreenShareTrack()) {
+        let sourceId: string | undefined;
+        if (window.owlyn?.desktop?.getSources) {
+          try {
+            const sources = await window.owlyn.desktop.getSources();
+            const screenSources = sources.filter((s: any) => 
+              s.name?.toLowerCase().includes("screen") || 
+              s.id?.toLowerCase().includes("screen")
+            );
+            sourceId = screenSources[0]?.id || sources[0]?.id;
+          } catch (e) {
+            console.warn("Assistant: Failed to get desktop sources:", e);
+          }
+        }
+
+        const screenTrackOptions: ScreenShareCaptureOptions = {
           resolution: VideoPresets.h1080.resolution,
           contentHint: "text",
-          // @ts-ignore
-          deviceId: { exact: sourceId } 
-        });
-        if (tracks.length > 0) {
-          await localParticipant.publishTrack(tracks[0]);
+          ...(sourceId ? { deviceId: { exact: sourceId } as any } : {})
+        };
+
+        if (sourceId) {
+          const tracks = await createLocalScreenTracks(screenTrackOptions);
+          if (tracks.length > 0) {
+            await localParticipant.publishTrack(tracks[0]);
+          }
+        } else {
+          await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
         }
-      } else {
-        await localParticipant.setScreenShareEnabled(true, { contentHint: "text" });
+
+        const published = await waitForScreenSharePublication();
+        if (!published) {
+          if (!hasPublishedScreenShareTrack()) {
+            setError("Screen sharing is required. Please authorize screen sharing.");
+          }
+          mediaRequestPendingRef.current = false;
+          return;
+        }
       }
 
-      const published = await waitForScreenSharePublication();
-      if (!published) {
-        setError("Screen sharing is required. Please authorize screen sharing.");
-        setIsSharingScreen(false);
-        autoTriggeredRef.current = false; // Allow retry
-        return;
-      }
       setIsSharingScreen(true);
+      signalUserJoined();
     } catch (err: any) {
-      console.warn("Screen share access failed", err);
-      setError("Screen sharing is required for assistant mode.");
-      setIsSharingScreen(false);
-      autoTriggeredRef.current = false; // Allow retry
-      return;
+      console.warn("Media access failed", err);
+      // Only set UI error if we definitely don't have a track and aren't ending
+      if (!isEnding && !hasPublishedScreenShareTrack()) {
+        setError("Camera and Microphone access are required for assistant mode.");
+      }
+    } finally {
+      mediaRequestPendingRef.current = false;
     }
+  }, [localParticipant, room.state, hasPublishedScreenShareTrack, signalUserJoined]);
 
-    try {
-      await localParticipant.setMicrophoneEnabled(true);
-      const encoder = new TextEncoder();
-      localParticipant.publishData(
-        encoder.encode(JSON.stringify({ event: "USER_JOINED" })), 
-        { reliable: true }
-      );
-      console.log("Assistant: Re-signaled USER_JOINED after media enablement");
-    } catch (err) {
-      console.warn("Microphone access failed", err);
-      setError("Microphone access is required for assistant mode.");
-    }
-  };
+  // Sync state on mounting or track changes
+  useEffect(() => {
+    const isSharing = hasPublishedScreenShareTrack();
+    setIsSharingScreen(isSharing);
+  }, [localParticipant, hasPublishedScreenShareTrack]);
 
   // Auto-start media when everything is ready
   useEffect(() => {
@@ -113,17 +144,18 @@ export function useAssistantSession() {
       !localParticipant || 
       room.state !== ConnectionState.Connected || 
       autoTriggeredRef.current || 
-      isEnding || 
-      isSharingScreen
+      isEnding
     ) return;
+
+    if (hasPublishedScreenShareTrack()) {
+        signalUserJoined();
+        return;
+    }
 
     console.log("Assistant: Auto-triggering media enablement...");
     autoTriggeredRef.current = true;
-    enableAssistantMedia().catch(err => {
-      console.error("Assistant: Auto-start failed", err);
-      autoTriggeredRef.current = false;
-    });
-  }, [localParticipant, room.state, isEnding, isSharingScreen]);
+    enableAssistantMedia();
+  }, [localParticipant, room.state, isEnding, hasPublishedScreenShareTrack, enableAssistantMedia, signalUserJoined]);
 
   useEffect(() => {
     if (!room) return;
@@ -167,6 +199,7 @@ export function useAssistantSession() {
     };
 
     const handleTranscription = (transcription: any) => {
+      if (!transcription?.segments) return;
       transcription.segments.forEach((segment: any) => {
         if (segment.text.trim()) {
           const isLocal = transcription.participantIdentity === room.localParticipant?.identity;
@@ -181,33 +214,45 @@ export function useAssistantSession() {
       });
     };
 
-    const handleDisconnect = () => setIsConnected(false);
+    const handleDisconnect = () => {
+      setIsConnected(false);
+      signaledJoinedRef.current = null;
+    };
     const handleConnect = () => setIsConnected(true);
+
+    const handleTrackPublished = (publication: any) => {
+      if (publication.source === Track.Source.ScreenShare) {
+        setIsSharingScreen(true);
+        signalUserJoined();
+      }
+    };
+
+    const handleTrackUnpublished = (publication: any) => {
+      if (publication.source === Track.Source.ScreenShare) {
+        setIsSharingScreen(false);
+        if (!isEnding) handleEnd();
+      }
+    };
 
     room.on(RoomEvent.DataReceived, handleData);
     room.on(RoomEvent.TranscriptionReceived, handleTranscription);
     room.on(RoomEvent.Connected, handleConnect);
     room.on(RoomEvent.Disconnected, handleDisconnect);
+    
+    localParticipant?.on(RoomEvent.LocalTrackPublished, handleTrackPublished);
+    localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
 
     if (room.state === ConnectionState.Connected) setIsConnected(true);
-
-    // Track unpublication
-    const handleTrackUnpublished = (publication: any) => {
-      if (publication.source === Track.Source.ScreenShare) {
-        setIsSharingScreen(false);
-        handleEnd();
-      }
-    };
-    localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
 
     return () => {
       room.off(RoomEvent.DataReceived, handleData);
       room.off(RoomEvent.TranscriptionReceived, handleTranscription);
       room.off(RoomEvent.Connected, handleConnect);
       room.off(RoomEvent.Disconnected, handleDisconnect);
+      localParticipant?.off(RoomEvent.LocalTrackPublished, handleTrackPublished);
       localParticipant?.off(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
     };
-  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking]);
+  }, [room, localParticipant, addTranscript, setCurrentQuestion, setAiSpeaking, isEnding, signalUserJoined]);
 
   const handleEnd = async () => {
     if (isEnding) return;

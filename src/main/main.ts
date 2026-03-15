@@ -36,10 +36,10 @@ function createWindow(): void {
     show: false,
     webPreferences: {
       preload: join(__dirname, "../preload/preload.js"),
-      contextIsolation: true,
       nodeIntegration: false,
       sandbox: !IS_DEV,
       webSecurity: !IS_DEV,
+      backgroundThrottling: false,
     },
   });
 

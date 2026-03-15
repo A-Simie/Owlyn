@@ -26,6 +26,10 @@ export function AnalysisFeedbackForm({ interviewId, initialNotes, initialDecisio
     }
   };
 
+  if (initialDecision && initialDecision !== "PENDING") {
+    return null;
+  }
+
   return (
     <div className="bg-[#111] p-8 rounded-sm border border-white/5">
       <div className="flex items-center justify-between mb-8 pb-4 border-b border-white/5">
@@ -58,7 +62,7 @@ export function AnalysisFeedbackForm({ interviewId, initialNotes, initialDecisio
       <button
         onClick={handleFinalize}
         disabled={isFinalizing || !decision}
-        className="w-full py-4 bg-primary text-black text-[10px] font-black uppercase tracking-[0.5em] rounded-sm hover:brightness-110 transition-all disabled:opacity-30 disabled:grayscale"
+        className="w-full py-4 bg-primary text-black text-[10px] font-black uppercase tracking-[0.5em] rounded-xl hover:brightness-110 transition-all disabled:opacity-30 disabled:grayscale"
       >
         {isFinalizing ? "Transmitting data..." : "Finalize Evaluation"}
       </button>

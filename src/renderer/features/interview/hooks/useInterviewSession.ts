@@ -152,12 +152,13 @@ export function useInterviewSession(
     room.on(RoomEvent.TrackMuted, handleTrackMuted);
 
     const integrityInterval = setInterval(() => {
-      if (!isCommenced || !localParticipant || forcedEndHandledRef.current) return;
+      if (!isCommenced || !localParticipant || isEnding || forcedEndHandledRef.current) return;
       const publications = Array.from(localParticipant.trackPublications.values());
       const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
       const isSharing = !!screenPub && !screenPub.isMuted && !!screenPub.track;
  
       setShowMediaRecovery(current => {
+        if (isEnding || forcedEndHandledRef.current) return false;
         if (!isSharing && !current) {
           setRecoveryType("screen");
           return true;

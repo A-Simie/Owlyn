@@ -25,9 +25,11 @@ export function AssistantVisualizer({
       </div>
       
       <div className="text-center z-10 space-y-3 mt-4">
-         <p className={`text-[8px] text-primary font-black uppercase tracking-[0.3em] ${isSpeaking ? "animate-pulse" : ""}`}>
-           {isSpeaking ? "Speaking" : "Active"}
-         </p>
+         {isSharingScreen && !error && (
+           <p className={`text-[8px] text-primary font-black uppercase tracking-[0.3em] ${isSpeaking ? "animate-pulse" : ""}`}>
+             {isSpeaking ? "Speaking" : "Active"}
+           </p>
+         )}
 
          {!isLarge && lastTranscript && (
            <motion.div
@@ -44,16 +46,10 @@ export function AssistantVisualizer({
       </div>
 
       {!isSharingScreen && !error && (
-        <div className="mt-3 text-center animate-pulse space-y-3">
+        <div className="mt-3 text-center animate-pulse">
           <p className="text-[9px] text-amber-400 font-black uppercase tracking-[0.2em]">
-            Initializing Assistant Mode...
+            Initializing...
           </p>
-          <button
-            onClick={onEnableMedia}
-            className="px-3 py-1.5 bg-primary/15 border border-primary/30 text-primary text-[9px] font-black uppercase tracking-[0.12em] rounded hover:bg-primary/25 transition-all"
-          >
-            Enable Screen + Mic
-          </button>
         </div>
       )}
 
