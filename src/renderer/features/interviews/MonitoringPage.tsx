@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { LiveKitRoom, RoomAudioRenderer, useRoomContext } from "@livekit/components-react";
 import { useMonitoring, useMonitoringEvents } from "./hooks/useMonitoring";
@@ -44,16 +45,23 @@ export default function MonitoringPage() {
 
 function MonitoringContent({ interview, onExit }: { interview: any; onExit: () => void }) {
   const room = useRoomContext();
-  const { alerts } = useMonitoringEvents();
+  const { alerts, sessionEnded, endReason, countdown } = useMonitoringEvents();
   const participantsCount = room?.remoteParticipants?.size ?? 0;
 
+  // Auto-navigate when countdown reaches 0
+  useEffect(() => {
+    if (sessionEnded && countdown <= 0) {
+      onExit();
+    }
+  }, [sessionEnded, countdown, onExit]);
+
   return (
-    <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col h-screen overflow-hidden font-sans">
+    <div className="min-h-screen bg-[#0d0d0d] text-white flex flex-col h-screen overflow-hidden font-sans relative">
       <MonitoringHeader 
         interview={interview} 
         onExit={onExit} 
         participantCount={participantsCount} 
-        trackCount={0} // Room provides track info inside components
+        trackCount={0}
       />
 
       <main className="flex-1 grid grid-cols-12 gap-6 p-6 overflow-hidden">
@@ -65,6 +73,42 @@ function MonitoringContent({ interview, onExit }: { interview: any; onExit: () =
           <MonitoringSentinelAlerts alerts={alerts} />
         </div>
       </main>
+
+      {/* Session Ended Overlay */}
+      {sessionEnded && (
+        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-xl flex items-center justify-center">
+          <div className="flex flex-col items-center gap-6 max-w-lg text-center px-8">
+            <div className="size-20 rounded-full bg-red-500/10 border-2 border-red-500/30 flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-red-500">call_end</span>
+            </div>
+
+            <h2 className="text-xl font-black uppercase tracking-[0.3em] text-white">
+              Interview Ended
+            </h2>
+
+            <p className="text-sm text-slate-400 leading-relaxed">
+              {endReason}
+            </p>
+
+            <div className="flex items-center gap-3 mt-2">
+              <div className="size-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+                <span className="text-lg font-black text-primary">{countdown}</span>
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                Redirecting in {countdown}s...
+              </span>
+            </div>
+
+            <button
+              onClick={onExit}
+              className="mt-4 px-8 py-3 bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-widest rounded-sm hover:bg-white/10 transition-all"
+            >
+              Exit Now
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

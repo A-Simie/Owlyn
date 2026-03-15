@@ -1,25 +1,27 @@
-import { useTracks, VideoTrack, useRoomContext } from "@livekit/components-react";
+import { useTracks, VideoTrack, useRoomContext, isTrackReference, type TrackReference } from "@livekit/components-react";
 import { Track } from "livekit-client";
 
 export function MonitoringLiveFeed() {
   const room = useRoomContext();
-  const tracks = useTracks([Track.Source.ScreenShare, Track.Source.Camera, Track.Source.Unknown]);
+  const tracks = useTracks(
+    [
+      { source: Track.Source.Camera, withPlaceholder: false },
+      { source: Track.Source.ScreenShare, withPlaceholder: false },
+    ],
+    { onlySubscribed: false }
+  );
   
-  const remoteTracks = tracks.filter((t) => !room.localParticipant?.identity || t.participant.identity !== room.localParticipant.identity);
+  const remoteTracks: TrackReference[] = tracks.filter(
+    (t): t is TrackReference => isTrackReference(t) && t.participant.identity !== room.localParticipant?.identity
+  );
 
-  const isVideo = (tr: any) => {
-    const pubkind = tr?.publication?.kind;
-    const medkind = tr?.track?.mediaStreamTrack?.kind;
-    return (pubkind === Track.Kind.Video || medkind === "video");
-  };
+  const screenShareTrack = remoteTracks.find(
+    (t) => t.source === Track.Source.ScreenShare
+  );
 
-  const getSource = (tr: any) => tr?.publication?.source ?? tr?.source;
-
-  const screenShareTrack = remoteTracks.find(t => isVideo(t) && getSource(t) === Track.Source.ScreenShare) 
-    ?? remoteTracks.find(t => isVideo(t) && getSource(t) !== Track.Source.Camera);
-
-  const cameraTrack = remoteTracks.find(t => isVideo(t) && getSource(t) === Track.Source.Camera)
-    ?? remoteTracks.find(t => isVideo(t) && t !== screenShareTrack);
+  const cameraTrack = remoteTracks.find(
+    (t) => t.source === Track.Source.Camera
+  );
 
   return (
     <div className="flex-1 bg-black rounded-lg border border-white/5 relative overflow-hidden shadow-2xl">

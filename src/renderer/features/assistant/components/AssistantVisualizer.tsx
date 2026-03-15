@@ -44,17 +44,31 @@ export function AssistantVisualizer({
       </div>
 
       {!isSharingScreen && !error && (
-        <div className="mt-3 text-center animate-pulse">
+        <div className="mt-3 text-center animate-pulse space-y-3">
           <p className="text-[9px] text-amber-400 font-black uppercase tracking-[0.2em]">
             Initializing Assistant Mode...
           </p>
+          <button
+            onClick={onEnableMedia}
+            className="px-3 py-1.5 bg-primary/15 border border-primary/30 text-primary text-[9px] font-black uppercase tracking-[0.12em] rounded hover:bg-primary/25 transition-all"
+          >
+            Enable Screen + Mic
+          </button>
         </div>
       )}
 
       {error && (
-        <p className="mt-2 text-[8px] text-red-400 font-bold uppercase tracking-[0.12em] text-center max-w-[220px]">
-          {error}
-        </p>
+        <div className="mt-2 text-center space-y-3">
+          <p className="text-[8px] text-red-400 font-bold uppercase tracking-[0.12em] max-w-[220px]">
+            {error}
+          </p>
+          <button
+            onClick={onEnableMedia}
+            className="px-3 py-1.5 bg-red-500/10 border border-red-500/30 text-red-300 text-[9px] font-black uppercase tracking-[0.12em] rounded hover:bg-red-500/20 transition-all"
+          >
+            Retry Media Setup
+          </button>
+        </div>
       )}
     </div>
   );

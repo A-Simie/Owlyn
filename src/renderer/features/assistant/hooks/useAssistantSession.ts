@@ -111,6 +111,12 @@ export function useAssistantSession() {
   useEffect(() => {
     if (!room) return;
 
+    const autoStartMedia = async () => {
+      if (autoTriggeredRef.current || isEnding || isSharingScreen) return;
+      autoTriggeredRef.current = true;
+      await enableAssistantMedia();
+    };
+
     const handleData = (payload: Uint8Array) => {
       try {
         const raw = new TextDecoder().decode(payload);
@@ -183,6 +189,7 @@ export function useAssistantSession() {
       if (room.state === ConnectionState.Connected) {
         setIsConnected(true);
         console.log("Assistant: Connected to room, waiting for media to signal USER_JOINED");
+        void autoStartMedia();
       }
     };
 
@@ -211,15 +218,9 @@ export function useAssistantSession() {
     };
     localParticipant?.on(RoomEvent.LocalTrackUnpublished, handleTrackUnpublished);
 
-    const autoStartMedia = async () => {
-       if (autoTriggeredRef.current || isEnding || isSharingScreen) return;
-       autoTriggeredRef.current = true;
-       await enableAssistantMedia();
-    };
-
     if (room.state === ConnectionState.Connected) {
       checkAndSignal();
-      autoStartMedia();
+      void autoStartMedia();
     }
 
     return () => {
