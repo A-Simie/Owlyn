@@ -41,16 +41,23 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
   // Start webcam
   useEffect(() => {
     if (!modelsLoaded) return;
-    if (stream === null) return; // Wait for external stream
+    if (stream === null) return; 
+
+    const video = videoRef.current;
+    if (!video) return;
+
     if (stream) {
-      if (videoRef.current) {
-        if (videoRef.current.srcObject !== stream) {
-          videoRef.current.srcObject = stream;
-        }
-        videoRef.current.play()
-          .then(() => setCameraReady(true))
-          .catch((err) => console.warn("FaceTracker video play failed:", err));
+      if (video.srcObject !== stream) {
+        video.srcObject = stream;
+        video.load(); // Force re-eval on Windows
       }
+      video.play()
+        .then(() => setCameraReady(true))
+        .catch((err) => {
+          console.warn("FaceTracker stream play failed:", err);
+          // Retry logic for some browsers/Windows Electron edge cases
+          setTimeout(() => video.play().catch(() => {}), 500);
+        });
       return;
     }
 
@@ -58,7 +65,7 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
     (async () => {
       try {
         localStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 320, height: 240, facingMode: "user" },
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
           audio: false,
         });
         if (videoRef.current) {
@@ -71,7 +78,9 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
       }
     })();
     return () => {
-      localStream?.getTracks().forEach((t) => t.stop());
+      if (localStream) {
+        localStream.getTracks().forEach((t) => t.stop());
+      }
     };
   }, [modelsLoaded, stream]);
 
@@ -235,9 +244,10 @@ export default function FaceTracker({ onWarning, stream }: FaceTrackerProps) {
         <video
           ref={videoRef}
           muted
+          autoPlay
           playsInline
-          className="w-full h-full object-cover"
-          style={{ transform: "scaleX(-1)" }}
+          className="w-full h-full object-cover bg-[#050505]"
+          style={{ transform: "scaleX(-1)", backfaceVisibility: "hidden" }}
         />
         <canvas
           ref={canvasRef}

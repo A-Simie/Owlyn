@@ -17,8 +17,8 @@ export function useHardwareChecks() {
   } = useMediaStore();
 
   const [checks, setChecks] = useState({
-    camera: false,
-    mic: false,
+    camera: cameraOn && !!cameraStream,
+    mic: micOn,
     network: false,
     singleDisplay: true,
   });

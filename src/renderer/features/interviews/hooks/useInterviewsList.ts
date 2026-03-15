@@ -37,15 +37,14 @@ export function useInterviewsList() {
       CANCELLED: 3,
     };
 
-    // 2. Sort all interviews by status (case-insensitive)
-    const sorted = [...interviews].sort((a, b) => {
+    // 2. Sort all interviews by status then by "recency" (reverse original order)
+    const sorted = [...interviews].reverse().sort((a, b) => {
       const sA = (a.status || "").toUpperCase();
       const sB = (b.status || "").toUpperCase();
       const orderA = statusOrder[sA] ?? 99;
       const orderB = statusOrder[sB] ?? 99;
       
-      if (orderA !== orderB) return orderA - orderB;
-      return 0; // Maintain stable order for same status
+      return orderA - orderB;
     });
 
     // 3. Apply tab filter to sorted list
