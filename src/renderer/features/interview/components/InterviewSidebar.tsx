@@ -28,6 +28,8 @@ export default function InterviewSidebar({
   const { isAssistantMode } = useCandidateStore();
   const { localParticipant } = useLocalParticipant();
   const cameraTracks = useTracks([Track.Source.Camera]).filter((t) => t.participant === localParticipant);
+  const screenTracks = useTracks([Track.Source.ScreenShare]).filter((t) => t.participant === localParticipant);
+  const isScreenSharing = screenTracks.length > 0;
   const localCameraTrack = cameraTracks[0];
   const localCameraStream = useMemo(() => {
     const track = localCameraTrack?.publication?.track;
@@ -69,6 +71,13 @@ export default function InterviewSidebar({
                 stream={localCameraStream} 
               />
             )}
+            
+            <div className="absolute top-2 right-2 px-2 py-1 bg-black/60 backdrop-blur-md border border-white/10 rounded-full flex items-center gap-1.5 z-20">
+              <div className={`size-1.5 rounded-full ${isScreenSharing ? "bg-green-500 animate-pulse" : "bg-red-500"}`} />
+              <span className="text-[7px] font-black uppercase tracking-widest text-white/70">
+                {isScreenSharing ? "Screen Active" : "Screen Off"}
+              </span>
+            </div>
           </div>
         </div>
 

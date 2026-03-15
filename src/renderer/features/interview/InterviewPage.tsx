@@ -36,6 +36,7 @@ type Tab = "code" | "whiteboard" | "notes";
 
 export default function InterviewPage() {
   const { livekitToken } = useCandidateStore();
+  const [shouldConnect, setShouldConnect] = useState(false);
   const navigate = useNavigate();
 
   if (!livekitToken) {
@@ -47,17 +48,25 @@ export default function InterviewPage() {
     <LiveKitRoom
       token={livekitToken}
       serverUrl={import.meta.env.VITE_LIVEKIT_URL}
-      connect={true}
+      connect={shouldConnect}
       className="h-screen w-full bg-[#0B0B0B]"
     >
-      <InterviewInterfaceWrapper />
+      <InterviewInterfaceWrapper 
+        shouldConnect={shouldConnect} 
+        setShouldConnect={setShouldConnect} 
+      />
     </LiveKitRoom>
   );
 }
 
-function InterviewInterfaceWrapper() {
+function InterviewInterfaceWrapper({
+  shouldConnect,
+  setShouldConnect,
+}: {
+  shouldConnect: boolean;
+  setShouldConnect: (v: boolean) => void;
+}) {
   const [isCommenced, setIsCommenced] = useState(false);
-  const [shouldConnect, setShouldConnect] = useState(false);
 
   return (
     <>
@@ -76,6 +85,7 @@ function InterviewInterface({
   isCommenced,
   setIsCommenced,
   shouldConnect,
+  setShouldConnect,
 }: {
   isCommenced: boolean;
   setIsCommenced: (v: boolean) => void;
@@ -246,7 +256,16 @@ function InterviewInterface({
 
   return (
     <div className={`h-screen w-full bg-[#0B0B0B] text-slate-100 flex flex-col font-sans overflow-hidden transition-all duration-500 ${proctorWarning || localFaceWarning ? "ring-8 ring-inset ring-red-600/30" : ""}`}>
-      <InterviewInitiationOverlay isCommenced={isCommenced} isEnding={isEnding} shouldConnect={shouldConnect} isConnected={isConnected} isStartingMedia={isStartingMedia} mediaError={mediaError} onPublishMedia={() => publishMedia(() => setIsCommenced(true))} />
+      <InterviewInitiationOverlay 
+        isCommenced={isCommenced} 
+        isEnding={isEnding} 
+        shouldConnect={shouldConnect} 
+        isConnected={isConnected} 
+        isStartingMedia={isStartingMedia} 
+        mediaError={mediaError} 
+        onPublishMedia={() => publishMedia(() => setIsCommenced(true))} 
+        setShouldConnect={setShouldConnect}
+      />
       
       <AnimatePresence>
         {isCommenced && (

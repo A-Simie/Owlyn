@@ -14,7 +14,7 @@ interface TalentSidebarProps {
 }
 
 export function TalentSidebar({ 
-  total, highPotential, avgScore, searchQuery, setSearchQuery, roleFilter, setRoleFilter, minScore, setMinScore, statusFilter, setStatusFilter, onReset 
+  total, highPotential, avgScore, searchQuery, setSearchQuery, minScore, setMinScore, onReset 
 }: TalentSidebarProps) {
   return (
     <aside className="w-64 border-r divider surface-alt flex flex-col p-6 overflow-y-auto shrink-0 font-sans">
@@ -53,22 +53,6 @@ export function TalentSidebar({
             onChange={(e) => setMinScore(parseInt(e.target.value))}
           />
         </div>
-
-        <div className="space-y-2">
-          <label className="text-[10px] uppercase text-subtle tracking-tighter">Status</label>
-          <div className="flex flex-wrap gap-2">
-            {["HIGHLY RECOMMENDED", "Under Review"].map(s => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                className={`px-2 py-1 text-[10px] rounded border transition-all ${statusFilter === s ? "border-primary bg-primary/20 text-primary" : "border-slate-200 dark:border-primary/10 text-subtle"}`}
-              >
-                {s === "HIGHLY RECOMMENDED" ? "High Rec" : "Review"}
-              </button>
-            ))}
-          </div>
-        </div>
-
         <button onClick={onReset} className="w-full py-2 border border-primary/20 text-primary font-bold text-xs uppercase tracking-widest rounded-lg mt-4">Reset</button>
       </div>
     </aside>

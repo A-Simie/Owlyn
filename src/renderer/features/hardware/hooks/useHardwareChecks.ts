@@ -16,9 +16,11 @@ export function useHardwareChecks() {
     setDisplayCount,
   } = useMediaStore();
 
+  const [isInitializingMedia, setIsInitializingMedia] = useState(true);
+
   const [checks, setChecks] = useState({
-    camera: cameraOn && !!cameraStream,
-    mic: micOn,
+    camera: true, 
+    mic: true,
     network: false,
     singleDisplay: true,
   });
@@ -50,19 +52,19 @@ export function useHardwareChecks() {
     const micActive = micOn;
     setChecks((prev) => ({ 
       ...prev, 
-      camera: videoActive, 
-      mic: micActive,
+      camera: videoActive || isInitializingMedia, 
+      mic: micActive || isInitializingMedia,
     }));
-  }, [cameraOn, micOn, cameraStream]);
+  }, [cameraOn, micOn, cameraStream, isInitializingMedia]);
 
   // Auto-start media on mount
   useEffect(() => {
-    if (!cameraOn) startCamera();
-    if (!micOn) startMic();
-    
-    return () => {
-     
+    const startAll = async () => {
+      if (!cameraOn) await startCamera();
+      if (!micOn) await startMic();
+      setIsInitializingMedia(false);
     };
+    startAll();
   }, []); // Only on mount
 
   const runNetworkTest = useCallback(async () => {
@@ -94,6 +96,7 @@ export function useHardwareChecks() {
     checks,
     networkLatency,
     isCheckingNetwork,
+    isInitializingMedia,
     runNetworkTest,
     media: {
       cameraOn,

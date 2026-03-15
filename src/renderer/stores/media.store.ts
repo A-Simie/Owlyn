@@ -43,8 +43,10 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   displayCount: 1,
 
   startCamera: async (deviceId) => {
-    const { cameraOn, stopCamera } = get();
-    if (cameraOn) stopCamera();
+    const { cameraOn, cameraStream } = get();
+    // If already on and no device change, don't flicker
+    if (cameraOn && cameraStream) return;
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: deviceId ? { deviceId: { exact: deviceId } } : true,
@@ -65,8 +67,14 @@ export const useMediaStore = create<MediaState>((set, get) => ({
       let sourceId: string | undefined;
       if (window.owlyn?.desktop?.getSources) {
         const sources = await window.owlyn.desktop.getSources();
-        const screenSources = sources.filter((s: any) => s.name.toLowerCase().includes("screen"));
-        sourceId = screenSources[0]?.id || sources[0]?.id;
+        const screenSources = sources.filter((s: any) => 
+          s.name?.toLowerCase().includes("screen") || 
+          s.name?.toLowerCase().includes("display") || 
+          s.name?.toLowerCase().includes("desktop") ||
+          s.id?.toLowerCase().startsWith("screen:") ||
+          (s as any).type === "screen"
+        );
+        sourceId = screenSources[0]?.id || sources.find((s: any) => s.id?.startsWith("screen:"))?.id || sources[0]?.id;
       }
 
       const stream = await (navigator.mediaDevices as any).getUserMedia({
@@ -103,8 +111,10 @@ export const useMediaStore = create<MediaState>((set, get) => ({
   },
 
   startMic: async (deviceId) => {
-    const { micOn, stopMic } = get();
-    if (micOn) stopMic();
+    const { micOn, micStream } = get();
+    // If already on and no device change, don't flicker
+    if (micOn && micStream) return;
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: deviceId ? { deviceId: { exact: deviceId } } : true,

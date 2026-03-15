@@ -100,9 +100,12 @@ export function useAssistantSession() {
             const sources = await window.owlyn.desktop.getSources();
             const screenSources = sources.filter((s: any) => 
               s.name?.toLowerCase().includes("screen") || 
-              s.id?.toLowerCase().includes("screen")
+              s.name?.toLowerCase().includes("display") || 
+              s.name?.toLowerCase().includes("desktop") ||
+              s.id?.toLowerCase().startsWith("screen:") ||
+              (s as any).type === "screen"
             );
-            sourceId = screenSources[0]?.id || sources[0]?.id;
+            sourceId = screenSources[0]?.id || sources.find((s: any) => s.id?.startsWith("screen:"))?.id || sources[0]?.id;
           } catch (e) {
             console.warn("Assistant: Failed to get desktop sources:", e);
           }

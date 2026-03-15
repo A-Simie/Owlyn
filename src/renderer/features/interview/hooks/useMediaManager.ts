@@ -54,7 +54,6 @@ export function useMediaManager() {
       
       // 3. Screen Share
       if (!hasPublishedScreenShareTrack()) {
-        // Force cleanup of any existing but stale screen track
         const existingPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.ScreenShare);
         if (existingPub && existingPub.track) {
           try { await localParticipant.unpublishTrack(existingPub.track); } catch (e) {}
@@ -64,26 +63,40 @@ export function useMediaManager() {
         if (window.owlyn?.desktop?.getSources) {
           try {
             const sources = await window.owlyn.desktop.getSources();
-            const screenSource = sources.find((s: any) => s.name?.toLowerCase().includes("screen")) || sources[0];
-            sourceId = screenSource?.id;
-          } catch (e) { console.warn("MediaManager: Electron source fetch failed", e); }
+            // PRIORITIZE "Screen" types for "Full Screen Sharing" as requested by proctor
+            const fullScreens = sources.filter((s: any) => 
+               s.name?.toLowerCase().includes("screen") || 
+               s.name?.toLowerCase().includes("display") || 
+               s.name?.toLowerCase().includes("desktop") ||
+               s.id?.toLowerCase().startsWith("screen:") ||
+               (s as any).type === "screen"
+            );
+            sourceId = fullScreens[0]?.id || sources.find((s: any) => s.id?.startsWith("screen:"))?.id || sources[0]?.id;
+          } catch (e) { 
+            console.warn("MediaManager: Desktop source fetch failed", e); 
+          }
         }
 
         if (sourceId) {
-          const screenStream = await (navigator.mediaDevices as any).getUserMedia({
-            audio: false,
-            video: {
-              mandatory: {
-                chromeMediaSource: "desktop",
-                chromeMediaSourceId: sourceId,
-              },
-            },
-          });
-          const screenTrack = screenStream.getVideoTracks()[0];
-          await localParticipant.publishTrack(screenTrack, { 
-            name: "screen_share", 
-            source: Track.Source.ScreenShare 
-          });
+          
+           const screenStream = await (navigator.mediaDevices as any).getUserMedia({
+             audio: false,
+             video: {
+               mandatory: {
+                 chromeMediaSource: "desktop",
+                 chromeMediaSourceId: sourceId,
+                 maxWidth: 1920,
+                 maxHeight: 1080,
+                 maxFrameRate: 15 
+               },
+             },
+           });
+           const screenTrack = screenStream.getVideoTracks()[0];
+           await localParticipant.publishTrack(screenTrack, { 
+             source: Track.Source.ScreenShare,
+             dtx: true,
+             simulcast: false 
+           });
         } else {
           await localParticipant.setScreenShareEnabled(true, { 
             contentHint: "text",

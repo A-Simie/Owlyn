@@ -7,7 +7,7 @@ export function useTalentPool() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("All Roles");
-  const [minScore, setMinScore] = useState(85);
+  const [minScore, setMinScore] = useState(50);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [topPerformer, setTopPerformer] = useState<Report | null>(null);
   const [currentPage, setCurrentPage] = useState(1);

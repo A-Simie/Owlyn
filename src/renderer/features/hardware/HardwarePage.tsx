@@ -14,6 +14,7 @@ export default function HardwarePage() {
     checks,
     networkLatency,
     isCheckingNetwork,
+    isInitializingMedia,
     runNetworkTest,
     media,
   } = useHardwareChecks();
@@ -21,6 +22,7 @@ export default function HardwarePage() {
   const { faceDetected, isInitializingModels } = useFaceDetection(videoRef, media.cameraOn);
 
   const canProceed = 
+    !isInitializingMedia &&
     checks.camera && 
     checks.mic && 
     checks.network && 
@@ -56,6 +58,7 @@ export default function HardwarePage() {
 
         <HardwareSystemStatus
           checks={checks}
+          isInitializingMedia={isInitializingMedia}
           networkLatency={networkLatency}
           isCheckingNetwork={isCheckingNetwork}
           onRefreshNetwork={runNetworkTest}

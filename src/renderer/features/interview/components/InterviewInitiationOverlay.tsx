@@ -8,6 +8,7 @@ interface InterviewInitiationOverlayProps {
   isStartingMedia: boolean;
   mediaError: string | null;
   onPublishMedia: () => void;
+  setShouldConnect: (v: boolean) => void;
 }
 
 export default function InterviewInitiationOverlay({
@@ -17,6 +18,7 @@ export default function InterviewInitiationOverlay({
   isConnected,
   isStartingMedia,
   onPublishMedia,
+  setShouldConnect,
 }: InterviewInitiationOverlayProps) {
   if (isCommenced || isEnding) return null;
 
@@ -59,11 +61,19 @@ export default function InterviewInitiationOverlay({
         </div>
 
         <div className="w-full">
-          {!isConnected ? (
+          {!shouldConnect ? (
+            <button
+              onClick={() => setShouldConnect(true)}
+              className="w-full py-3 bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.3em] text-[12px] rounded-2xl hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-4"
+            >
+              Initialize Session
+              <span className="material-symbols-outlined text-xl text-primary">sensors</span>
+            </button>
+          ) : !isConnected ? (
             <div className="flex flex-col items-center gap-4 py-4">
               <div className="size-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary/60 animate-pulse">
-                Establishing Secure Connection...
+                Securing Connection...
               </span>
             </div>
           ) : (
@@ -76,7 +86,7 @@ export default function InterviewInitiationOverlay({
               {isStartingMedia ? (
                 <>
                   <div className="size-4 border-2 border-black/30 border-t-black rounded-full animate-spin" />
-                  <span className="animate-pulse">Initializing...</span>
+                  <span className="animate-pulse">Setting Up...</span>
                 </>
               ) : (
                 <>

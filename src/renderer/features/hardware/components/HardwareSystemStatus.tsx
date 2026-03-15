@@ -40,6 +40,7 @@ interface HardwareSystemStatusProps {
     network: boolean;
     singleDisplay: boolean;
   };
+  isInitializingMedia: boolean;
   networkLatency: number | null;
   isCheckingNetwork: boolean;
   onRefreshNetwork: () => void;
@@ -49,6 +50,7 @@ interface HardwareSystemStatusProps {
 
 export function HardwareSystemStatus({
   checks,
+  isInitializingMedia,
   networkLatency,
   isCheckingNetwork,
   onRefreshNetwork,
@@ -76,13 +78,15 @@ export function HardwareSystemStatus({
           <CheckItem
             label="Webcam"
             status={checks.camera}
-            desc={checks.camera ? "Operational" : "Check permissions"}
+            loading={isInitializingMedia}
+            desc={isInitializingMedia ? "Initializing..." : checks.camera ? "Operational" : "Check permissions"}
             icon="videocam"
           />
           <CheckItem
             label="Audio"
             status={checks.mic}
-            desc={checks.mic ? "Operational" : "Check permissions"}
+            loading={isInitializingMedia}
+            desc={isInitializingMedia ? "Initializing..." : checks.mic ? "Operational" : "Check permissions"}
             icon="keyboard_voice"
           />
           {!checks.singleDisplay && (

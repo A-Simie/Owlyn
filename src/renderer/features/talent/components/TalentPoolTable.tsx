@@ -20,7 +20,7 @@ export function TalentPoolTable({ candidates, onDelete }: TalentPoolTableProps) 
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-primary/5">
-          {candidates.map((c) => {
+          {[...candidates].sort((a, b) => b.score - a.score).map((c) => {
             const dashoffset = circumference - (c.score / 100) * circumference;
             return (
               <tr key={c.id} onClick={() => navigate(`/analysis/${c.id}`)} className="group hover:bg-primary/[0.03] transition-colors cursor-pointer">
