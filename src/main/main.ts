@@ -194,9 +194,11 @@ ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
   if (enabled) {
     mainWindow.setKiosk(true);
     mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setContentProtection(false);
   } else {
     mainWindow.setKiosk(false);
     mainWindow.setAlwaysOnTop(false);
+    mainWindow.setContentProtection(false);
   }
   return true;
 });

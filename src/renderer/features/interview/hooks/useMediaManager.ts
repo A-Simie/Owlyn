@@ -43,6 +43,8 @@ export function useMediaManager() {
       } else if (micPub.isMuted) {
         await micPub.track.unmute();
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // 2. Camera - Only enable if not already published
       const camPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.Camera);
@@ -51,59 +53,21 @@ export function useMediaManager() {
       } else if (camPub.isMuted) {
         await camPub.track.unmute();
       }
+   
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 3. Screen Share
-      console.log("MediaManager: Initiating hard screen share publication...");
-      
-      let sourceId: string | undefined;
-      if (window.owlyn?.desktop?.getSources) {
-        try {
-          const sources = await window.owlyn.desktop.getSources();
-          // Find the primary screen
-          const screen = sources.find(s => s.id.toLowerCase().startsWith("screen:0")) || 
-                        sources.find(s => s.id.toLowerCase().startsWith("screen:")) || 
-                        sources[0];
-          sourceId = screen?.id;
-        } catch (e) {
-          console.warn("MediaManager: Source fetch failed", e);
-        }
-      }
-
-      if (sourceId) {
-        const stream = await (navigator.mediaDevices as any).getUserMedia({
-          audio: false,
-          video: {
-            mandatory: {
-              chromeMediaSource: 'desktop',
-              chromeMediaSourceId: sourceId,
-              minWidth: 1280,
-              maxWidth: 1920,
-              minHeight: 720,
-              maxHeight: 1080,
-              maxFrameRate: 15
-            }
-          }
-        });
-        
-        const track = stream.getVideoTracks()[0];
-        if (track) {
-          track.contentHint = "text";
-          await localParticipant.publishTrack(track, {
-            source: Track.Source.ScreenShare,
-            name: "screen_share", // Standard name for AI recognition
-            simulcast: false
-          });
-        }
-      } else {
-        // Ultimate fallback
-        await localParticipant.setScreenShareEnabled(true, { audio: false, contentHint: "text" });
-      }
+      console.log("MediaManager: Activating screen share via system selection...");
+      await localParticipant.setScreenShareEnabled(true, { 
+        contentHint: "text",
+        audio: false 
+      });
 
       const published = await waitForScreenSharePublication();
       if (!published) {
-        setIsStartingMedia(false);
-        setMediaError("Screen share failed to publish. Check system permissions.");
-        return;
+          setIsStartingMedia(false);
+          setMediaError("Failed to verify screen share publication.");
+          return;
       }
 
       setIsMediaReady(true);

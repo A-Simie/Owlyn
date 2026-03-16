@@ -18,8 +18,13 @@ export default function AssistantPage() {
   const { livekitToken } = useCandidateStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!livekitToken) {
+      navigate("/auth?step=candidate-options");
+    }
+  }, [livekitToken, navigate]);
+
   if (!livekitToken) {
-    navigate("/auth?step=candidate-options");
     return null;
   }
 

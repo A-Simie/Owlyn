@@ -87,46 +87,16 @@ export function useAssistantSession() {
       if (!isMicActive) {
         console.log("Assistant: Enabling microphone...");
         await localParticipant.setMicrophoneEnabled(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
       // 2. Handle Screen Share
       if (!hasPublishedScreenShareTrack()) {
-        console.log("Assistant: Enabling screen share...");
-        let sourceId: string | undefined;
-        if (window.owlyn?.desktop?.getSources) {
-          try {
-            const sources = await window.owlyn.desktop.getSources();
-            const screen = sources.find(s => s.id.toLowerCase().startsWith("screen:0")) || 
-                          sources.find(s => s.id.toLowerCase().startsWith("screen:")) || 
-                          sources[0];
-            sourceId = screen?.id;
-          } catch (e) {}
-        }
-
-        if (sourceId) {
-          const stream = await (navigator.mediaDevices as any).getUserMedia({
-            audio: false,
-            video: {
-              mandatory: {
-                chromeMediaSource: 'desktop',
-                chromeMediaSourceId: sourceId,
-                maxWidth: 1920,
-                maxHeight: 1080,
-                maxFrameRate: 15
-              }
-            }
-          });
-          const track = stream.getVideoTracks()[0];
-          if (track) {
-             await localParticipant.publishTrack(track, {
-               source: Track.Source.ScreenShare,
-               name: "screen_share"
-             });
-          }
-        } else {
-           await localParticipant.setScreenShareEnabled(true, { contentHint: "text", audio: false });
-        }
+        console.log("Assistant: Enabling screen share via system selection...");
+        await localParticipant.setScreenShareEnabled(true, { 
+          contentHint: "text",
+          audio: false 
+        });
 
         const published = await waitForScreenSharePublication();
         if (!published) {
@@ -135,10 +105,10 @@ export function useAssistantSession() {
       }
 
       setIsSharingScreen(true);
+      // Wait for tracks to propagate before signaling
       setTimeout(() => signalUserJoined(), 3000);
     } catch (err: any) {
       console.warn("Assistant: Media access failed", err);
-
     } finally {
       mediaRequestPendingRef.current = false;
     }
