@@ -62,7 +62,6 @@ function AssistantInterface() {
     checkSize();
     return () => {
       window.removeEventListener('resize', checkSize);
-      // Removed stopAll() on unmount to preserve camera/mic state
     };
   }, []);
 

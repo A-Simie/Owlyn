@@ -26,7 +26,7 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 
 ### Desktop Layer
 - **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
-- **Framer Motion** - Smooth transitions and micro-animations.
+- **Motion** - Smooth transitions and micro-animations.
 - **Monaco Editor** - Code editing engine.
 
 ### Orchestration Layer
@@ -39,6 +39,9 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 - **Gemini Live API** - Powers the conversational interview loop.
 - **Gemini 3.1 Pro/Flash** - Specialized agents for structural vision and strategic assessment.
 
+Note: View the system communication diagram for a better understanding of the system architecture [here](https://github.com/A-Simie/Owlyn/assets/system-communication.jpg)
+
+
 ## Getting Started
 
 ### Prerequisites
@@ -50,9 +53,9 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:
 - **Email**: `owlyn.admin@gmail.com`
 - **Password**: `Qwerty1*`
-- **OTP Code**: `123456`
+- **OTP Code**: `123456`(works for signup and login)
 
-Note: You can test the admin flow with any email of choice but the owlyn.admin@gmail.com method is simply for easy, general access
+Note: You can test the admin flow with any email and password of choice but the owlyn.admin@gmail.com method is simply for easy, general access
 
 ### Installation
 
@@ -64,6 +67,9 @@ cd Owlyn
 # 2. Configure Environment Variables
 # REQUIRED: Copy the example env and update the Server URLs for your local setup
 cp .env.example .env
+
+VITE_API_BASE_URL=https://api.cognito.software
+VITE_LIVEKIT_URL=wss://neuronflow-3t333itv.livekit.cloud
 
 # 3. Install and Run Frontend
 npm install
@@ -107,14 +113,6 @@ src/
 │   └── main.tsx      # Frontend Entry point
 └── shared/           # Zod schemas & types shared across processes
 ```
-
-## Interview Flow
-
-1. **Hardware Setup** - Verify system diagnostics and network latency
-2. **Lobby Check-in** - Final readiness check before session entry
-3. **Live Interview** - Engage with the AI via video, audio, and code editor
-4. **Analysis Generation** - AI processes the transcript and behavior metrics
-5. **Review Report** - View competency radar, timeline, and key moments
 
 ## Contributors
 

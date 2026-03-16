@@ -28,7 +28,6 @@ export const reportsApi = {
     return data;
   },
   
-  // Public endpoint for ephemeral learning reports (Practice/Tutor)
   getPublicReport: async (interviewId: string) => {
     const { data } = await apiClient.get<Report>(`/api/public/reports/${interviewId}`, {
       'axios-retry': { retries: 0 },
@@ -36,13 +35,11 @@ export const reportsApi = {
     return data;
   },
 
-  // Talent Pool: calls GET /api/reports
   getAllReports: async () => {
     const { data } = await apiClient.get<Report[]>("/api/reports");
     return data;
   },
 
-  // Optimized DB query for top performer
   getTopPerformer: async () => {
     const { data } = await apiClient.get<Report>("/api/reports/top");
     return data;

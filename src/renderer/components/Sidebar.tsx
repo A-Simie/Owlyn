@@ -35,7 +35,6 @@ export default function Sidebar() {
     setImageError(false);
   }, [workspace?.logoUrl]);
 
-  // Filter items based on role
   const filteredItems = NAV_ITEMS.filter(
     (item) => !item.role || item.role.includes(user?.role || ""),
   );

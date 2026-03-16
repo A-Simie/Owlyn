@@ -48,7 +48,6 @@ function MonitoringContent({ interview, onExit }: { interview: any; onExit: () =
   const { alerts, sessionEnded, endReason, countdown } = useMonitoringEvents();
   const participantsCount = room?.remoteParticipants?.size ?? 0;
 
-  // Auto-navigate when countdown reaches 0
   useEffect(() => {
     if (sessionEnded && countdown <= 0) {
       onExit();

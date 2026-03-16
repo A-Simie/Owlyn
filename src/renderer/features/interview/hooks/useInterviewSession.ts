@@ -79,11 +79,24 @@ export function useInterviewSession(
             text: text,
           });
           if (msg.speaker !== "candidate") {
-            setCurrentQuestion(text);
-            // If AI mentions screen sharing issues, trigger recovery
-            if (text.toLowerCase().includes("screen sharing") || text.toLowerCase().includes("see your screen")) {
-              setRecoveryType("screen");
-              setShowMediaRecovery(true);
+            // AI mentions screen sharing issues - check if we actually have a problem first
+            const mentionScreen = 
+              text.toLowerCase().includes("screen sharing") || 
+              text.toLowerCase().includes("see your screen") ||
+              text.toLowerCase().includes("screensharing is unavailable") ||
+              text.toLowerCase().includes("screen sharing is unavailable");
+              
+            if (mentionScreen) {
+              const publications = Array.from(localParticipant?.trackPublications.values() || []);
+              const screenPub = publications.find(p => p.source === Track.Source.ScreenShare);
+              const isActuallySharing = !!screenPub && !screenPub.isMuted;
+              
+              if (!isActuallySharing) {
+                setRecoveryType("screen");
+                setShowMediaRecovery(true);
+              } else {
+                console.log("Interview: AI mentioned screen share issues, but local state shows active sharing. Ignoring false positive.");
+              }
             }
           }
           return;

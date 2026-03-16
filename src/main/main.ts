@@ -16,7 +16,7 @@ import { createLogger } from "../shared/logger";
 const log = createLogger("main");
 const IS_DEV = !app.isPackaged;
 
-// Enable Chromium's Shape Detection API (FaceDetector)
+// Enable Chromium's Shape Detection API
 app.commandLine.appendSwitch("enable-experimental-web-platform-features");
 
 if (IS_DEV) {
@@ -98,13 +98,14 @@ app.whenReady().then(() => {
     },
   );
 
-  // Handle Display Media (Screen Selection)
+  // Handle Display Media
   session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
     const { desktopCapturer } = require("electron");
     desktopCapturer.getSources({ types: ["screen", "window"] }).then((sources: any[]) => {
-  
-      if (sources.length > 0) {
-        callback({ video: sources[0] });
+      const screenSource = sources.find(s => s.id.toLowerCase().startsWith("screen:")) || sources[0];
+      if (screenSource) {
+        console.log("Main: Auto-selecting screen source:", screenSource.name, screenSource.id);
+        callback({ video: screenSource });
       } else {
         callback({});
       }
@@ -193,11 +194,9 @@ ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
   if (enabled) {
     mainWindow.setKiosk(true);
     mainWindow.setAlwaysOnTop(true, "screen-saver");
-    mainWindow.setContentProtection(true);
   } else {
     mainWindow.setKiosk(false);
     mainWindow.setAlwaysOnTop(false);
-    mainWindow.setContentProtection(false);
   }
   return true;
 });
@@ -206,20 +205,17 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
   if (!mainWindow) return false;
 
   if (enabled) {
-    // Widget Mode: Small, Always on Top, Bottom-Right
+    // Widget Mode
     const { screen } = require("electron");
     const primaryDisplay = screen.getPrimaryDisplay();
     const { width, height } = primaryDisplay.workAreaSize;
     
-    // Clear all hard constraints from constructor
     mainWindow.setMinimumSize(0, 0);
     mainWindow.setMaximumSize(10000, 10000);
     
     mainWindow.setMaximizable(true);
     mainWindow.setFullScreen(false);
     mainWindow.setResizable(true);
-    
-    // Set actual bounds - instant resize
     mainWindow.setMinimumSize(240, 280);
     mainWindow.setBounds({
       x: width - 260,
@@ -231,7 +227,6 @@ ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
     mainWindow.setAlwaysOnTop(true, "floating");
     mainWindow.setMinimizable(true);
   } else {
-    // Restore: Large, Center
     mainWindow.setResizable(true);
     mainWindow.setMinimumSize(1024, 700);
     mainWindow.setMaximumSize(10000, 10000);
