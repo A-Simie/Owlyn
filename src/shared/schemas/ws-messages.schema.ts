@@ -32,6 +32,16 @@ export const WsProctorWarningSchema = z.object({
   message: z.string(),
 });
 
+export const WsProctorActivitySchema = z.object({
+  type: z.literal("PROCTOR_ACTIVITY"),
+  message: z.string(),
+});
+
+export const WsWorkspaceAlertSchema = z.object({
+  type: z.literal("WORKSPACE_ALERT"),
+  message: z.string(),
+});
+
 export const WsTranscriptSchema = z.object({
   type: z.literal("transcript"),
   speaker: z.enum(["ai", "candidate"]),
@@ -49,6 +59,8 @@ export const WsInlineDataSchema = z.object({
 export const WsIncomingMessageSchema = z.discriminatedUnion("type", [
   WsToolHighlightSchema,
   WsProctorWarningSchema,
+  WsProctorActivitySchema,
+  WsWorkspaceAlertSchema,
   WsTranscriptSchema,
   WsInlineDataSchema,
 ]);
@@ -64,6 +76,8 @@ export type WsOutgoingRunCode = z.infer<typeof WsOutgoingRunCodeSchema>;
 export type WsOutgoingAlert = z.infer<typeof WsOutgoingAlertSchema>;
 export type WsToolHighlight = z.infer<typeof WsToolHighlightSchema>;
 export type WsProctorWarning = z.infer<typeof WsProctorWarningSchema>;
+export type WsProctorActivity = z.infer<typeof WsProctorActivitySchema>;
+export type WsWorkspaceAlert = z.infer<typeof WsWorkspaceAlertSchema>;
 export type WsTranscript = z.infer<typeof WsTranscriptSchema>;
 export type WsInlineData = z.infer<typeof WsInlineDataSchema>;
 export type WsIncomingMessage = z.infer<typeof WsIncomingMessageSchema>;

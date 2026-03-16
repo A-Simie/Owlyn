@@ -15,6 +15,11 @@ export function registerAuthGetToken(getTokenFn: () => string | null): void {
     authStoreGetTokenFn = getTokenFn
 }
 
+let candidateStoreGetTokenFn: (() => string | null) | null = null
+export function registerCandidateGetToken(getTokenFn: () => string | null): void {
+    candidateStoreGetTokenFn = getTokenFn
+}
+
 function createApiClient(): AxiosInstance {
     const client = axios.create({
         baseURL: BASE_URL,
@@ -22,6 +27,7 @@ function createApiClient(): AxiosInstance {
         headers: {
             'Content-Type': 'application/json',
             Accept: 'application/json',
+            'ngrok-skip-browser-warning': 'true',
         },
     })
 
@@ -35,9 +41,15 @@ function createApiClient(): AxiosInstance {
 
     client.interceptors.request.use(
         (config: InternalAxiosRequestConfig) => {
-            const token = authStoreGetTokenFn?.()
-            if (token) {
-                config.headers.Authorization = `Bearer ${token}`
+            const publicPaths = ['/api/auth/login', '/api/auth/signup', '/api/auth/verify-login', '/api/auth/verify-signup', '/api/health', '/health']
+            const isPublicPath = publicPaths.some((path) => config.url?.startsWith(path))
+
+            if (!isPublicPath) {
+                const token = authStoreGetTokenFn?.() || candidateStoreGetTokenFn?.()
+
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`
+                }
             }
             return config
         },

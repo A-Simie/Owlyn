@@ -6,6 +6,8 @@ import {
   Menu,
   safeStorage,
   clipboard,
+  desktopCapturer,
+  screen,
 } from "electron";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
@@ -34,10 +36,10 @@ function createWindow(): void {
     show: false,
     webPreferences: {
       preload: join(__dirname, "../preload/preload.js"),
-      contextIsolation: true,
       nodeIntegration: false,
       sandbox: !IS_DEV,
       webSecurity: !IS_DEV,
+      backgroundThrottling: false,
     },
   });
 
@@ -96,6 +98,19 @@ app.whenReady().then(() => {
     },
   );
 
+  // Handle Display Media (Screen Selection)
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    const { desktopCapturer } = require("electron");
+    desktopCapturer.getSources({ types: ["screen", "window"] }).then((sources: any[]) => {
+  
+      if (sources.length > 0) {
+        callback({ video: sources[0] });
+      } else {
+        callback({});
+      }
+    });
+  });
+
   if (!IS_DEV) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
@@ -122,9 +137,14 @@ app.on("window-all-closed", function () {
 
 // IPC Handlers
 ipcMain.handle("platform:info", () => ({
-  isMac: process.platform === "darwin",
+  platform: process.platform,
+  arch: process.arch,
   version: app.getVersion(),
 }));
+
+ipcMain.handle("platform:display-count", () => {
+  return screen.getAllDisplays().length;
+});
 
 ipcMain.handle("session:generate-id", () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
@@ -171,34 +191,75 @@ ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
   log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
 
   if (enabled) {
-    // mainWindow.setFullScreen(true);
-    // mainWindow.setAlwaysOnTop(true, "screen-saver");
-    // mainWindow.setContentProtection(true);
+    mainWindow.setKiosk(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setContentProtection(true);
   } else {
-    mainWindow.setFullScreen(false);
+    mainWindow.setKiosk(false);
     mainWindow.setAlwaysOnTop(false);
     mainWindow.setContentProtection(false);
   }
   return true;
 });
 
+ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
+  if (!mainWindow) return false;
+
+  if (enabled) {
+    // Widget Mode: Small, Always on Top, Bottom-Right
+    const { screen } = require("electron");
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    
+    // Clear all hard constraints from constructor
+    mainWindow.setMinimumSize(0, 0);
+    mainWindow.setMaximumSize(10000, 10000);
+    
+    mainWindow.setMaximizable(true);
+    mainWindow.setFullScreen(false);
+    mainWindow.setResizable(true);
+    
+    // Set actual bounds - instant resize
+    mainWindow.setMinimumSize(240, 280);
+    mainWindow.setBounds({
+      x: width - 260,
+      y: height - 320,
+      width: 240,
+      height: 280
+    });
+    
+    mainWindow.setAlwaysOnTop(true, "floating");
+    mainWindow.setMinimizable(true);
+  } else {
+    // Restore: Large, Center
+    mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(1024, 700);
+    mainWindow.setMaximumSize(10000, 10000);
+    mainWindow.setSize(1440, 900, true);
+    mainWindow.center();
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setMinimizable(true);
+    mainWindow.setMaximizable(true);
+  }
+  return true;
+});
+
 ipcMain.handle("desktop:sources", async () => {
-  const { desktopCapturer } = require("electron");
-  const sources = await desktopCapturer.getSources({
-    types: ["window", "screen"],
-    thumbnailSize: { width: 300, height: 200 },
-  });
-  return sources.map(
-    (s: {
-      id: string;
-      name: string;
-      thumbnail: { toDataURL: () => string };
-    }) => ({
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: { width: 400, height: 250 },
+      fetchWindowIcons: false
+    });
+    return sources.map((s) => ({
       id: s.id,
       name: s.name,
       thumbnail: s.thumbnail.toDataURL(),
-    }),
-  );
+    }));
+  } catch (err) {
+    console.error("Failed to get desktop sources:", err);
+    return [];
+  }
 });
 
 ipcMain.on("clipboard:write", (_event, text: string) => {

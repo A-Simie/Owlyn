@@ -4,6 +4,8 @@ const api = {
   platform: {
     getInfo: (): Promise<{ platform: string; arch: string; version: string }> =>
       ipcRenderer.invoke("platform:info"),
+    getDisplayCount: (): Promise<number> =>
+      ipcRenderer.invoke("platform:display-count"),
   },
   session: {
     generateId: (): Promise<string> =>
@@ -13,13 +15,15 @@ const api = {
     minimize: (): Promise<void> => ipcRenderer.invoke("window:minimize"),
     maximize: (): Promise<void> => ipcRenderer.invoke("window:maximize"),
     close: (): Promise<void> => ipcRenderer.invoke("window:close"),
+    setWidgetMode: (enabled: boolean): Promise<boolean> =>
+      ipcRenderer.invoke("window:set-widget-mode", enabled),
   },
   auth: {
     saveToken: (token: string): Promise<boolean> =>
-      ipcRenderer.invoke("auth:save-token", token),
+      ipcRenderer.invoke("auth:set-token", token),
     getToken: (): Promise<string | null> =>
       ipcRenderer.invoke("auth:get-token"),
-    clearToken: (): Promise<boolean> => ipcRenderer.invoke("auth:clear-token"),
+    clearToken: (): Promise<boolean> => ipcRenderer.invoke("auth:set-token", null),
   },
   lockdown: {
     toggle: (enabled: boolean): Promise<boolean> =>

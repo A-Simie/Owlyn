@@ -1,23 +1,28 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
+import { useCandidateStore } from "@/stores/candidate.store";
 
 type GuardStatus = "checking" | "authorized" | "unauthorized";
 
 export default function CandidateGuard({ children }: { children: ReactNode }) {
   const location = useLocation();
   const [status, setStatus] = useState<GuardStatus>("checking");
+  const { token, accessCode, isPracticeMode, hydrated, hydrate } = useCandidateStore();
 
   useEffect(() => {
-    const guestToken = localStorage.getItem("owlyn_guest_token");
-    const accessCode = localStorage.getItem("owlyn_access_code");
-    const practiceMode = localStorage.getItem("owlyn_practice_mode") === "true";
+    async function checkSecurity() {
+      // Ensure store is hydrated from safeStorage before routing
+      if (!hydrated) {
+        await hydrate();
+        return;
+      }
 
-    if (practiceMode || (guestToken && accessCode)) {
-      setStatus("authorized");
-    } else {
-      setStatus("unauthorized");
+      const isAuthorized = isPracticeMode || (!!token && !!accessCode);
+      setStatus(isAuthorized ? "authorized" : "unauthorized");
     }
-  }, [location.pathname]);
+    
+    checkSecurity();
+  }, [location.pathname, token, accessCode, isPracticeMode, hydrated, hydrate]);
 
   if (status === "checking") {
     return (

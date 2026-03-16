@@ -25,11 +25,8 @@ export default function AppGuard({ children }: { children: ReactNode }) {
       }
 
       try {
-        const user = await authApi.getCurrentUser();
-        if (!cancelled) {
-          useAuthStore.getState().setAuth(user, token);
-          setStatus("authenticated");
-        }
+        await useAuthStore.getState().verifySession();
+        if (!cancelled) setStatus("authenticated");
       } catch {
         if (!cancelled) setStatus("guest");
       }

@@ -1,39 +1,76 @@
 import Editor, { OnMount } from "@monaco-editor/react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { candidateApi } from "@/api/candidate.api";
 
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   language?: string;
+  highlightedLine?: number | null;
 }
 
 export default function CodeEditor({
   value,
   onChange,
   language = "javascript",
+  highlightedLine = null,
 }: CodeEditorProps) {
   const [theme] = useState<"vs-dark" | "light">("vs-dark");
   const monacoRef = useRef<any>(null);
+  const editorRef = useRef<any>(null);
+  const decorationsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (!editorRef.current || !monacoRef.current) return;
+
+    if (highlightedLine) {
+      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, [
+        {
+          range: new monacoRef.current.Range(highlightedLine, 1, highlightedLine, 1),
+          options: {
+            isWholeLine: true,
+            className: "bg-primary/20 border-l-4 border-primary",
+            glyphMarginClassName: "material-symbols-outlined text-primary text-xs",
+          },
+        },
+      ]);
+      editorRef.current.revealLineInCenter(highlightedLine);
+    } else {
+      decorationsRef.current = editorRef.current.deltaDecorations(decorationsRef.current, []);
+    }
+  }, [highlightedLine]);
 
   const handleEditorDidMount: OnMount = (editor, monaco) => {
     monacoRef.current = monaco;
+    editorRef.current = editor;
 
-    // Phase 4.2: Register Inline Completions Provider (Real API)
+    let lastCallId = 0;
+
     monaco.languages.registerInlineCompletionsProvider(language, {
-      provideInlineCompletions: async (model: any, position: any) => {
+      provideInlineCompletions: async (model: any, position: any, _context: any, token: any) => {
+        const callId = ++lastCallId;
+        
+        // Wait for 1.5s pause in typing
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // If a new request came in or it was cancelled, abort
+        if (callId !== lastCallId || token.isCancellationRequested) {
+          return { items: [] };
+        }
+
         const code = model.getValue();
         const cursorPosition = model.getOffsetAt(position);
 
         try {
-          //debounce every 1.5 seconds
           const { suggestion } = await candidateApi.getCopilotSuggestion(
             code,
             language,
             cursorPosition,
           );
 
-          if (!suggestion) return { items: [] };
+          if (!suggestion || callId !== lastCallId || token.isCancellationRequested) {
+            return { items: [] };
+          }
 
           return {
             items: [
@@ -53,7 +90,7 @@ export default function CodeEditor({
           return { items: [] };
         }
       },
-      freeInlineCompletions: () => {},
+      disposeInlineCompletions: () => {},
     });
   };
 

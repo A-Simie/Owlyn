@@ -138,9 +138,6 @@ const Whiteboard = forwardRef((props, ref) => {
           className="w-full h-full touch-none"
         />
         <div className="absolute top-4 left-4 flex flex-col gap-2 pointer-events-none opacity-20">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-[#c59f59]">
-            Canvas Engine: Vision Mode
-          </div>
           <div className="flex gap-1 h-3 shrink-0">
             <div className="w-0.5 bg-[#c59f59]/20" />
             <div className="w-0.5 bg-[#c59f59]/40" />
@@ -150,9 +147,6 @@ const Whiteboard = forwardRef((props, ref) => {
       </div>
 
       <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-widest text-slate-700 pt-4 border-t border-white/5">
-        <span>
-          Note: Canvas data is synchronized for multimodal evaluation.
-        </span>
         <span className="text-[#c59f59]">
           Drafting: {tool === "pen" ? "Ink" : "Eraser"} Mode
         </span>
