@@ -32,8 +32,8 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 ### Orchestration Layer
 - **Spring Boot 4** - Centralized session orchestration and agent routing.
 - **LiveKit WebRTC** - Low-latency media backbone for synchronized audio/video feeds.
-- **Redis** - Sub-millisecond state updates for active transcripts and session data.
-- **PostgreSQL (Google Cloud SQL)** - Persistent storage for interview metrics and talent data.
+- **PostgreSQL & Redis** - Containerized via **Docker** for robust state management and persistent storage.
+- **Google Cloud VM** - Backend orchestration and worker agents hosted on high-performance compute.
 
 ### Intelligence Layer
 - **Gemini Live API** - Powers the conversational interview loop.
@@ -44,6 +44,7 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 ### Prerequisites
 - Node.js 18+
 - npm
+- Docker (for PostgreSQL & Redis)
 
 ### Testing the Admin Flow
 To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:

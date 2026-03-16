@@ -3,7 +3,7 @@ The current landscape of technical hiring is bottlenecked by a fundamental scala
 
 We built **Owlyn** to solve this gap using real-time multimodal intelligence. Instead of a static AI assessment, Owlyn operates as an autonomous agent ecosystem capable of seeing, hearing, and reasoning about a candidate’s live workspace. By leveraging the Gemini Live API, Owlyn conducts real-time technical interviews and provides a persistent assistant mode that can see, hear, and interact with sub-second latency. Every interaction is synchronized with live transcripts, ensuring the system is both high-fidelity and accessible across every workflow.
 
-- [Watch the Owlyn Demo on YouTube](https://www.youtube.com/watch?v=nEaLIrNk0uk&list=PL1BztTYDF-QPfrzXwoC_6OSLs818uAqN2&index=9)
+[Watch the Owlyn Demo on YouTube](https://www.youtube.com/watch?v=nEaLIrNk0uk&list=PL1BztTYDF-QPfrzXwoC_6OSLs818uAqN2&index=9)
 
 > This piece of content was written by me, **Abdulrahmon Adenuga** (@Rahmannugar), along with **Akeem Adetunji** and **Mosimiloluwa Adebisi** and created for the purposes of entering the Google **#GeminiLiveAgentChallenge** hackathon. It covers how we built Owlyn using Google AI models and Google Cloud.
 
@@ -126,26 +126,15 @@ It continuously analyzes implementation logic and forwards observations to the I
 
 The final layer provides the persistent infrastructure and AI services that power the system.
 
-**PostgreSQL**
-Used for durable storage of:
-- interview sessions
-- transcripts
-- reports
-- user data
+**Dockerized PostgreSQL & Redis**
+We utilize **Docker** to containerize our data layer, ensuring a consistent and isolated environment for both PostgreSQL and Redis. 
+- **PostgreSQL**: Handles durable storage for interview sessions, transcripts, reports, and user data. It is accessed through the Spring Boot backend via JPA.
+- **Redis**: Stores live session state (transcript buffers, agent context, security flags) for sub-millisecond updates during live conversations.
 
-PostgreSQL is accessed through the backend using JPA.
-
-**Redis**
-Redis stores live session state, including:
-- transcript buffers
-- agent context
-- security flags
-- active workspace data
-
-This allows the system to perform sub-millisecond state updates during live conversations.
+> **Note on Backend Deployment**: The Owlyn backend (orchestration layer and worker agents) is hosted on **Google Cloud Virtual Machines (VMs)**. This provides the stable, high-performance environment necessary for sub-second multimodal processing and session management.
 
 **LiveKit Server**
-LiveKit acts as the real-time media backbone of Owlyn.
+LiveKit acts as the real-time media server for Owlyn.
 It manages:
 - WebRTC signaling
 - audio/video transport
@@ -242,6 +231,7 @@ We engineered the workspace to be language-agnostic. By utilizing **Monaco Edito
 
 ### B. Monitoring Mode
 
+![Monitoring Mode](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/tcyslvvkqu7vrxnk3f0k.png)
 For organizations, visibility is just as important as the evaluation itself. We built a **Monitoring Dashboard** that serves as a real-time command center for recruitment teams. 
 
 Hiring managers can join any active session as a "Silent Observer," gaining a comprehensive view of the candidate’s performance without interfering with the natural flow of the interview. The dashboard provides a live, rolling transcript, a synchronized audio waveform to visualize the conversation's cadence, and an instant alert system. If our sentinels detect a security anomaly—such as the presence of a mobile device or an unauthorized person in the frame—a flag is immediately raised on the recruiter's screen, allowing for instant intervention if necessary.
@@ -263,6 +253,7 @@ Before entering a real technical interview session, candidates need a way to tes
 
 # 5. Recruitment Management: Dashboards and Talent Pools
 
+![Dashboard](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/7ju8rfr46yzszv4ior88.png)
 Technical hiring is about more than just one interview; it is about managing many candidates effectively across an entire company. We built a management system to help teams handle their hiring process from start to finish:
 
 ### The Recruitment Dashboard
@@ -277,6 +268,8 @@ Hiring is a team sport. We added features to help engineering leads and recruite
 - **Shared Feedback**: Recruiters can leave notes on a candidate's profile for other team members to see. This helps build a complete picture of the candidate’s performance from different perspectives.
 
 ### Analysis and Reporting
+
+![Analysis](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/wkoa4jmbydn7jv8gux96.png)
 Once an interview is over, the AI generates a detailed technical report. This report is the primary tool recruiters use to make their hiring decisions:
 - **Technical Radar Charts**: The system visualizes candidate skills (like Problem Solving, Communication, and Code Quality) on a radar chart. This makes it easy to see at a glance where a candidate is strongest.
 - **Full Transcripts and Code History**: Recruiters can read every word said during the interview and see exactly how the candidate's code evolved over time.
