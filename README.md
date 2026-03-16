@@ -27,7 +27,7 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 ### Desktop Layer
 - **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
 - **Framer Motion** - Smooth transitions and micro-animations.
-- **Monaco Editor** - Professional-grade code editing engine.
+- **Monaco Editor** - Code editing engine.
 
 ### Orchestration Layer
 - **Spring Boot 4** - Centralized session orchestration and agent routing.
