@@ -4,6 +4,8 @@ import type {
   ValidateCodeResponse,
 } from "@shared/schemas/candidate.schema";
 
+let lockdownTimeout: ReturnType<typeof setTimeout> | null = null;
+
 export const candidateApi = {
   healthCheck: async () => {
     const { data } = await apiClient.get<{ status: string; timestamp: number }>(
@@ -28,9 +30,9 @@ export const candidateApi = {
       { headers: { Authorization: `Bearer ${guestToken}` } },
     );
     // 2. Tell Electron to enable local restrictions
-    // if (window.owlyn?.lockdown) {
-    //   await window.owlyn.lockdown.toggle(true); // RE-ENABLE THIS FOR FULLSCREEN LOCKDOWN
-    // }
+    if (window.owlyn?.lockdown) {
+      await window.owlyn.lockdown.toggle(true);
+    }
     return data;
   },
 
@@ -56,10 +58,27 @@ export const candidateApi = {
     return data;
   },
 
-  releaseLockdown: async () => {
-    if (window.owlyn?.lockdown) {
-      await window.owlyn.lockdown.toggle(false);
+  setNativeLockdown: async (enabled: boolean) => {
+    if (lockdownTimeout) {
+      clearTimeout(lockdownTimeout);
+      lockdownTimeout = null;
     }
+    
+    if (window.owlyn?.lockdown) {
+      await window.owlyn.lockdown.toggle(enabled);
+    }
+  },
+
+  releaseLockdown: async () => {
+    // Debounce the actual release to prevent flickering during React remounts
+    if (lockdownTimeout) clearTimeout(lockdownTimeout);
+    
+    lockdownTimeout = setTimeout(async () => {
+      if (window.owlyn?.lockdown) {
+        await window.owlyn.lockdown.toggle(false);
+      }
+      lockdownTimeout = null;
+    }, 150); 
   },
   getCopilotSuggestion: async (
     code: string,

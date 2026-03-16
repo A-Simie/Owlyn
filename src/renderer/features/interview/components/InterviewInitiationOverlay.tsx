@@ -61,7 +61,7 @@ export default function InterviewInitiationOverlay({
           {isConnected && (
             <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-xl">
               <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-relaxed">
-                Important: When prompted, you must select <span className="underline">"Entire Screen"</span> to allow AI code analysis.
+                Important: When prompted, you must select "Entire Screen" to allow AI code analysis.
               </p>
             </div>
           )}
@@ -71,10 +71,10 @@ export default function InterviewInitiationOverlay({
           {!shouldConnect ? (
             <button
               onClick={() => setShouldConnect(true)}
-              className="w-full py-3 bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.3em] text-[12px] rounded-2xl hover:bg-white/10 active:scale-[0.98] transition-all flex items-center justify-center gap-4"
+              className="w-full py-3 bg-primary text-black font-black uppercase tracking-[0.3em] text-[12px] rounded-2xl hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-4 shadow-[0_0_50px_rgba(197,159,89,0.2)]"
             >
               Initialize Session
-              <span className="material-symbols-outlined text-xl text-primary">sensors</span>
+              <span className="material-symbols-outlined text-xl">sensors</span>
             </button>
           ) : !isConnected ? (
             <div className="flex flex-col items-center gap-4 py-4">

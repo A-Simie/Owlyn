@@ -96,6 +96,7 @@ function InterviewInterface({
   const {
     clearSession,
     isAssistantMode,
+    isPracticeMode,
     accessCode,
     token,
     toolsEnabled,
@@ -207,15 +208,19 @@ function InterviewInterface({
     }
   }, [activeTab, localParticipant, isConnected]);
 
-  // Cleanup all media on unmount
+  // Ensure lockdown is active on mount
   useEffect(() => {
-    useSessionStore.getState().reset();
+    if (!isPracticeMode && !isAssistantMode && accessCode) {
+      candidateApi.setNativeLockdown(true);
+    }
+    
     return () => {
-      // Don't stop all (cam/mic), just stop the screen share to preserve setup state
+      // Safety release of lockdown when leaving the interview session
+      candidateApi.releaseLockdown();
       useMediaStore.getState().stopScreenShare();
       useSessionStore.getState().reset();
     };
-  }, []);
+  }, [isPracticeMode, isAssistantMode, accessCode]);
 
   const finalizeExit = () => {
     resetInterview();
