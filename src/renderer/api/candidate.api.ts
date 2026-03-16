@@ -22,14 +22,21 @@ export const candidateApi = {
     return data;
   },
 
-  initiateLockdown: async (accessCode: string, guestToken: string) => {
-    // 1. Tell Backend to set status to ACTIVE
+  activateInterviewStatus: async (accessCode: string, guestToken: string) => {
     const { data } = await apiClient.put<{ message: string }>(
       `/api/interviews/${accessCode}/status/active`,
       null,
       { headers: { Authorization: `Bearer ${guestToken}` } },
     );
-    // 2. Tell Electron to enable local restrictions
+    return data;
+  },
+
+  initiateLockdown: async (accessCode: string, guestToken: string) => {
+    const { data } = await apiClient.put<{ message: string }>(
+      `/api/interviews/${accessCode}/status/active`,
+      null,
+      { headers: { Authorization: `Bearer ${guestToken}` } },
+    );
     if (window.owlyn?.lockdown) {
       await window.owlyn.lockdown.toggle(true);
     }

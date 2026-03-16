@@ -268,7 +268,12 @@ function InterviewInterface({
         isConnected={isConnected} 
         isStartingMedia={isStartingMedia} 
         mediaError={mediaError} 
-        onPublishMedia={() => publishMedia(() => setIsCommenced(true))} 
+        onPublishMedia={() => {
+          if (!isPracticeMode && !isAssistantMode && accessCode && token) {
+            candidateApi.activateInterviewStatus(accessCode, token).catch(console.error);
+          }
+          publishMedia(() => setIsCommenced(true));
+        }} 
         setShouldConnect={setShouldConnect}
       />
       

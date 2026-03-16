@@ -20,7 +20,7 @@ export function useLobby() {
     setError(null);
     try {
       if (!isPracticeMode && accessCode && token) {
-        await candidateApi.initiateLockdown(accessCode, token);
+        await candidateApi.setNativeLockdown(true);
       }
       navigate("/interview");
     } catch (err: any) {

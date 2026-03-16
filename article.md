@@ -1,7 +1,7 @@
 The current landscape of technical hiring is bottlenecked by a fundamental scalability problem. Organizations receiving hundreds of applications per role find it impossible to conduct live, high-quality interviews for every candidate, often resorting to cold, non-immersive recordings or static tests. These traditional "AI interviews" are neither live nor engaging—they strip away the conversational nuance that defines a great engineer and leave both the company and the candidate with a fragmented view of technical potential.
 
 
-We built **Owlyn** to bridge this gap using real-time multimodal intelligence. Our goal was to create an **autonomous agent ecosystem** that isn't just an automated assessment, but a live, immersive collaborator. By leveraging the Gemini Live API, Owlyn conducts real-time technical interviews and provides an persistent assistant mode that can see, hear, and interact with sub-second latency. Every interaction is synchronized with live transcripts, ensuring the system is both high-fidelity and accessible across every workflow.
+We built **Owlyn** to solve this gap using real-time multimodal intelligence. Instead of a static AI assessment, Owlyn operates as an autonomous agent ecosystem capable of seeing, hearing, and reasoning about a candidate’s live workspace. By leveraging the Gemini Live API, Owlyn conducts real-time technical interviews and provides a persistent assistant mode that can see, hear, and interact with sub-second latency. Every interaction is synchronized with live transcripts, ensuring the system is both high-fidelity and accessible across every workflow.
 
 - [Watch the Owlyn Demo on YouTube](https://www.youtube.com/watch?v=nEaLIrNk0uk&list=PL1BztTYDF-QPfrzXwoC_6OSLs818uAqN2&index=9)
 
