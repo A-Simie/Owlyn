@@ -27,13 +27,13 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 ### Desktop Layer
 - **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
 - **Framer Motion** - Smooth transitions and micro-animations.
-- **Monaco Editor** - Professional-grade code editing engine.
+- **Monaco Editor** - Code editing engine.
 
 ### Orchestration Layer
 - **Spring Boot 4** - Centralized session orchestration and agent routing.
 - **LiveKit WebRTC** - Low-latency media backbone for synchronized audio/video feeds.
-- **Redis** - Sub-millisecond state updates for active transcripts and session data.
-- **PostgreSQL (Google Cloud SQL)** - Persistent storage for interview metrics and talent data.
+- **PostgreSQL & Redis** - Containerized via **Docker** for robust state management and persistent storage.
+- **Google Cloud VM** - Backend orchestration and worker agents hosted on high-performance compute.
 
 ### Intelligence Layer
 - **Gemini Live API** - Powers the conversational interview loop.
@@ -43,14 +43,16 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 
 ### Prerequisites
 - Node.js 18+
-- npm (for frontend)
-- Java 17+ & Maven (for backend)
+- npm
+- Docker (for PostgreSQL & Redis)
 
 ### Testing the Admin Flow
 To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:
 - **Email**: `owlyn.admin@gmail.com`
-- **Password**: [Any password of your choice]
+- **Password**: `Qwerty1*`
 - **OTP Code**: `123456`
+
+Note: You can test the admin flow with any email of choice but the owlyn.admin@gmail.com method is simply for easy, general access
 
 ### Installation
 
@@ -60,18 +62,12 @@ git clone https://github.com/A-Simie/Owlyn.git
 cd Owlyn
 
 # 2. Configure Environment Variables
-# REQUIRED: Copy the example env and update the URLs for your local setup
+# REQUIRED: Copy the example env and update the Server URLs for your local setup
 cp .env.example .env
 
 # 3. Install and Run Frontend
 npm install
 npm run dev
-
-# 4. Clone and Run Backend
-git clone https://github.com/Akeem1955/OwlynBackend.git
-cd OwlynBackend
-mvn spring-boot:run
-```
 
 ### Build & Production
 
