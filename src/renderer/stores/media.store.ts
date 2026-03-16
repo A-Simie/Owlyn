@@ -112,7 +112,6 @@ export const useMediaStore = create<MediaState>((set, get) => ({
 
   startMic: async (deviceId) => {
     const { micOn, micStream } = get();
-    // If already on and no device change, don't flicker
     if (micOn && micStream) return;
 
     try {
@@ -167,7 +166,7 @@ export const useMediaStore = create<MediaState>((set, get) => ({
     stopMic();
     stopScreenShare();
 
-    // Fallback: stop all streams in our registry
+    // Fallback: stop all streams in registry
     activeStreams.forEach((stream) => {
       stream.getTracks().forEach((track) => track.stop());
     });

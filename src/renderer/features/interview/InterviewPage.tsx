@@ -194,10 +194,15 @@ function InterviewInterface({
   useEffect(() => {
     const sessionId = (room as any).sid || room.name;
     if (isConnected && isMediaReady && isCommenced && localParticipant && signaledJoinedRef.current !== sessionId) {
-      const encoder = new TextEncoder();
-      localParticipant.publishData(encoder.encode(JSON.stringify({ event: "USER_JOINED" })), { reliable: true });
-      signaledJoinedRef.current = sessionId;
-      console.log("Interview: Signaled USER_JOINED for session", sessionId);
+      signaledJoinedRef.current = sessionId; // Set early to prevent multiple timers
+      
+      const timer = setTimeout(() => {
+        const encoder = new TextEncoder();
+        localParticipant.publishData(encoder.encode(JSON.stringify({ event: "USER_JOINED" })), { reliable: true });
+        console.log("Interview: Signaled USER_JOINED for session", sessionId);
+      }, 3000);
+
+      return () => clearTimeout(timer);
     }
   }, [isConnected, isMediaReady, isCommenced, localParticipant, room]);
 

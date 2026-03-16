@@ -5,7 +5,6 @@ import Sidebar from './Sidebar'
 
 export default function AppLayout() {
     useEffect(() => {
-        // Automatically kill any orphan media when returning to the dashboard/management area
         useMediaStore.getState().stopAll()
     }, [])
 

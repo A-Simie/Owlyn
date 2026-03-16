@@ -43,6 +43,8 @@ export function useMediaManager() {
       } else if (micPub.isMuted) {
         await micPub.track.unmute();
       }
+      
+      await new Promise(resolve => setTimeout(resolve, 3000));
 
       // 2. Camera - Only enable if not already published
       const camPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.Camera);
@@ -51,73 +53,34 @@ export function useMediaManager() {
       } else if (camPub.isMuted) {
         await camPub.track.unmute();
       }
+   
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // 3. Screen Share
-      if (!hasPublishedScreenShareTrack()) {
-        const existingPub = Array.from(localParticipant.trackPublications.values()).find(p => p.source === Track.Source.ScreenShare);
-        if (existingPub && existingPub.track) {
-          try { await localParticipant.unpublishTrack(existingPub.track); } catch (e) {}
-        }
+      console.log("MediaManager: Activating screen share via system selection...");
+      await localParticipant.setScreenShareEnabled(true, { 
+        contentHint: "text",
+        audio: false 
+      });
 
-        let sourceId: string | undefined;
-        if (window.owlyn?.desktop?.getSources) {
-          try {
-            const sources = await window.owlyn.desktop.getSources();
-            // PRIORITIZE "Screen" types for "Full Screen Sharing" as requested by proctor
-            const fullScreens = sources.filter((s: any) => 
-               s.name?.toLowerCase().includes("screen") || 
-               s.name?.toLowerCase().includes("display") || 
-               s.name?.toLowerCase().includes("desktop") ||
-               s.id?.toLowerCase().startsWith("screen:") ||
-               (s as any).type === "screen"
-            );
-            sourceId = fullScreens[0]?.id || sources.find((s: any) => s.id?.startsWith("screen:"))?.id || sources[0]?.id;
-          } catch (e) { 
-            console.warn("MediaManager: Desktop source fetch failed", e); 
-          }
-        }
-
-        if (sourceId) {
-          
-           const screenStream = await (navigator.mediaDevices as any).getUserMedia({
-             audio: false,
-             video: {
-               mandatory: {
-                 chromeMediaSource: "desktop",
-                 chromeMediaSourceId: sourceId,
-                 maxWidth: 1920,
-                 maxHeight: 1080,
-                 maxFrameRate: 15 
-               },
-             },
-           });
-           const screenTrack = screenStream.getVideoTracks()[0];
-           screenTrack.contentHint = "text";
-           await localParticipant.publishTrack(screenTrack, { 
-             source: Track.Source.ScreenShare,
-             dtx: true,
-             simulcast: false 
-           });
-        } else {
-          await localParticipant.setScreenShareEnabled(true, { 
-            contentHint: "text",
-            audio: false 
-          });
-        }
-
-        const screenShareEnabled = await waitForScreenSharePublication();
-        if (!screenShareEnabled && !hasPublishedScreenShareTrack()) {
-           setIsStartingMedia(false);
-           return;
-        }
+      const published = await waitForScreenSharePublication();
+      if (!published) {
+          setIsStartingMedia(false);
+          setMediaError("Failed to verify screen share publication.");
+          return;
       }
 
       setIsMediaReady(true);
       setIsStartingMedia(false);
       onSuccess?.();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Media publication failed:", err);
       setIsStartingMedia(false);
+      if (err.name === "NotAllowedError" || err.message?.includes("Permission denied")) {
+        setMediaError("Permission Denied: You must grant screen sharing access to proceed.");
+      } else {
+        setMediaError(`Media Error: ${err.message || "Failed to start media streams."}`);
+      }
     }
   };
 

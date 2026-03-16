@@ -87,67 +87,28 @@ export function useAssistantSession() {
       if (!isMicActive) {
         console.log("Assistant: Enabling microphone...");
         await localParticipant.setMicrophoneEnabled(true);
-        // Extended delay to let the BUNDLE negotiation stabilize
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
 
       // 2. Handle Screen Share
       if (!hasPublishedScreenShareTrack()) {
-        console.log("Assistant: Enabling screen share...");
-        let sourceId: string | undefined;
-        if (window.owlyn?.desktop?.getSources) {
-          try {
-            const sources = await window.owlyn.desktop.getSources();
-            const screenSources = sources.filter((s: any) => 
-              s.name?.toLowerCase().includes("screen") || 
-              s.name?.toLowerCase().includes("display") || 
-              s.name?.toLowerCase().includes("desktop") ||
-              s.id?.toLowerCase().startsWith("screen:") ||
-              (s as any).type === "screen"
-            );
-            sourceId = screenSources[0]?.id || sources.find((s: any) => s.id?.startsWith("screen:"))?.id || sources[0]?.id;
-          } catch (e) {
-            console.warn("Assistant: Failed to get desktop sources:", e);
-          }
-        }
-
-        const screenTrackOptions: ScreenShareCaptureOptions = {
-          audio: false, // CRITICAL: Explicitly disable screen audio to avoid opus collision
-          resolution: VideoPresets.h1080.resolution,
+        console.log("Assistant: Enabling screen share via system selection...");
+        await localParticipant.setScreenShareEnabled(true, { 
           contentHint: "text",
-          ...(sourceId ? { deviceId: { exact: sourceId } as any } : {})
-        };
-
-        if (sourceId) {
-          const tracks = await createLocalScreenTracks(screenTrackOptions);
-          // Only publish video tracks
-          const videoTrack = tracks.find(t => t.kind === Track.Kind.Video);
-          if (videoTrack) {
-            await localParticipant.publishTrack(videoTrack);
-          }
-        } else {
-          await localParticipant.setScreenShareEnabled(true, { 
-            contentHint: "text",
-            audio: false // CRITICAL fallback
-          });
-        }
+          audio: false 
+        });
 
         const published = await waitForScreenSharePublication();
         if (!published) {
-          // Check if we already got it through some other event
-          if (!hasPublishedScreenShareTrack()) {
-            console.warn("Assistant: Screen share publication timed out");
-          }
+          console.warn("Assistant: Screen share publication timed out");
         }
       }
 
       setIsSharingScreen(true);
-      // Wait a bit more before signaling to ensure track state is propagated to remote
-      setTimeout(() => signalUserJoined(), 1000);
+      // Wait for tracks to propagate before signaling
+      setTimeout(() => signalUserJoined(), 3000);
     } catch (err: any) {
       console.warn("Assistant: Media access failed", err);
-      // We don't show the error in UI as per user request to remove "retry nonsense"
-      // But we log it for debugging
     } finally {
       mediaRequestPendingRef.current = false;
     }
