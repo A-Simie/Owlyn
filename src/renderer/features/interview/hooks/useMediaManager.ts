@@ -92,6 +92,7 @@ export function useMediaManager() {
              },
            });
            const screenTrack = screenStream.getVideoTracks()[0];
+           screenTrack.contentHint = "text";
            await localParticipant.publishTrack(screenTrack, { 
              source: Track.Source.ScreenShare,
              dtx: true,

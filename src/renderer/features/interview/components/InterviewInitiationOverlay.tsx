@@ -58,6 +58,13 @@ export default function InterviewInitiationOverlay({
                 ? "Establishing secure connection..."
                 : "Syncing media & transcripts..."}
           </p>
+          {isConnected && (
+            <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-xl">
+              <p className="text-[9px] text-primary font-black uppercase tracking-widest leading-relaxed">
+                Important: When prompted, you must select <span className="underline">"Entire Screen"</span> to allow AI code analysis.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="w-full">

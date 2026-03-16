@@ -108,6 +108,14 @@ export default function MediaRecoveryModal({
               {content.text}
             </p>
 
+            {type === "screen" && (
+              <div className="mb-6 p-3 bg-red-500/5 border border-red-500/20 rounded-xl">
+                 <p className="text-[8px] text-red-400 font-black uppercase tracking-[0.2em] leading-normal">
+                   Critical: Selecting a single window will fail validation. You must share your <span className="text-red-500 underline">Entire Screen</span>.
+                 </p>
+              </div>
+            )}
+
             <div className="flex flex-col gap-4">
               <button
                 onClick={onReshare}

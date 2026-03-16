@@ -48,6 +48,7 @@ export default function HardwarePage() {
           videoRef={videoRef}
           cameraOn={media.cameraOn}
           micOn={media.micOn}
+          isInitializingMedia={isInitializingMedia}
           cameraStream={media.cameraStream}
           audioLevel={media.audioLevel}
           faceDetected={faceDetected}

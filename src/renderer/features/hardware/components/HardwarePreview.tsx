@@ -5,6 +5,7 @@ interface HardwarePreviewProps {
   videoRef: RefObject<HTMLVideoElement>;
   cameraOn: boolean;
   micOn: boolean;
+  isInitializingMedia: boolean;
   cameraStream: MediaStream | null;
   audioLevel: number;
   faceDetected: boolean;
@@ -17,6 +18,7 @@ export function HardwarePreview({
   videoRef,
   cameraOn,
   micOn,
+  isInitializingMedia,
   cameraStream,
   audioLevel,
   faceDetected,
@@ -96,7 +98,8 @@ export function HardwarePreview({
           <div className="flex items-center gap-4 pointer-events-auto">
             <button
               onClick={onToggleCamera}
-              className={`size-14 rounded-sm flex items-center justify-center transition-all border ${cameraOn ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : "bg-red-500/10 border-red-500/20 text-red-500 animate-pulse"}`}
+              disabled={isInitializingMedia}
+              className={`size-14 rounded-sm flex items-center justify-center transition-all border ${cameraOn ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : isInitializingMedia ? "bg-white/5 border-white/5 text-slate-500 opacity-50" : "bg-red-500/10 border-red-500/20 text-red-500 animate-pulse"}`}
             >
               <span className="material-symbols-outlined text-2xl">
                 {cameraOn ? "videocam" : "videocam_off"}
@@ -104,7 +107,8 @@ export function HardwarePreview({
             </button>
             <button
               onClick={onToggleMic}
-              className={`size-14 rounded-sm flex items-center justify-center transition-all border ${micOn ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : "bg-red-500/10 border-red-500/20 text-red-500 animate-pulse"}`}
+              disabled={isInitializingMedia}
+              className={`size-14 rounded-sm flex items-center justify-center transition-all border ${micOn ? "bg-white/5 border-white/10 text-white hover:bg-white/10" : isInitializingMedia ? "bg-white/5 border-white/5 text-slate-500 opacity-50" : "bg-red-500/10 border-red-500/20 text-red-500 animate-pulse"}`}
             >
               <span className="material-symbols-outlined text-2xl">
                 {micOn ? "mic" : "mic_off"}

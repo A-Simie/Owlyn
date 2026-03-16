@@ -78,7 +78,14 @@ export function useInterviewSession(
             speaker: msg.speaker === "candidate" ? "candidate" : "ai",
             text: text,
           });
-          if (msg.speaker !== "candidate") setCurrentQuestion(text);
+          if (msg.speaker !== "candidate") {
+            setCurrentQuestion(text);
+            // If AI mentions screen sharing issues, trigger recovery
+            if (text.toLowerCase().includes("screen sharing") || text.toLowerCase().includes("see your screen")) {
+              setRecoveryType("screen");
+              setShowMediaRecovery(true);
+            }
+          }
           return;
         }
 

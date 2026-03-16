@@ -4,7 +4,6 @@ import { useTalentPool } from "./hooks/useTalentPool";
 import { TalentSidebar } from "./components/TalentSidebar";
 import { TalentPoolTable } from "./components/TalentPoolTable";
 import { TalentSpotlight } from "./components/TalentSpotlight";
-import { TalentActivityFeed } from "./components/TalentActivityFeed";
 
 export default function TalentPoolPage() {
   const {
@@ -107,7 +106,6 @@ export default function TalentPoolPage() {
 
         <aside className="w-80 border-l divider surface-alt flex flex-col overflow-hidden bg-[#0B0B0B]">
           <TalentSpotlight candidate={spotlight} />
-          <TalentActivityFeed reports={reports} />
         </aside>
       </main>
     </div>
