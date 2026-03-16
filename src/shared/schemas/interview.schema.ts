@@ -14,11 +14,17 @@ export const ToolsEnabledSchema = z.object({
 
 export const CreateInterviewPayloadSchema = z.object({
   title: z.string().min(3, "Title is too short"),
-  durationMinutes: z.number().int().min(5).max(180).default(45),
+  durationMinutes: z.number().int().min(5).max(30).default(30),
   toolsEnabled: ToolsEnabledSchema.optional(),
   aiInstructions: z.string().optional(),
   generatedQuestions: z.string().optional(),
   personaId: z.string().uuid().optional(),
+  candidateName: z.string().min(2, "Candidate name is required"),
+  candidateEmail: z.string().email("Invalid email format"),
+  mode: z
+    .enum(["INTERVIEW", "PRACTICE", "TUTOR"])
+    .default("INTERVIEW")
+    .optional(),
 });
 
 export const GenerateQuestionsResponseSchema = z.object({
@@ -37,6 +43,9 @@ export const InterviewListItemSchema = z.object({
   title: z.string(),
   accessCode: z.string(),
   status: z.string(),
+  candidateName: z.string().optional(),
+  candidateEmail: z.string().optional(),
+  mode: z.enum(["INTERVIEW", "PRACTICE", "TUTOR"]).optional(),
 });
 
 export const TranscriptEntrySchema = z.object({

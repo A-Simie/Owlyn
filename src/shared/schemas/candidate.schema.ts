@@ -24,10 +24,17 @@ export const ValidateCodePayloadSchema = z.object({
 
 export const ValidateCodeResponseSchema = z.object({
     token: z.string(),
+    livekitToken: z.string(),
     interviewId: z.string(),
     title: z.string(),
     durationMinutes: z.number(),
+    candidateName: z.string().optional(),
+    personaName: z.string().optional(),
     toolsEnabled: z.record(z.boolean()).optional(),
+    config: z.object({
+        toolsEnabled: z.record(z.boolean()).optional(),
+    }).optional(),
+    mode: z.string().optional(),
 })
 
 export type Candidate = z.infer<typeof CandidateSchema>

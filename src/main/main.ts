@@ -5,6 +5,9 @@ import {
   session,
   Menu,
   safeStorage,
+  clipboard,
+  desktopCapturer,
+  screen,
 } from "electron";
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "fs";
 import { join } from "path";
@@ -21,6 +24,7 @@ if (IS_DEV) {
 }
 
 let mainWindow: BrowserWindow | null = null;
+let isLockdownActive = false;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -32,10 +36,10 @@ function createWindow(): void {
     show: false,
     webPreferences: {
       preload: join(__dirname, "../preload/preload.js"),
-      contextIsolation: true,
       nodeIntegration: false,
       sandbox: !IS_DEV,
       webSecurity: !IS_DEV,
+      backgroundThrottling: false,
     },
   });
 
@@ -45,6 +49,13 @@ function createWindow(): void {
       mainWindow?.webContents.openDevTools({ mode: "detach" });
     }
     log.info("Main window ready");
+  });
+
+  mainWindow.on("blur", () => {
+    if (isLockdownActive) {
+      mainWindow?.webContents.send("lockdown:blur");
+      log.warn("Main window blurred - possible environment breach");
+    }
   });
 
   mainWindow.on("closed", () => {
@@ -87,138 +98,171 @@ app.whenReady().then(() => {
     },
   );
 
+  // Handle Display Media (Screen Selection)
+  session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
+    const { desktopCapturer } = require("electron");
+    desktopCapturer.getSources({ types: ["screen", "window"] }).then((sources: any[]) => {
+  
+      if (sources.length > 0) {
+        callback({ video: sources[0] });
+      } else {
+        callback({});
+      }
+    });
+  });
+
   if (!IS_DEV) {
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
           "Content-Security-Policy": [
-            "default-src 'self'; " +
-              "script-src 'self'; " +
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
-              "font-src 'self' https://fonts.gstatic.com; " +
-              "img-src 'self' data: https: blob:; " +
-              "media-src 'self' blob:; " +
-              "connect-src 'self' ws://localhost:* http://localhost:*;",
+            "default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://*.ngrok-free.app wss://*.ngrok-free.app;",
           ],
         },
       });
     });
   }
 
-  registerIpcHandlers();
   createWindow();
 
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+  app.on("activate", function () {
+    if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
+app.on("window-all-closed", function () {
+  if (process.platform !== "darwin") app.quit();
+});
+
+// IPC Handlers
+ipcMain.handle("platform:info", () => ({
+  platform: process.platform,
+  arch: process.arch,
+  version: app.getVersion(),
+}));
+
+ipcMain.handle("platform:display-count", () => {
+  return screen.getAllDisplays().length;
+});
+
+ipcMain.handle("session:generate-id", () => {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
+});
+
+ipcMain.on("window:minimize", () => mainWindow?.minimize());
+ipcMain.on("window:maximize", () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+ipcMain.on("window:close", () => mainWindow?.close());
+
+ipcMain.handle("auth:get-token", () => {
+  const path = join(app.getPath("userData"), "token.dat");
+  if (existsSync(path)) {
+    try {
+      const encrypted = readFileSync(path);
+      return safeStorage.decryptString(encrypted);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+});
+
+ipcMain.handle("auth:set-token", (_event, token: string) => {
+  const path = join(app.getPath("userData"), "token.dat");
+  if (token) {
+    const encrypted = safeStorage.encryptString(token);
+    writeFileSync(path, encrypted);
+  } else if (existsSync(path)) {
+    unlinkSync(path);
+  }
+  return true;
+});
+
+ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
+  if (!mainWindow) return false;
+
+  isLockdownActive = enabled;
+  log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
+
+  if (enabled) {
+    mainWindow.setKiosk(true);
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setContentProtection(true);
+  } else {
+    mainWindow.setKiosk(false);
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setContentProtection(false);
+  }
+  return true;
+});
+
+ipcMain.handle("window:set-widget-mode", (_event, enabled: boolean) => {
+  if (!mainWindow) return false;
+
+  if (enabled) {
+    // Widget Mode: Small, Always on Top, Bottom-Right
+    const { screen } = require("electron");
+    const primaryDisplay = screen.getPrimaryDisplay();
+    const { width, height } = primaryDisplay.workAreaSize;
+    
+    // Clear all hard constraints from constructor
+    mainWindow.setMinimumSize(0, 0);
+    mainWindow.setMaximumSize(10000, 10000);
+    
+    mainWindow.setMaximizable(true);
+    mainWindow.setFullScreen(false);
+    mainWindow.setResizable(true);
+    
+    // Set actual bounds - instant resize
+    mainWindow.setMinimumSize(240, 280);
+    mainWindow.setBounds({
+      x: width - 260,
+      y: height - 320,
+      width: 240,
+      height: 280
+    });
+    
+    mainWindow.setAlwaysOnTop(true, "floating");
+    mainWindow.setMinimizable(true);
+  } else {
+    // Restore: Large, Center
+    mainWindow.setResizable(true);
+    mainWindow.setMinimumSize(1024, 700);
+    mainWindow.setMaximumSize(10000, 10000);
+    mainWindow.setSize(1440, 900, true);
+    mainWindow.center();
+    mainWindow.setAlwaysOnTop(false);
+    mainWindow.setMinimizable(true);
+    mainWindow.setMaximizable(true);
+  }
+  return true;
+});
+
+ipcMain.handle("desktop:sources", async () => {
+  try {
+    const sources = await desktopCapturer.getSources({
+      types: ["window", "screen"],
+      thumbnailSize: { width: 400, height: 250 },
+      fetchWindowIcons: false
+    });
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      thumbnail: s.thumbnail.toDataURL(),
+    }));
+  } catch (err) {
+    console.error("Failed to get desktop sources:", err);
+    return [];
   }
 });
 
-const TOKEN_FILE = join(app.getPath("userData"), ".owlyn-token");
-
-function registerIpcHandlers(): void {
-  ipcMain.handle("platform:info", () => ({
-    platform: process.platform,
-    arch: process.arch,
-    version: app.getVersion(),
-  }));
-
-  ipcMain.handle("session:generate-id", () => {
-    return `OWL-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  });
-
-  ipcMain.handle("window:minimize", () => mainWindow?.minimize());
-  ipcMain.handle("window:maximize", () => {
-    if (mainWindow?.isMaximized()) {
-      mainWindow.unmaximize();
-    } else {
-      mainWindow?.maximize();
-    }
-  });
-  ipcMain.handle("window:close", () => mainWindow?.close());
-
-  ipcMain.handle("auth:save-token", (_event, token: string) => {
-    if (!safeStorage.isEncryptionAvailable()) {
-      log.warn("safeStorage encryption not available, skipping token save");
-      return false;
-    }
-    const encrypted = safeStorage.encryptString(token);
-    writeFileSync(TOKEN_FILE, encrypted);
-    log.info("Token saved to safeStorage");
-    return true;
-  });
-
-  ipcMain.handle("auth:get-token", () => {
-    if (!existsSync(TOKEN_FILE)) return null;
-    if (!safeStorage.isEncryptionAvailable()) return null;
-    try {
-      const encrypted = readFileSync(TOKEN_FILE);
-      return safeStorage.decryptString(encrypted);
-    } catch {
-      log.warn("Failed to decrypt token, clearing");
-      try {
-        unlinkSync(TOKEN_FILE);
-      } catch {
-        /* ignore */
-      }
-      return null;
-    }
-  });
-
-  ipcMain.handle("auth:clear-token", () => {
-    try {
-      if (existsSync(TOKEN_FILE)) unlinkSync(TOKEN_FILE);
-      log.info("Token cleared");
-    } catch {
-      /* ignore */
-    }
-    return true;
-  });
-
-  ipcMain.handle("lockdown:toggle", (_event, enabled: boolean) => {
-    if (!mainWindow) return false;
-
-    log.info(`Lockdown mode: ${enabled ? "ENABLED" : "DISABLED"}`);
-
-    if (enabled) {
-      mainWindow.setFullScreen(true);
-      mainWindow.setAlwaysOnTop(true, "screen-saver");
-      mainWindow.setResizable(false);
-      mainWindow.setMovable(false);
-      mainWindow.setMinimumSize(
-        mainWindow.getSize()[0],
-        mainWindow.getSize()[1],
-      );
-      mainWindow.setMaximizable(false);
-      mainWindow.setMinimizable(false);
-
-      // Prevent screen capture/sharing on macOS and Windows
-      if (process.platform === "darwin" || process.platform === "win32") {
-        mainWindow.setContentProtection(true);
-      }
-    } else {
-      mainWindow.setFullScreen(false);
-      mainWindow.setAlwaysOnTop(false);
-      mainWindow.setResizable(true);
-      mainWindow.setMovable(true);
-      mainWindow.setMinimumSize(1024, 700);
-      mainWindow.setMaximizable(true);
-      mainWindow.setMinimizable(true);
-
-      if (process.platform === "darwin" || process.platform === "win32") {
-        mainWindow.setContentProtection(false);
-      }
-    }
-    return true;
-  });
-
-  log.info("IPC handlers registered");
-}
+ipcMain.on("clipboard:write", (_event, text: string) => {
+  clipboard.writeText(text);
+  log.info("Native clipboard write successful");
+});

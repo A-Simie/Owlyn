@@ -14,6 +14,13 @@ export const personasApi = {
     return data;
   },
 
+  updatePersona: async (id: string, formData: FormData) => {
+    const { data } = await apiClient.put<Persona>(`/api/personas/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  },
+
   deletePersona: async (id: string) => {
     await apiClient.delete(`/api/personas/${id}`);
   },

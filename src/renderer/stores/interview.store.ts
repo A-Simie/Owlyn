@@ -7,11 +7,13 @@ interface InterviewSlice {
     integrity: IntegritySignal | null
     isAiSpeaking: boolean
     networkLatency: number
+    notes: string
     addTranscript: (entry: TranscriptEntry) => void
     setCurrentQuestion: (q: string) => void
     setIntegrity: (i: IntegritySignal) => void
     setAiSpeaking: (v: boolean) => void
     setNetworkLatency: (ms: number) => void
+    setNotes: (n: string) => void
     reset: () => void
 }
 
@@ -21,13 +23,35 @@ export const useInterviewStore = create<InterviewSlice>((set) => ({
     integrity: null,
     isAiSpeaking: false,
     networkLatency: 0,
+    notes: localStorage.getItem('owlyn_notes') || '',
     addTranscript: (entry) => set((s) => {
-        if (s.transcript.some((t) => t.id === entry.id)) return s
+        console.log(`[Store] addTranscript:`, entry);
+        const index = s.transcript.findIndex((t) => t.id === entry.id);
+        if (index !== -1) {
+            if (s.transcript[index].text === entry.text) return s;
+            const newTranscript = [...s.transcript];
+            newTranscript[index] = { ...newTranscript[index], text: entry.text };
+            return { transcript: newTranscript };
+        }
         return { transcript: [...s.transcript, entry] }
     }),
     setCurrentQuestion: (currentQuestion) => set({ currentQuestion }),
     setIntegrity: (integrity) => set({ integrity }),
     setAiSpeaking: (isAiSpeaking) => set({ isAiSpeaking }),
     setNetworkLatency: (networkLatency) => set({ networkLatency }),
-    reset: () => set({ transcript: [], currentQuestion: '', integrity: null, isAiSpeaking: false, networkLatency: 0 }),
+    setNotes: (notes) => {
+        localStorage.setItem('owlyn_notes', notes)
+        set({ notes })
+    },
+    reset: () => {
+        localStorage.removeItem('owlyn_notes')
+        set({ 
+            transcript: [], 
+            currentQuestion: '', 
+            integrity: null, 
+            isAiSpeaking: false, 
+            networkLatency: 0,
+            notes: ''
+        })
+    },
 }))
