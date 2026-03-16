@@ -43,14 +43,15 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 
 ### Prerequisites
 - Node.js 18+
-- npm (for frontend)
-- Java 17+ & Maven (for backend)
+- npm
 
 ### Testing the Admin Flow
 To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:
 - **Email**: `owlyn.admin@gmail.com`
-- **Password**: [Any password of your choice]
+- **Password**: `Qwerty1*`
 - **OTP Code**: `123456`
+
+Note: You can test the admin flow with any email of choice but the owlyn.admin@gmail.com method is simply for easy, general access
 
 ### Installation
 
@@ -60,18 +61,12 @@ git clone https://github.com/A-Simie/Owlyn.git
 cd Owlyn
 
 # 2. Configure Environment Variables
-# REQUIRED: Copy the example env and update the URLs for your local setup
+# REQUIRED: Copy the example env and update the Server URLs for your local setup
 cp .env.example .env
 
 # 3. Install and Run Frontend
 npm install
 npm run dev
-
-# 4. Clone and Run Backend
-git clone https://github.com/Akeem1955/OwlynBackend.git
-cd OwlynBackend
-mvn spring-boot:run
-```
 
 ### Build & Production
 
