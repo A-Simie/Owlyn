@@ -5,39 +5,39 @@ Owlyn is a real-time multimodal agent ecosystem that redefines technical hiring 
 ## Features
 
 ### 1. Live Multimodal Interviews
-- **Gemini Live Integration** - Sub-second conversational responses for natural, real-time dialogue.
-- **Unified Workspace** - Integrated **Monaco Editor** (20+ languages), canvas-based **Whiteboard**, and **Notes** app.
-- **Hardware Diagnostics** - Comprehensive pre-interview checks for camera, microphone, and network health.
+* **Gemini Live Integration** - Sub-second conversational responses for natural, real-time dialogue.
+* **Unified Workspace** - Integrated **Monaco Editor** (20+ languages), canvas-based **Whiteboard**, and **Notes** app.
+* **Hardware Diagnostics** - Comprehensive pre-interview checks for camera, microphone, and network health.
 
 ### 2. The Sentinel Ecosystem (Proctoring)
-- **Integrity Sentinel** - Real-time vision-based monitoring to detect unauthorized devices or participants.
-- **Workspace Sentinel** - Analyzes implementation logic and code structure as it unfolds in the editor.
-- **Lockdown Mode** - OS-level security via Electron to prevent navigation or unauthorized screen recording.
+* **Integrity Sentinel** - Real-time vision-based monitoring to detect unauthorized devices or participants.
+* **Workspace Sentinel** - Analyzes implementation logic and code structure as it unfolds in the editor.
+* **Lockdown Mode** - OS-level security via Electron to prevent navigation or unauthorized screen recording.
 
 ### 3. Assistant Mode
-- **Multimodal Companion** - A floating desktop widget that sees your screen and hears your reasoning.
-- **Ambient Debugging** - Context-aware assistance for architecting, debugging, and pair-programming in real-time.
+* **Multimodal Companion** - A floating desktop widget that sees your screen and hears your reasoning.
+* **Ambient Debugging** - Context-aware assistance for architecting, debugging, and pair-programming in real-time.
 
 ### 4. Customization & Analytics
-- **Persona Engine** - Configure behavioral scalars (Empathy, Analytical Depth, Directness) and linguistic localization.
-- **Strategic Assessment** - Unbiased, data-driven reports with competency radar charts and full session transcripts.
+* **Persona Engine** - Configure behavioral scalars (Empathy, Analytical Depth, Directness) and linguistic localization.
+* **Strategic Assessment** - Unbiased, data-driven reports with competency radar charts and full session transcripts.
 
 ## Tech Stack
 
 ### Desktop Layer
-- **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
-- **Motion** - Smooth transitions and micro-animations.
-- **Monaco Editor** - Code editing engine.
+* **Electron 33** + **React 18** - Native hardware control and high-fidelity UI.
+* **Motion** - Smooth transitions and micro-animations.
+* **Monaco Editor** - Code editing engine.
 
 ### Orchestration Layer
-- **Spring Boot 4** - Centralized session orchestration and agent routing.
-- **LiveKit WebRTC** - Low-latency media backbone for synchronized audio/video feeds.
-- **PostgreSQL & Redis** - Containerized via **Docker** for robust state management and persistent storage.
-- **Google Cloud VM** - Backend orchestration and worker agents hosted on high-performance compute.
+* **Spring Boot 4** - Centralized session orchestration and agent routing.
+* **LiveKit WebRTC** - Low-latency media backbone for synchronized audio/video feeds.
+* **PostgreSQL & Redis** - Containerized via **Docker** for robust state management and persistent storage.
+* **Google Cloud VM** - Backend orchestration and worker agents hosted on high-performance compute.
 
 ### Intelligence Layer
-- **Gemini Live API** - Powers the conversational interview loop.
-- **Gemini 3.1 Pro/Flash** - Specialized agents for structural vision and strategic assessment.
+* **Gemini Live API** - Powers the conversational interview loop.
+* **Gemini 3.1 Pro/Flash** - Specialized agents for structural vision and strategic assessment.
 
 Note: View the system communication diagram for a better understanding of the system architecture [here](https://github.com/A-Simie/Owlyn/assets/system-communication.jpg)
 
@@ -45,17 +45,33 @@ Note: View the system communication diagram for a better understanding of the sy
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+
-- npm
-- Docker (for PostgreSQL & Redis)
+* Node.js 18+
+* npm
+* Docker (for PostgreSQL & Redis) 
 
-### Testing the Admin Flow
-To test the recruitment dashboard and session monitoring features, use the following sandbox credentials:
-- **Email**: `owlyn.admin@gmail.com`
-- **Password**: `Qwerty1*`
-- **OTP Code**: `123456`(works for signup and login)
+### Testing the Application(Judges, Users)
+clone the repo and install locally with npm install, 
 
-Note: You can test the admin flow with any email and password of choice but the owlyn.admin@gmail.com method is simply for easy, general access
+create an env file and enter these variables
+
+VITE_API_BASE_URL=https://api.cognito.software
+VITE_LIVEKIT_URL=wss://neuronflow-3t333itv.livekit.cloud
+
+then run npm run dev
+
+To test the admin/recruitment dashboard and session monitoring features, use the following sandbox credentials:
+* **Email**: `owlyn.admin@gmail.com`
+* **Password**: `Qwerty1*`
+* **OTP Code**: `123456`(works for signup and login)
+
+Note: You can test the admin flow with any email and password of choice but the owlyn.admin@gmail.com method is simply for easy, general access.
+
+To test the practice mode, just set the topic, select language, time and difficulty and click on start interview.
+
+To test the interview mode, enter interview code generated from admin/recruitment dashboard.
+
+To test the live assistant mode, simply click on assistant mode in candidate entry.
+
 
 ### Installation
 
