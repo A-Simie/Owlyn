@@ -1,7 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuthStore } from "@/stores/auth.store";
-import { authApi } from "@/api";
 import { isTokenExpired } from "@/lib/token";
 
 type Status = "checking" | "authenticated" | "guest";

@@ -11,7 +11,6 @@ export default function CandidateGuard({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     async function checkSecurity() {
-      // Ensure store is hydrated from safeStorage before routing
       if (!hydrated) {
         await hydrate();
         return;

@@ -10,7 +10,6 @@ export function usePersonaCustomization() {
   const [isSaving, setIsSaving] = useState(false);
   const [status, setStatus] = useState<{ text: string; type: "success" | "error" } | null>(null);
 
-  // Form State
   const [name, setName] = useState("");
   const [contextFiles, setContextFiles] = useState<File[]>([]);
   const [selectedLanguage, setSelectedLanguage] = useState("English");

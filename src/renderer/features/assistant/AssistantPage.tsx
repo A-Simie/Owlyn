@@ -18,8 +18,13 @@ export default function AssistantPage() {
   const { livekitToken } = useCandidateStore();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (!livekitToken) {
+      navigate("/auth?step=candidate-options");
+    }
+  }, [livekitToken, navigate]);
+
   if (!livekitToken) {
-    navigate("/auth?step=candidate-options");
     return null;
   }
 
@@ -62,7 +67,6 @@ function AssistantInterface() {
     checkSize();
     return () => {
       window.removeEventListener('resize', checkSize);
-      // Removed stopAll() on unmount to preserve camera/mic state
     };
   }, []);
 

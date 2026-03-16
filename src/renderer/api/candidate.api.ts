@@ -77,7 +77,6 @@ export const candidateApi = {
   },
 
   releaseLockdown: async () => {
-    // Debounce the actual release to prevent flickering during React remounts
     if (lockdownTimeout) clearTimeout(lockdownTimeout);
     
     lockdownTimeout = setTimeout(async () => {

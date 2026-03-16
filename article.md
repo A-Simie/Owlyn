@@ -31,7 +31,6 @@ To solve this, we defined four design pillars for Owlyn:
 
 ## 2. System Architecture
 
-
 ![System Architecture](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ggoh8mhp3ja1wkpq0wal.jpg)
 Owlyn is designed as a distributed, real-time multimodal system composed of four major layers:
 
@@ -249,6 +248,7 @@ Assistant Mode transforms Owlyn into a persistent multimodal companion for every
 ![Practice Mode](https://dev-to-uploads.s3.amazonaws.com/uploads/articles/ddwney9f2237g19ytd9s.png)
 Before entering a real technical interview session, candidates need a way to test their technical skills and get comfortable with the interview environment. We built **Practice Mode** as a standalone version of the workspace where users define their own parameters:
 - **Customizable Sessions**: Users input a specific topic (e.g., "React Performance" or "Distributed Systems") and set a difficulty and timer. The agent then dynamically generates a technical session based on those constraints.
+--**Multi Language Support**: Users can select their preferred language from the list of supported languages. This instructs the AI agent to communicate with the candidate in their preferred language.
 - **Protocol Parity**: It uses the same multi-agent orchestration, audio/video streaming, and code analysis as the Enterprise mode. This ensures the candidate is getting the real experience in a private environment.
 
 # 5. Recruitment Management: Dashboards and Talent Pools
